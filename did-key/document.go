@@ -1,6 +1,7 @@
 package did_key
 
 import (
+	"encoding/json"
 	"net/url"
 
 	"github.com/INFURA/go-did"
@@ -14,17 +15,38 @@ type document struct {
 }
 
 func (d document) MarshalJSON() ([]byte, error) {
-	// TODO implement me
-	panic("implement me")
+	return json.Marshal(struct {
+		Context              []string                 `json:"@context"`
+		ID                   string                   `json:"id"`
+		AlsoKnownAs          []string                 `json:"alsoKnownAs,omitempty"`
+		Controller           string                   `json:"controller,omitempty"`
+		VerificationMethod   []did.VerificationMethod `json:"verificationMethod,omitempty"`
+		Authentication       []string                 `json:"authentication,omitempty"`
+		AssertionMethod      []string                 `json:"assertionMethod,omitempty"`
+		KeyAgreement         []string                 `json:"keyAgreement,omitempty"`
+		CapabilityInvocation []string                 `json:"capabilityInvocation,omitempty"`
+		CapabilityDelegation []string                 `json:"capabilityDelegation,omitempty"`
+	}{
+		Context:              []string{did.JsonLdContext, d.verification.JsonLdContext()},
+		ID:                   d.id.String(),
+		AlsoKnownAs:          nil,
+		Controller:           d.id.String(),
+		VerificationMethod:   []did.VerificationMethod{d.verification},
+		Authentication:       []string{d.verification.ID()},
+		AssertionMethod:      []string{d.verification.ID()},
+		KeyAgreement:         []string{d.verification.ID()},
+		CapabilityInvocation: []string{d.verification.ID()},
+		CapabilityDelegation: []string{d.verification.ID()},
+	})
 }
 
 func (d document) ID() did.DID {
 	return d.id
 }
 
-func (d document) Controller() did.DID {
+func (d document) Controllers() []did.DID {
 	// no external controller possible for did:key
-	return d.id
+	return []did.DID{d.id}
 }
 
 func (d document) AlsoKnownAs() []url.URL {

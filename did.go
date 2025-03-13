@@ -6,16 +6,13 @@ import (
 	"sync"
 )
 
-// Decoder is a function decoding an identifier ("foo" in "did:example:foo") into a DID.
+const JsonLdContext = "https://www.w3.org/ns/did/v1"
+
+// Decoder is a function decoding a DID string representation ("did:example:foo") into a DID.
 type Decoder func(identifier string) (DID, error)
 
-var (
-	decodersMu sync.RWMutex
-	decoders   = map[string]Decoder{}
-)
-
-// RegisterMethod registers a DID decoder for a given DID method..
-// Method must be the DID method (for example "key" in did:key).
+// RegisterMethod registers a DID decoder for a given DID method.
+// Method must be the DID method (for example, "key" in did:key).
 func RegisterMethod(method string, decoder Decoder) {
 	decodersMu.Lock()
 	defer decodersMu.Unlock()
@@ -28,24 +25,21 @@ func RegisterMethod(method string, decoder Decoder) {
 	decoders[method] = decoder
 }
 
-// Parse returns the DID from the string representation or an error if
-// the prefix and method are incorrect, if an unknown encryption algorithm
-// is specified or if the method-specific-identifier's bytes don't
-// represent a public key for the specified encryption algorithm.
-func Parse(str string) (DID, error) {
+// Parse attempts to decode a DID from its string representation.
+func Parse(identifier string) (DID, error) {
 	decodersMu.RLock()
 	defer decodersMu.RUnlock()
 
-	if !strings.HasPrefix(str, "did:") {
+	if !strings.HasPrefix(identifier, "did:") {
 		return nil, fmt.Errorf("%w: must start with \"did:\"", ErrInvalidDid)
 	}
 
-	method, identifier, ok := strings.Cut(str[len("did:"):], ":")
+	method, suffix, ok := strings.Cut(identifier[len("did:"):], ":")
 	if !ok {
 		return nil, fmt.Errorf("%w: must have a method and an identifier", ErrInvalidDid)
 	}
 
-	if !checkIdentifier(identifier) {
+	if !checkSuffix(suffix) {
 		return nil, fmt.Errorf("%w: invalid identifier characters", ErrInvalidDid)
 	}
 
@@ -58,12 +52,25 @@ func Parse(str string) (DID, error) {
 }
 
 // MustParse is like Parse but panics instead of returning an error.
-func MustParse(str string) DID {
-	did, err := Parse(str)
+func MustParse(identifier string) DID {
+	did, err := Parse(identifier)
 	if err != nil {
 		panic(err)
 	}
 	return did
+}
+
+// HasValidSyntax tells if the given string representation conforms to DID syntax.
+// This does NOT verify that the method is supported by this library.
+func HasValidSyntax(identifier string) bool {
+	if !strings.HasPrefix(identifier, "did:") {
+		return false
+	}
+	method, suffix, ok := strings.Cut(identifier[len("did:"):], ":")
+	if !ok {
+		return false
+	}
+	return checkMethod(method) && checkSuffix(suffix)
 }
 
 func checkMethod(method string) bool {
@@ -80,14 +87,19 @@ func checkMethod(method string) bool {
 	return true
 }
 
-func checkIdentifier(identifier string) bool {
-	if len(identifier) == 0 {
+func checkSuffix(suffix string) bool {
+	if len(suffix) == 0 {
 		return false
 	}
 	// TODO
-	// for _, char := range identifier {
+	// for _, char := range suffix {
 	//
 	// }
 
 	return true
 }
+
+var (
+	decodersMu sync.RWMutex
+	decoders   = map[string]Decoder{}
+)

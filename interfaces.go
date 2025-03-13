@@ -5,7 +5,8 @@ import (
 	"net/url"
 )
 
-type DID interface { // --> implementation for each DID type: key, pkh ..
+// DID is a decoded (i.e. from a string) Decentralized Identifiers.
+type DID interface {
 	Method() string
 	Path() string
 	Query() url.Values
@@ -15,13 +16,15 @@ type DID interface { // --> implementation for each DID type: key, pkh ..
 	String() string // return the full DID URL, with path, query, fragment
 }
 
-type Document interface { // --> compact implementation, get serialized into json only if necessary
+// Document is the interface for a DID document. It represents the "resolved" state of a DID.
+type Document interface {
 	json.Marshaler
 
 	// ID is the identifier of the Document, which is the DID itself.
 	ID() DID
-	// Controller is the DID that is authorized to make changes to the Document. It's often the same as ID.
-	Controller() DID
+
+	// Controllers is the set of DID that is authorized to make changes to the Document. It's often the same as ID.
+	Controllers() []DID
 
 	// AlsoKnownAs returns an optional set of URL describing ???TODO
 	AlsoKnownAs() []url.URL
@@ -55,18 +58,26 @@ type Document interface { // --> compact implementation, get serialized into jso
 	// https://www.w3.org/TR/did-extensions-properties/#service-types
 }
 
-type VerificationMethod interface { // --> implementation for each method
+// VerificationMethod is a common interface for a cryptographic signature verification method.
+// For example, Ed25519VerificationKey2020 implements the Ed25519 signature verification.
+type VerificationMethod interface {
 	json.Marshaler
 	json.Unmarshaler
 
-	// ID is a string identifier for the VerificationMethod
+	// ID is a string identifier for the VerificationMethod. It can be referenced in a Document.
 	ID() string
+
 	// Type is a string identifier of a verification method.
 	// See https://www.w3.org/TR/did-extensions-properties/#verification-method-types
 	Type() string
-	// ???? TODO
-	Controller() DID
 
-	// Verify that 'sig' is the signed hash of 'data'
+	// Controller is a DID able to control the VerificationMethod.
+	// This is not necessarily the same as for DID itself or the Document.
+	Controller() string
+
+	// JsonLdContext reports the JSON-LD context definition required for this verification method.
+	JsonLdContext() string
+
+	// Verify checks that 'sig' is a valid signature of 'data'.
 	Verify(data []byte, sig []byte) bool
 }
