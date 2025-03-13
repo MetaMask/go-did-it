@@ -100,12 +100,14 @@ func (v VerificationKey2020) Verify(data []byte, sig []byte) bool {
 	return ed25519.Verify(v.pubkey, data, sig)
 }
 
+// encodePubkey encodes the public key in a suitable way for publicKeyMultibase
 func encodePubkey(pubkey ed25519.PublicKey) string {
 	// can only fail with an invalid encoding, but it's hardcoded
 	bytes, _ := mbase.Encode(mbase.Base58BTC, append(varint.ToUvarint(MultibaseCode), pubkey...))
 	return bytes
 }
 
+// decodePubkey decodes the public key from its publicKeyMultibase form
 func decodePubkey(encoded string) (ed25519.PublicKey, error) {
 	baseCodec, bytes, err := mbase.Decode(encoded)
 	if err != nil {
