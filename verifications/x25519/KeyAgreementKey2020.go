@@ -1,8 +1,6 @@
-package ed25519
+package x25519
 
 import (
-	"crypto/ed25519"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,48 +11,48 @@ import (
 	"github.com/INFURA/go-did"
 )
 
-// Specification: https://w3c.github.io/cg-reports/credentials/CG-FINAL-di-eddsa-2020-20220724/
+// Specification: https://w3c-ccg.github.io/did-method-key/#ed25519-x25519
 
 const (
-	MultibaseCode = uint64(0xed)
-	JsonLdContext = "https://w3id.org/security/suites/ed25519-2020/v1"
+	MultibaseCode = uint64(0xec)
+	JsonLdContext = "https://w3id.org/security/suites/x25519-2020/v1"
 )
 
-var _ did.VerificationMethodSignature = &VerificationKey2020{}
+var _ did.VerificationMethodKeyAgreement = &KeyAgreementKey2020{}
 
-type VerificationKey2020 struct {
+type KeyAgreementKey2020 struct {
 	id         string
 	pubkey     PublicKey
 	controller string
 }
 
-func NewVerificationKey2020(id string, pubkey PublicKey, controller did.DID) (*VerificationKey2020, error) {
-	if len(pubkey) != ed25519.PublicKeySize {
-		return nil, errors.New("invalid ed25519 public key size")
+func NewKeyAgreementKey2020(id string, pubkey PublicKey, controller did.DID) (*KeyAgreementKey2020, error) {
+	if len(pubkey) != PublicKeySize {
+		return nil, errors.New("invalid x25519 public key size")
 	}
 
-	return &VerificationKey2020{
+	return &KeyAgreementKey2020{
 		id:         id,
 		pubkey:     pubkey,
 		controller: controller.String(),
 	}, nil
 }
 
-func (v VerificationKey2020) MarshalJSON() ([]byte, error) {
+func (k KeyAgreementKey2020) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		ID                 string `json:"id"`
 		Type               string `json:"type"`
 		Controller         string `json:"controller"`
 		PublicKeyMultibase string `json:"publicKeyMultibase"`
 	}{
-		ID:                 v.ID(),
-		Type:               v.Type(),
-		Controller:         v.Controller(),
-		PublicKeyMultibase: PublicKeyToMultibase(v.pubkey),
+		ID:                 k.ID(),
+		Type:               k.Type(),
+		Controller:         k.Controller(),
+		PublicKeyMultibase: PublicKeyToMultibase(k.pubkey),
 	})
 }
 
-func (v *VerificationKey2020) UnmarshalJSON(bytes []byte) error {
+func (k *KeyAgreementKey2020) UnmarshalJSON(bytes []byte) error {
 	aux := struct {
 		ID                 string `json:"id"`
 		Type               string `json:"type"`
@@ -65,42 +63,38 @@ func (v *VerificationKey2020) UnmarshalJSON(bytes []byte) error {
 	if err != nil {
 		return err
 	}
-	if aux.Type != v.Type() {
+	if aux.Type != k.Type() {
 		return errors.New("invalid type")
 	}
-	v.id = aux.ID
-	if len(v.id) == 0 {
+	k.id = aux.ID
+	if len(k.id) == 0 {
 		return errors.New("invalid id")
 	}
-	v.pubkey, err = MultibaseToPublicKey(aux.PublicKeyMultibase)
+	k.pubkey, err = MultibaseToPublicKey(aux.PublicKeyMultibase)
 	if err != nil {
 		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}
-	v.controller = aux.Controller
-	if !did.HasValidSyntax(v.controller) {
+	k.controller = aux.Controller
+	if !did.HasValidSyntax(k.controller) {
 		return errors.New("invalid controller")
 	}
 	return nil
 }
 
-func (v VerificationKey2020) ID() string {
-	return v.id
+func (k KeyAgreementKey2020) ID() string {
+	return k.id
 }
 
-func (v VerificationKey2020) Type() string {
-	return "Ed25519VerificationKey2020"
+func (k KeyAgreementKey2020) Type() string {
+	return "X25519KeyAgreementKey2020"
 }
 
-func (v VerificationKey2020) Controller() string {
-	return v.controller
+func (k KeyAgreementKey2020) Controller() string {
+	return k.controller
 }
 
-func (v VerificationKey2020) JsonLdContext() string {
+func (k KeyAgreementKey2020) JsonLdContext() string {
 	return JsonLdContext
-}
-
-func (v VerificationKey2020) Verify(data []byte, sig []byte) bool {
-	return ed25519.Verify(v.pubkey, data, sig)
 }
 
 // PublicKeyToMultibase encodes the public key in a suitable way for publicKeyMultibase
@@ -130,17 +124,8 @@ func MultibaseToPublicKey(multibase string) (PublicKey, error) {
 	if read != 2 {
 		return nil, fmt.Errorf("unexpected multibase")
 	}
-	if len(bytes)-read != ed25519.PublicKeySize {
+	if len(bytes)-read != PublicKeySize {
 		return nil, fmt.Errorf("invalid ed25519 public key size")
 	}
 	return bytes[read:], nil
-}
-
-// ------------
-
-type PublicKey = ed25519.PublicKey
-type PrivateKey = ed25519.PrivateKey
-
-func GenerateKeyPair() (PublicKey, PrivateKey, error) {
-	return ed25519.GenerateKey(rand.Reader)
 }

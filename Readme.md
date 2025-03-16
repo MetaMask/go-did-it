@@ -22,7 +22,8 @@
 
 This is an implementation of Decentralized Identifiers (DIDs) in go. It differs from the alternatives in the following ways: 
 - **simple**: made of shared reusable components and clear interfaces
-- **fast**: while it supports DID Documents as JSON files, it's not unnecessary in the way (see below) 
+- **fast**: while it supports DID Documents as JSON files, it's not unnecessary in the way (see below)
+- **battery included**: the corresponding cryptographic handling is implemented
 - **support producing and using DIDs**: unlike some others, this all-in-one implementation is meant to create, manipulate and handle DIDs
 - **extensible**: you can easily register your custom DID method
 

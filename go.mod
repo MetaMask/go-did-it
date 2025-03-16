@@ -1,11 +1,14 @@
 module github.com/INFURA/go-did
 
-go 1.23
+go 1.23.0
+
+toolchain go1.23.1
 
 require (
 	github.com/multiformats/go-multibase v0.2.0
 	github.com/multiformats/go-varint v0.0.7
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/crypto v0.36.0
 )
 
 require (

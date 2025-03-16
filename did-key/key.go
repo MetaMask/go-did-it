@@ -1,6 +1,7 @@
-package did_key
+package didkey
 
 import (
+	"crypto"
 	"fmt"
 	"net/url"
 	"strings"
@@ -10,9 +11,22 @@ import (
 
 	"github.com/INFURA/go-did"
 	"github.com/INFURA/go-did/verifications/ed25519"
+	"github.com/INFURA/go-did/verifications/x25519"
 )
 
 // Specification: https://w3c-ccg.github.io/did-method-key/
+
+func init() {
+	did.RegisterMethod("key", Decode)
+}
+
+var _ did.DID = &DidKey{}
+
+type DidKey struct {
+	identifier   string // cached value
+	signature    did.VerificationMethodSignature
+	keyAgreement did.VerificationMethodKeyAgreement
+}
 
 func Decode(identifier string) (did.DID, error) {
 	const keyPrefix = "did:key:"
@@ -38,29 +52,49 @@ func Decode(identifier string) (did.DID, error) {
 
 	switch code {
 	case ed25519.MultibaseCode:
-		d.verification, err = ed25519.NewVerificationKey2020(identifier, bytes[read:], d)
+		d.signature, err = ed25519.NewVerificationKey2020(d.identifier, bytes[read:], d)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+		}
+		xpub, err := x25519.PublicKeyFromEd25519(bytes[read:])
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+		}
+		d.keyAgreement, err = x25519.NewKeyAgreementKey2020(d.identifier, xpub, d)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+		}
+
 	// case P256: // TODO
 	// case Secp256k1: // TODO
 	// case RSA: // TODO
 	default:
 		return nil, fmt.Errorf("%w: unsupported did:key multicodec: 0x%x", did.ErrInvalidDid, code)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-	}
 
 	return d, nil
 }
 
-func init() {
-	did.RegisterMethod("key", Decode)
+func FromPublicKey(pub PublicKey) (did.DID, error) {
+	var err error
+	switch pub := pub.(type) {
+	case ed25519.PublicKey:
+		d := DidKey{
+			identifier: ed25519.PublicKeyToMultibase(pub),
+		}
+		d.signature, err = ed25519.NewVerificationKey2020(d.identifier, pub, d)
+		if err != nil {
+			return nil, err
+		}
+		return d, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported public key: %T", pub)
+	}
 }
 
-var _ did.DID = &DidKey{}
-
-type DidKey struct {
-	identifier   string // cached value
-	verification did.VerificationMethod
+func FromPrivateKey(priv PrivateKey) (did.DID, error) {
+	return FromPublicKey(priv.Public().(PublicKey))
 }
 
 func (d DidKey) Method() string {
@@ -82,10 +116,29 @@ func (d DidKey) Fragment() string {
 func (d DidKey) Document() (did.Document, error) {
 	return document{
 		id:           d,
-		verification: d.verification,
+		signature:    d.signature,
+		keyAgreement: d.keyAgreement,
 	}, nil
 }
 
 func (d DidKey) String() string {
 	return d.identifier
+}
+
+func (d DidKey) Equal(d2 did.DID) bool {
+	if d2, ok := d2.(DidKey); ok {
+		return d.identifier == d2.identifier
+	}
+	return false
+}
+
+// ---------------
+
+type PublicKey interface {
+	Equal(x crypto.PublicKey) bool
+}
+
+type PrivateKey interface {
+	Public() crypto.PublicKey
+	Equal(x crypto.PrivateKey) bool
 }

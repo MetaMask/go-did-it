@@ -1,4 +1,4 @@
-package did_key_test
+package didkey_test
 
 import (
 	"testing"
@@ -36,6 +36,6 @@ func TestEquivalence(t *testing.T) {
 	did1, err := did.Parse("did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK")
 	require.NoError(t, err)
 
-	require.True(t, did0A == did0B)
-	require.False(t, did0A == did1)
+	require.True(t, did0A.Equal(did0B))
+	require.False(t, did0A.Equal(did1))
 }
