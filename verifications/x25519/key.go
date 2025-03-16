@@ -12,8 +12,8 @@ import (
 	"github.com/INFURA/go-did/verifications/ed25519"
 )
 
-// This mirrors ed25519's structure for private/public "keys". jwx
-// requires dedicated types for these as they drive
+// This mirrors ed25519's structure for private/public "keys". We
+// require dedicated types for these as they drive
 // serialization/deserialization logic, as well as encryption types.
 //
 // Note that with the x25519 scheme, the private key is a sequence of
@@ -36,37 +36,6 @@ const (
 
 // PublicKey is the type of X25519 public keys
 type PublicKey []byte
-
-// Any methods implemented on PublicKey might need to also be implemented on
-// PrivateKey, as the latter embeds the former and will expose its methods.
-
-// Equal reports whether pub and x have the same value.
-func (pub PublicKey) Equal(x crypto.PublicKey) bool {
-	xx, ok := x.(PublicKey)
-	if !ok {
-		return false
-	}
-	return bytes.Equal(pub, xx)
-}
-
-// PrivateKey is the type of X25519 private key
-type PrivateKey []byte
-
-// Public returns the PublicKey corresponding to priv.
-func (priv PrivateKey) Public() crypto.PublicKey {
-	publicKey := make([]byte, PublicKeySize)
-	copy(publicKey, priv[SeedSize:])
-	return PublicKey(publicKey)
-}
-
-// Equal reports whether priv and x have the same value.
-func (priv PrivateKey) Equal(x crypto.PrivateKey) bool {
-	xx, ok := x.(PrivateKey)
-	if !ok {
-		return false
-	}
-	return bytes.Equal(priv, xx)
-}
 
 // NewKeyFromSeed calculates a private key from a seed. It will return
 // an error if len(seed) is not SeedSize. This function is provided
@@ -103,6 +72,37 @@ func GenerateKey() (PublicKey, PrivateKey, error) {
 	copy(publicKey, privateKey[SeedSize:])
 
 	return publicKey, privateKey, nil
+}
+
+// Any methods implemented on PublicKey might need to also be implemented on
+// PrivateKey, as the latter embeds the former and will expose its methods.
+
+// Equal reports whether pub and x have the same value.
+func (pub PublicKey) Equal(x crypto.PublicKey) bool {
+	xx, ok := x.(PublicKey)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(pub, xx)
+}
+
+// PrivateKey is the type of X25519 private key
+type PrivateKey []byte
+
+// Public returns the PublicKey corresponding to priv.
+func (priv PrivateKey) Public() crypto.PublicKey {
+	publicKey := make([]byte, PublicKeySize)
+	copy(publicKey, priv[SeedSize:])
+	return PublicKey(publicKey)
+}
+
+// Equal reports whether priv and x have the same value.
+func (priv PrivateKey) Equal(x crypto.PrivateKey) bool {
+	xx, ok := x.(PrivateKey)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(priv, xx)
 }
 
 func PublicKeyFromEd25519(pub ed25519.PublicKey) (PublicKey, error) {
