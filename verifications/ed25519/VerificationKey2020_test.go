@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/INFURA/go-did/did-key"
+	_ "github.com/INFURA/go-did/methods/did-key"
 	"github.com/INFURA/go-did/verifications/ed25519"
 )
 

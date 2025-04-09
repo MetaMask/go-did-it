@@ -1,14 +1,12 @@
 package didkey_test
 
 import (
-	"fmt"
 	"testing"
 
-	mbase "github.com/multiformats/go-multibase"
 	"github.com/stretchr/testify/require"
 
 	"github.com/INFURA/go-did"
-	_ "github.com/INFURA/go-did/did-key"
+	_ "github.com/INFURA/go-did/methods/did-key"
 )
 
 func TestParseDIDKey(t *testing.T) {
@@ -40,14 +38,4 @@ func TestEquivalence(t *testing.T) {
 
 	require.True(t, did0A.Equal(did0B))
 	require.False(t, did0A.Equal(did1))
-}
-
-func TestFoo(t *testing.T) {
-	_, bytes, err := mbase.Decode("z6LSj72tK8brWgZja8NLRwPigth2T9QRiG1uH9oKZuKjdh9p")
-	require.NoError(t, err)
-	fmt.Println(bytes)
-
-	_, bytes, err = mbase.Decode("z6LSinnAscp9HxuNE9QCpqiwmSMP7oHiTzLepseUb4y6LHFB")
-	require.NoError(t, err)
-	fmt.Println(bytes)
 }

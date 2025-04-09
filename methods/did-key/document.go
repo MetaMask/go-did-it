@@ -35,7 +35,6 @@ func (d document) MarshalJSON() ([]byte, error) {
 		),
 		ID:                   d.id.String(),
 		AlsoKnownAs:          nil,
-		Controller:           d.id.String(),
 		VerificationMethod:   []did.VerificationMethod{d.signature, d.keyAgreement},
 		Authentication:       []string{d.signature.ID()},
 		AssertionMethod:      []string{d.signature.ID()},
@@ -50,8 +49,8 @@ func (d document) ID() did.DID {
 }
 
 func (d document) Controllers() []did.DID {
-	// no external controller possible for did:key
-	return []did.DID{d.id}
+	// no controller for did:key, no changes are possible
+	return nil
 }
 
 func (d document) AlsoKnownAs() []url.URL {

@@ -23,6 +23,8 @@ func TestDocument(t *testing.T) {
 
 	fmt.Println(string(bytes))
 
+	// TODO: https://github.com/w3c-ccg/did-key-spec/issues/71
+
 	const expected = `{
   "@context": [
     "https://www.w3.org/ns/did/v1",

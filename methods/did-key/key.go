@@ -23,7 +23,7 @@ func init() {
 var _ did.DID = &DidKey{}
 
 type DidKey struct {
-	identifier   string // cached value
+	msi          string // method-specific identifier, i.e. "12345" in "did:key:12345"
 	signature    did.VerificationMethodSignature
 	keyAgreement did.VerificationMethodKeyAgreement
 }
@@ -35,7 +35,9 @@ func Decode(identifier string) (did.DID, error) {
 		return nil, fmt.Errorf("must start with 'did:key'")
 	}
 
-	baseCodec, bytes, err := mbase.Decode(identifier[len(keyPrefix):])
+	msi := identifier[len(keyPrefix):]
+
+	baseCodec, bytes, err := mbase.Decode(msi)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 	}
@@ -48,11 +50,11 @@ func Decode(identifier string) (did.DID, error) {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 	}
 
-	d := DidKey{identifier: identifier}
+	d := DidKey{msi: msi}
 
 	switch code {
 	case ed25519.MultibaseCode:
-		d.signature, err = ed25519.NewVerificationKey2020(d.identifier, bytes[read:], d)
+		d.signature, err = ed25519.NewVerificationKey2020(fmt.Sprintf("did:key:%s#%s", msi, msi), bytes[read:], d)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
@@ -60,7 +62,7 @@ func Decode(identifier string) (did.DID, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
-		d.keyAgreement, err = x25519.NewKeyAgreementKey2020(d.identifier, xpub, d)
+		d.keyAgreement, err = x25519.NewKeyAgreementKey2020("TODO", xpub, d)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
@@ -80,9 +82,9 @@ func FromPublicKey(pub PublicKey) (did.DID, error) {
 	switch pub := pub.(type) {
 	case ed25519.PublicKey:
 		d := DidKey{
-			identifier: ed25519.PublicKeyToMultibase(pub),
+			msi: ed25519.PublicKeyToMultibase(pub),
 		}
-		d.signature, err = ed25519.NewVerificationKey2020(d.identifier, pub, d)
+		d.signature, err = ed25519.NewVerificationKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
 		if err != nil {
 			return nil, err
 		}
@@ -122,17 +124,25 @@ func (d DidKey) Document() (did.Document, error) {
 }
 
 func (d DidKey) String() string {
-	return d.identifier
+	return fmt.Sprintf("did:key:%s", d.msi)
+}
+
+func (d DidKey) ResolutionIsExpensive() bool {
+	return false
 }
 
 func (d DidKey) Equal(d2 did.DID) bool {
 	if d2, ok := d2.(DidKey); ok {
-		return d.identifier == d2.identifier
+		return d.msi == d2.msi
 	}
 	return false
 }
 
 // ---------------
+
+// Below are the interfaces for crypto.PublicKey and crypto.PrivateKey in the go standard library.
+// They are not actually defined there for compatibility reasons.
+// They are useful for did:key, it's unclear if it's useful elsewhere.
 
 type PublicKey interface {
 	Equal(x crypto.PublicKey) bool

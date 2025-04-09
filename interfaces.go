@@ -5,15 +5,22 @@ import (
 	"net/url"
 )
 
-// DID is a decoded (i.e. from a string) Decentralized Identifiers.
+// DID is a decoded (i.e. from a string) Decentralized Identifier.
 type DID interface {
 	Method() string
+
+	// TODO: below might be only for DID URLs, is it relevant here?
 	Path() string
 	Query() url.Values
 	Fragment() string
 
 	Document() (Document, error)
 	String() string // return the full DID URL, with path, query, fragment
+
+	// ResolutionIsExpensive returns true if resolving to a Document is an expensive operation, e.g. requiring
+	// an external HTTP request. By contrast, a self-contained DID (e.g. did:key) can be resolved cheaply without
+	// an external call. This can be an indication whether to cache the resolved state.
+	ResolutionIsExpensive() bool
 
 	Equal(DID) bool
 }
