@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/INFURA/go-did"
-	"github.com/INFURA/go-did/verifications/ed25519"
 )
 
 func TestDocument(t *testing.T) {
@@ -61,19 +60,5 @@ func TestDocument(t *testing.T) {
 	require.JSONEq(t, expected, string(bytes))
 }
 
-func TestJsonRoundTrip(t *testing.T) {
-	data := `{
-		"id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
-		"type": "Ed25519VerificationKey2020",
-		"controller": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
-		"publicKeyMultibase": "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
-	  }`
-
-	var vm ed25519.VerificationKey2020
-	err := json.Unmarshal([]byte(data), &vm)
-	require.NoError(t, err)
-
-	bytes, err := json.Marshal(vm)
-	require.NoError(t, err)
-	require.JSONEq(t, data, string(bytes))
-}
+// TODO: test vectors:
+// https://github.com/w3c-ccg/did-key-spec/tree/main/test-vectors

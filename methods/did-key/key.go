@@ -62,7 +62,8 @@ func Decode(identifier string) (did.DID, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
-		d.keyAgreement, err = x25519.NewKeyAgreementKey2020("TODO", xpub, d)
+		xmsi := x25519.PublicKeyToMultibase(xpub)
+		d.keyAgreement, err = x25519.NewKeyAgreementKey2020(fmt.Sprintf("did:key:%s#%s", msi, xmsi), xpub, d)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
