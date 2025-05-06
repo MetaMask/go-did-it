@@ -16,6 +16,10 @@ type document struct {
 }
 
 func (d document) MarshalJSON() ([]byte, error) {
+	// It's unclear where the KeyAgreement should be.
+	// Maybe it doesn't matter, but the spec contradict itself.
+	// See https://github.com/w3c-ccg/did-key-spec/issues/71
+
 	return json.Marshal(struct {
 		Context              []string                 `json:"@context"`
 		ID                   string                   `json:"id"`
@@ -35,7 +39,7 @@ func (d document) MarshalJSON() ([]byte, error) {
 		),
 		ID:                   d.id.String(),
 		AlsoKnownAs:          nil,
-		VerificationMethod:   []did.VerificationMethod{d.signature, d.keyAgreement},
+		VerificationMethod:   []did.VerificationMethod{d.signature},
 		Authentication:       []string{d.signature.ID()},
 		AssertionMethod:      []string{d.signature.ID()},
 		KeyAgreement:         []did.VerificationMethod{d.keyAgreement},

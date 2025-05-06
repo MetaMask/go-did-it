@@ -25,7 +25,7 @@ type VerificationKey2020 struct {
 }
 
 func NewVerificationKey2020(id string, pubkey PublicKey, controller did.DID) (*VerificationKey2020, error) {
-	if len(pubkey) != ed25519.PublicKeySize {
+	if len(pubkey) != PublicKeySize {
 		return nil, errors.New("invalid ed25519 public key size")
 	}
 
@@ -68,7 +68,7 @@ func (v *VerificationKey2020) UnmarshalJSON(bytes []byte) error {
 	if len(v.id) == 0 {
 		return errors.New("invalid id")
 	}
-	v.pubkey, err = MultibaseToPublicKey(aux.PublicKeyMultibase)
+	v.pubkey, err = PublicKeyFromMultibase(aux.PublicKeyMultibase)
 	if err != nil {
 		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}

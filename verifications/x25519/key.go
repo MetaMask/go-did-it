@@ -1,5 +1,7 @@
 package x25519
 
+// TODO: use ecdh.PublicKey instead of defining a custom type below?
+
 // type PublicKey ecdh.PublicKey
 //
 // func (p PublicKey) Equal(x crypto.PublicKey) bool {
@@ -167,7 +169,23 @@ func (priv PrivateKey) Equal(x crypto.PrivateKey) bool {
 }
 
 func PublicKeyFromEd25519(pub ed25519.PublicKey) (PublicKey, error) {
-	y := new(big.Int).SetBytes(pub)
+	// Conversion formula is u = (1 + y) / (1 - y) (mod p)
+	// See https://datatracker.ietf.org/doc/html/draft-ietf-core-oscore-groupcomm#name-ecdh-with-montgomery-coordi
+
+	if len(pub) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("invalid ed25519 public key size")
+	}
+
+	// Make a copy and clear the sign bit (MSB of last byte)
+	// This is because ed25519 serialize as bytes with 255 bit for Y, and one bit for the sign.
+	// We only want Y, and the sign is irrelevant for the conversion.
+	pubCopy := make([]byte, ed25519.PublicKeySize)
+	copy(pubCopy, pub)
+	pubCopy[ed25519.PublicKeySize-1] &= 0x7F
+
+	// ed25519 are little-endian, but big.Int expect big-endian
+	// See https://www.rfc-editor.org/rfc/rfc8032
+	y := new(big.Int).SetBytes(reverseBytes(pubCopy))
 	one := big.NewInt(1)
 	negOne := big.NewInt(-1)
 
@@ -190,16 +208,26 @@ func PublicKeyFromEd25519(pub ed25519.PublicKey) (PublicKey, error) {
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xed,
 	})
 
-	// u := new(big.Int).Mul(
-	// 	new(big.Int).Add(one, y),
-	// 	new(big.Int).ModInverse(new(big.Int).Sub(one, y), p),
-	// )
-
 	onePlusY := new(big.Int).Add(one, y)
 	oneMinusY := new(big.Int).Sub(one, y)
 	oneMinusYInv := new(big.Int).ModInverse(oneMinusY, p)
 	u := new(big.Int).Mul(onePlusY, oneMinusYInv)
 	u.Mod(u, p)
 
-	return u.Bytes(), nil
+	// make sure we get 32 bytes, pad if necessary
+	uBytes := u.Bytes()
+	res := make([]byte, PublicKeySize)
+	copy(res[PublicKeySize-len(uBytes):], uBytes)
+
+	// x25519 are little-endian, but big.Int give us big-endian.
+	// See https://www.ietf.org/rfc/rfc7748.txt
+	return reverseBytes(res), nil
+}
+
+func reverseBytes(b []byte) []byte {
+	r := make([]byte, len(b))
+	for i := 0; i < len(b); i++ {
+		r[i] = b[len(b)-1-i]
+	}
+	return r
 }
