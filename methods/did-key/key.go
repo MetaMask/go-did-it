@@ -49,44 +49,39 @@ func Decode(identifier string) (did.DID, error) {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 	}
 
-	d := DidKey{msi: msi}
-
 	switch code {
 	case ed25519.MultibaseCode:
-		d.signature, err = ed25519.NewVerificationKey2020(fmt.Sprintf("did:key:%s#%s", msi, msi), bytes[read:], d)
+		pub, err := ed25519.PublicKeyFromBytes(bytes[read:])
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
-		xpub, err := x25519.PublicKeyFromEd25519(bytes[read:])
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-		}
-		xmsi := x25519.PublicKeyToMultibase(xpub)
-		d.keyAgreement, err = x25519.NewKeyAgreementKey2020(fmt.Sprintf("did:key:%s#%s", msi, xmsi), xpub, d)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-		}
+		return FromPublicKey(pub)
 
-	// case P256: // TODO
-	// case Secp256k1: // TODO
-	// case RSA: // TODO
-	default:
-		return nil, fmt.Errorf("%w: unsupported did:key multicodec: 0x%x", did.ErrInvalidDid, code)
+		// case P256: // TODO
+		// case Secp256k1: // TODO
+		// case RSA: // TODO
 	}
 
-	return d, nil
+	return nil, fmt.Errorf("%w: unsupported did:key multicodec: 0x%x", did.ErrInvalidDid, code)
 }
 
 func FromPublicKey(pub PublicKey) (did.DID, error) {
 	var err error
 	switch pub := pub.(type) {
 	case ed25519.PublicKey:
-		d := DidKey{
-			msi: ed25519.PublicKeyToMultibase(pub),
-		}
+		d := DidKey{msi: ed25519.PublicKeyToMultibase(pub)}
 		d.signature, err = ed25519.NewVerificationKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
 		if err != nil {
 			return nil, err
+		}
+		xpub, err := x25519.PublicKeyFromEd25519(pub)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+		}
+		xmsi := x25519.PublicKeyToMultibase(xpub)
+		d.keyAgreement, err = x25519.NewKeyAgreementKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, xmsi), xpub, d)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
 		return d, nil
 

@@ -14,6 +14,7 @@ import (
 const (
 	MultibaseCode = uint64(0xed)
 	JsonLdContext = "https://w3id.org/security/suites/ed25519-2020/v1"
+	Type          = "Ed25519VerificationKey2020"
 )
 
 var _ did.VerificationMethodSignature = &VerificationKey2020{}
@@ -84,7 +85,7 @@ func (v VerificationKey2020) ID() string {
 }
 
 func (v VerificationKey2020) Type() string {
-	return "Ed25519VerificationKey2020"
+	return Type
 }
 
 func (v VerificationKey2020) Controller() string {
