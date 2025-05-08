@@ -32,11 +32,7 @@ func (d document) MarshalJSON() ([]byte, error) {
 		CapabilityInvocation []string                 `json:"capabilityInvocation,omitempty"`
 		CapabilityDelegation []string                 `json:"capabilityDelegation,omitempty"`
 	}{
-		Context: stringSet(
-			did.JsonLdContext,
-			d.signature.JsonLdContext(),
-			d.keyAgreement.JsonLdContext(),
-		),
+		Context:              d.Context(),
 		ID:                   d.id.String(),
 		AlsoKnownAs:          nil,
 		VerificationMethod:   []did.VerificationMethod{d.signature},
@@ -48,6 +44,14 @@ func (d document) MarshalJSON() ([]byte, error) {
 	})
 }
 
+func (d document) Context() []string {
+	return stringSet(
+		did.JsonLdContext,
+		d.signature.JsonLdContext(),
+		d.keyAgreement.JsonLdContext(),
+	)
+}
+
 func (d document) ID() did.DID {
 	return d.id
 }
@@ -57,7 +61,7 @@ func (d document) Controllers() []did.DID {
 	return nil
 }
 
-func (d document) AlsoKnownAs() []url.URL {
+func (d document) AlsoKnownAs() []*url.URL {
 	return nil
 }
 

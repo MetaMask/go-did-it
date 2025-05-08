@@ -3,7 +3,6 @@ package didkey
 import (
 	"crypto"
 	"fmt"
-	"net/url"
 	"strings"
 
 	mbase "github.com/multiformats/go-multibase"
@@ -102,18 +101,6 @@ func FromPrivateKey(priv PrivateKey) (did.DID, error) {
 
 func (d DidKey) Method() string {
 	return "key"
-}
-
-func (d DidKey) Path() string {
-	return ""
-}
-
-func (d DidKey) Query() url.Values {
-	return nil
-}
-
-func (d DidKey) Fragment() string {
-	return ""
 }
 
 func (d DidKey) Document() (did.Document, error) {

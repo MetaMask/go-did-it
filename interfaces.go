@@ -7,27 +7,32 @@ import (
 
 // DID is a decoded (i.e. from a string) Decentralized Identifier.
 type DID interface {
+	// Method returns the name of the DID method (e.g. "key" for did:key).
 	Method() string
 
-	// TODO: below might be only for DID URLs, is it relevant here?
-	Path() string
-	Query() url.Values
-	Fragment() string
-
+	// Document resolves the DID into a DID Document usable for e.g. signature check.
+	// This can be simply expanding the DID into a Document, or involve external resolution.
 	Document() (Document, error)
-	String() string // return the full DID URL, with path, query, fragment
 
-	// ResolutionIsExpensive returns true if resolving to a Document is an expensive operation, e.g. requiring
-	// an external HTTP request. By contrast, a self-contained DID (e.g. did:key) can be resolved cheaply without
-	// an external call. This can be an indication whether to cache the resolved state.
+	// String returns the string representation of the DID.
+	String() string
+
+	// ResolutionIsExpensive returns true if resolving to a Document is an expensive operation,
+	// e.g. requiring an external HTTP request. By contrast, a self-contained DID (e.g. did:key)
+	// can be resolved cheaply without an external call.
+	// This can be an indication whether to cache the resolved state.
 	ResolutionIsExpensive() bool
 
+	// Equal returns true if this and the given DID are the same.
 	Equal(DID) bool
 }
 
 // Document is the interface for a DID document. It represents the "resolved" state of a DID.
 type Document interface {
 	json.Marshaler
+
+	// Context is the set of JSON-LD context documents.
+	Context() []string
 
 	// ID is the identifier of the Document, which is the DID itself.
 	ID() DID
@@ -36,7 +41,7 @@ type Document interface {
 	Controllers() []DID
 
 	// AlsoKnownAs returns an optional set of URL describing ???TODO
-	AlsoKnownAs() []url.URL
+	AlsoKnownAs() []*url.URL
 
 	// VerificationMethods returns all the VerificationMethod known in the document.
 	VerificationMethods() map[string]VerificationMethod
