@@ -22,7 +22,7 @@ func PublicKeyFromBytes(b []byte) (PublicKey, error) {
 	if len(b) != PublicKeySize {
 		return nil, fmt.Errorf("invalid ed25519 public key size")
 	}
-	return ed25519.PublicKey(b), nil
+	return PublicKey(b), nil
 }
 
 // PublicKeyFromMultibase decodes the public key from its Multibase form
