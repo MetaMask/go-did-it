@@ -74,7 +74,7 @@ func (v *VerificationKey2020) UnmarshalJSON(bytes []byte) error {
 		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}
 	v.controller = aux.Controller
-	if !did.HasValidSyntax(v.controller) {
+	if !did.HasValidDIDSyntax(v.controller) {
 		return errors.New("invalid controller")
 	}
 	return nil
