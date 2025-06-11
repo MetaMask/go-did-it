@@ -34,11 +34,11 @@ type Document interface {
 	// Context is the set of JSON-LD context documents.
 	Context() []string
 
-	// ID is the identifier of the Document, which is the DID itself.
-	ID() DID
+	// ID is the identifier of the Document, which is the DID itself as string.
+	ID() string
 
 	// Controllers is the set of DID that is authorized to make changes to the Document. It's often the same as ID.
-	Controllers() []DID
+	Controllers() []string
 
 	// AlsoKnownAs returns an optional set of URL describing ???TODO
 	AlsoKnownAs() []*url.URL

@@ -52,11 +52,11 @@ func (d document) Context() []string {
 	)
 }
 
-func (d document) ID() did.DID {
-	return d.id
+func (d document) ID() string {
+	return d.id.String()
 }
 
-func (d document) Controllers() []did.DID {
+func (d document) Controllers() []string {
 	// no controller for did:key, no changes are possible
 	return nil
 }
