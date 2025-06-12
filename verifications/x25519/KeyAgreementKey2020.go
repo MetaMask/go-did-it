@@ -74,7 +74,7 @@ func (k *KeyAgreementKey2020) UnmarshalJSON(bytes []byte) error {
 		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}
 	k.controller = aux.Controller
-	if !did.HasValidSyntax(k.controller) {
+	if !did.HasValidDIDSyntax(k.controller) {
 		return errors.New("invalid controller")
 	}
 	return nil
