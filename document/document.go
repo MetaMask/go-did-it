@@ -97,7 +97,7 @@ func fromAux(aux *aux) (*Document, error) {
 		}
 		res.controllers = []string{s}
 	case json.Unmarshal(aux.Controllers, &ss) == nil: // we have an array of strings
-		res.controllers = make([]string, len(aux.Controllers))
+		res.controllers = make([]string, len(ss))
 		for i, s := range ss {
 			if !did.HasValidDIDSyntax(s) {
 				return nil, errors.New("one controllers has an invalid DID syntax")
