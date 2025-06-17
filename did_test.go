@@ -1,10 +1,57 @@
-package did
+package did_test
 
 import (
+	"encoding/base64"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/INFURA/go-did"
+	_ "github.com/INFURA/go-did/methods/did-key"
+	"github.com/INFURA/go-did/verifications/x25519"
 )
+
+func ExampleSignature() {
+	// errors need to be handled
+
+	// 1) Parse the DID string into a DID object
+	d, _ := did.Parse("did:key:z6MknwcywUtTy2ADJQ8FH1GcSySKPyKDmyzT4rPEE84XREse")
+
+	// 2) Resolve to the DID Document
+	doc, _ := d.Document()
+
+	// 3) Use the appropriate verification method (ex: verify a signature for authentication purpose)
+	sig, _ := base64.StdEncoding.DecodeString("nhpkr5a7juUM2eDpDRSJVdEE++0SYqaZXHtuvyafVFUx8zsOdDSrij+vHmd/ARwUOmi/ysmSD+b3K9WTBtmmBQ==")
+	if ok, method := did.TryAllVerify(doc.Authentication(), []byte("message"), sig); ok {
+		fmt.Println("Signature is valid, verified with method:", method.Type(), method.ID())
+	} else {
+		fmt.Println("Signature is invalid")
+	}
+
+	// Output: Signature is valid, verified with method: Ed25519VerificationKey2020 did:key:z6MknwcywUtTy2ADJQ8FH1GcSySKPyKDmyzT4rPEE84XREse#z6MknwcywUtTy2ADJQ8FH1GcSySKPyKDmyzT4rPEE84XREse
+}
+
+func ExampleKeyAgreement() {
+	// errors need to be handled
+
+	// 1) We have a private key for Alice
+	privAliceBytes, _ := base64.StdEncoding.DecodeString("fNOf3xWjFZYGYWixorM5+JR+u/2Udnc9Zw5+9rSvjqo=")
+	privAlice, _ := x25519.PrivateKeyFromBytes(privAliceBytes)
+
+	// 2) We resolve the DID Document for Bob
+	dBob, _ := did.Parse("did:key:z6MkgRNXpJRbEE6FoXhT8KWHwJo4KyzFo1FdSEFpRLh5vuXZ")
+	docBob, _ := dBob.Document()
+
+	// 3) We perform the key agreement
+	key, method, _ := did.FindMatchingKeyAgreement(docBob.KeyAgreement(), privAlice)
+
+	fmt.Println("Shared key:", base64.StdEncoding.EncodeToString(key))
+	fmt.Println("Verification method used:", method.Type(), method.ID())
+
+	// Output: Shared key: 7G1qwS/gn5W1hxBtObHc3F0jA7m2vuXkLJJ32yBuHVQ=
+	// Verification method used: X25519KeyAgreementKey2020 did:key:z6MkgRNXpJRbEE6FoXhT8KWHwJo4KyzFo1FdSEFpRLh5vuXZ#z6LSjeQx2VkXz8yirhrYJv8uicu9BBaeYU3Q1D9sFBovhmPF
+}
 
 func TestHasValidDIDSyntax(t *testing.T) {
 	tests := []struct {
@@ -38,7 +85,7 @@ func TestHasValidDIDSyntax(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			require.Equal(t, tt.expected, HasValidDIDSyntax(tt.input))
+			require.Equal(t, tt.expected, did.HasValidDIDSyntax(tt.input))
 		})
 	}
 }
@@ -46,7 +93,7 @@ func TestHasValidDIDSyntax(t *testing.T) {
 func BenchmarkHasValidDIDSyntax(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		HasValidDIDSyntax("did:example:abc:def:ghi:jkl%20mno%3Apqr%3Astuv")
+		did.HasValidDIDSyntax("did:example:abc:def:ghi:jkl%20mno%3Apqr%3Astuv")
 	}
 }
 
@@ -78,7 +125,7 @@ func TestHasValidDidUrlSyntax(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, HasValidDidUrlSyntax(tt.input))
+			require.Equal(t, tt.expected, did.HasValidDidUrlSyntax(tt.input))
 		})
 	}
 }
@@ -86,6 +133,6 @@ func TestHasValidDidUrlSyntax(t *testing.T) {
 func BenchmarkHasValidDidUrlSyntax(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		HasValidDidUrlSyntax("did:example:123456789abcdefghi/path/to/resource?key=value#section1")
+		did.HasValidDidUrlSyntax("did:example:123456789abcdefghi/path/to/resource?key=value#section1")
 	}
 }
