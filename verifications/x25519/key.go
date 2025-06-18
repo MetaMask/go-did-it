@@ -3,13 +3,12 @@ package x25519
 import (
 	"crypto/ecdh"
 	"crypto/rand"
+	"crypto/sha512"
 	"fmt"
 	"math/big"
 
-	mbase "github.com/multiformats/go-multibase"
-	"github.com/multiformats/go-varint"
-
 	"github.com/INFURA/go-did/verifications/ed25519"
+	helpers "github.com/INFURA/go-did/verifications/internal"
 )
 
 type PublicKey = *ecdh.PublicKey
@@ -32,12 +31,16 @@ func GenerateKeyPair() (PublicKey, PrivateKey, error) {
 	return priv.Public().(PublicKey), priv, nil
 }
 
-// PublicKeyFromBytes convert a serialized public key to a PublicKey.
+// PublicKeyFromBytes converts a serialized public key to a PublicKey.
 // It errors if the slice is not the right size.
 func PublicKeyFromBytes(b []byte) (PublicKey, error) {
 	return ecdh.X25519().NewPublicKey(b)
 }
 
+// PublicKeyFromEd25519 converts an ed25519 public key to a x25519 public key.
+// It errors if the slice is not the right size.
+//
+// This function is based on the algorithm described in https://datatracker.ietf.org/doc/html/draft-ietf-core-oscore-groupcomm#name-curve25519
 func PublicKeyFromEd25519(pub ed25519.PublicKey) (PublicKey, error) {
 	// Conversion formula is u = (1 + y) / (1 - y) (mod p)
 	// See https://datatracker.ietf.org/doc/html/draft-ietf-core-oscore-groupcomm#name-ecdh-with-montgomery-coordi
@@ -53,7 +56,7 @@ func PublicKeyFromEd25519(pub ed25519.PublicKey) (PublicKey, error) {
 	copy(pubCopy, pub)
 	pubCopy[ed25519.PublicKeySize-1] &= 0x7F
 
-	// ed25519 are little-endian, but big.Int expect big-endian
+	// ed25519 are little-endian, but big.Int expects big-endian
 	// See https://www.rfc-editor.org/rfc/rfc8032
 	y := new(big.Int).SetBytes(reverseBytes(pubCopy))
 	one := big.NewInt(1)
@@ -89,45 +92,54 @@ func PublicKeyFromEd25519(pub ed25519.PublicKey) (PublicKey, error) {
 	res := make([]byte, PublicKeySize)
 	copy(res[PublicKeySize-len(uBytes):], uBytes)
 
-	// x25519 are little-endian, but big.Int give us big-endian.
+	// x25519 are little-endian, but big.Int gives us big-endian.
 	// See https://www.ietf.org/rfc/rfc7748.txt
 	return ecdh.X25519().NewPublicKey(reverseBytes(res))
 }
 
 // PublicKeyFromMultibase decodes the public key from its Multibase form
 func PublicKeyFromMultibase(multibase string) (PublicKey, error) {
-	baseCodec, bytes, err := mbase.Decode(multibase)
-	if err != nil {
-		return nil, err
-	}
-	// the specification enforces that encoding
-	if baseCodec != mbase.Base58BTC {
-		return nil, fmt.Errorf("not Base58BTC encoded")
-	}
-	code, read, err := varint.FromUvarint(bytes)
+	code, bytes, err := helpers.MultibaseDecode(multibase)
 	if err != nil {
 		return nil, err
 	}
 	if code != MultibaseCode {
 		return nil, fmt.Errorf("invalid code")
 	}
-	if read != 2 {
-		return nil, fmt.Errorf("unexpected multibase")
-	}
-	return ecdh.X25519().NewPublicKey(bytes[read:])
+	return ecdh.X25519().NewPublicKey(bytes)
 }
 
 // PublicKeyToMultibase encodes the public key in a suitable way for publicKeyMultibase
 func PublicKeyToMultibase(pub PublicKey) string {
-	// can only fail with an invalid encoding, but it's hardcoded
-	bytes, _ := mbase.Encode(mbase.Base58BTC, append(varint.ToUvarint(MultibaseCode), pub.Bytes()...))
-	return bytes
+	return helpers.MultibaseEncode(MultibaseCode, pub.Bytes())
 }
 
-// PrivateKeyFromBytes convert a serialized public key to a PrivateKey.
+// PrivateKeyFromBytes converts a serialized public key to a PrivateKey.
 // It errors if len(privateKey) is not [PrivateKeySize].
 func PrivateKeyFromBytes(b []byte) (PrivateKey, error) {
 	return ecdh.X25519().NewPrivateKey(b)
+}
+
+// PrivateKeyFromEd25519 converts an ed25519 private key to a x25519 private key.
+// It errors if the slice is not the right size.
+//
+// This function is based on the algorithm described in https://datatracker.ietf.org/doc/html/draft-ietf-core-oscore-groupcomm#name-curve25519
+func PrivateKeyFromEd25519(priv ed25519.PrivateKey) (PrivateKey, error) {
+	if len(priv) != ed25519.PrivateKeySize {
+		return nil, fmt.Errorf("invalid ed25519 private key size")
+	}
+
+	// get the 32-byte seed (first half of the private key)
+	seed := priv.Seed()
+
+	h := sha512.Sum512(seed)
+
+	// clamp as per the X25519 spec
+	h[0] &= 248
+	h[31] &= 127
+	h[31] |= 64
+
+	return ecdh.X25519().NewPrivateKey(h[:32])
 }
 
 func reverseBytes(b []byte) []byte {

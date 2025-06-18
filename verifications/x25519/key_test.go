@@ -1,52 +1,68 @@
 package x25519_test
 
-//
-// import (
-// 	"encoding/hex"
-// 	"testing"
-//
-// 	"github.com/stretchr/testify/require"
-//
-// 	"github.com/INFURA/go-did/verifications/x25519"
-// )
-//
-// func TestGenerateKey(t *testing.T) {
-// 	t.Run("x25519.GenerateKey()", func(t *testing.T) {
-// 		_, _, err := x25519.GenerateKey()
-// 		require.NoError(t, err, `x25519.GenerateKey should work`)
-// 	})
-// 	t.Run("x25519.NewKeyFromSeed(wrongSeedLength)", func(t *testing.T) {
-// 		dummy := make([]byte, x25519.SeedSize-1)
-// 		_, err := x25519.NewKeyFromSeed(dummy)
-// 		require.Error(t, err, `wrong seed size should result in error`)
-// 	})
-// }
-//
-// func TestNewKeyFromSeed(t *testing.T) {
-// 	// These test vectors are from RFC7748 Section 6.1
-// 	const alicePrivHex = `77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a`
-// 	const alicePubHex = `8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a`
-// 	const bobPrivHex = `5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb`
-// 	const bobPubHex = `de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f`
-//
-// 	alicePrivSeed, err := hex.DecodeString(alicePrivHex)
-// 	require.NoError(t, err, `alice seed decoded`)
-// 	alicePriv, err := x25519.NewKeyFromSeed(alicePrivSeed)
-// 	require.NoError(t, err, `alice private key`)
-//
-// 	alicePub := alicePriv.Public().(x25519.PublicKey)
-// 	require.Equal(t, hex.EncodeToString(alicePub), alicePubHex, `alice public key`)
-//
-// 	bobPrivSeed, err := hex.DecodeString(bobPrivHex)
-// 	require.NoError(t, err, `bob seed decoded`)
-// 	bobPriv, err := x25519.NewKeyFromSeed(bobPrivSeed)
-// 	require.NoError(t, err, `bob private key`)
-//
-// 	bobPub := bobPriv.Public().(x25519.PublicKey)
-// 	require.Equal(t, hex.EncodeToString(bobPub), bobPubHex, `bob public key`)
-//
-// 	require.True(t, bobPriv.Equal(bobPriv), `bobPriv should equal bobPriv`)
-// 	require.True(t, bobPub.Equal(bobPub), `bobPub should equal bobPub`)
-// 	require.False(t, bobPriv.Equal(bobPub), `bobPriv should NOT equal bobPub`)
-// 	require.False(t, bobPub.Equal(bobPriv), `bobPub should NOT equal bobPriv`)
-// }
+import (
+	"crypto/ecdh"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/INFURA/go-did/verifications/ed25519"
+	"github.com/INFURA/go-did/verifications/x25519"
+)
+
+func TestGenerateKey(t *testing.T) {
+	pub, priv, err := x25519.GenerateKeyPair()
+	require.NoError(t, err)
+	require.NotNil(t, pub)
+	require.NotNil(t, priv)
+	require.Equal(t, ecdh.X25519(), pub.Curve())
+	require.Equal(t, ecdh.X25519(), priv.Curve())
+	require.True(t, pub.Equal(priv.Public()))
+}
+
+func TestMultibaseRoundTrip(t *testing.T) {
+	pub, _, err := x25519.GenerateKeyPair()
+	require.NoError(t, err)
+
+	mb := x25519.PublicKeyToMultibase(pub)
+	rt, err := x25519.PublicKeyFromMultibase(mb)
+	require.NoError(t, err)
+	require.Equal(t, pub, rt)
+}
+
+func TestEd25519ToX25519(t *testing.T) {
+	// Known pubkey ed25519 --> x25519
+	for _, tc := range []struct {
+		pubEdMultibase string
+		pubXMultibase  string
+	}{
+		{
+			// From https://w3c-ccg.github.io/did-key-spec/#ed25519-with-x25519
+			pubEdMultibase: "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+			pubXMultibase:  "z6LSj72tK8brWgZja8NLRwPigth2T9QRiG1uH9oKZuKjdh9p",
+		},
+	} {
+		t.Run(tc.pubEdMultibase, func(t *testing.T) {
+			pubEd, err := ed25519.PublicKeyFromMultibase(tc.pubEdMultibase)
+			require.NoError(t, err)
+			pubX, err := x25519.PublicKeyFromEd25519(pubEd)
+			require.NoError(t, err)
+			require.Equal(t, tc.pubXMultibase, x25519.PublicKeyToMultibase(pubX))
+		})
+	}
+
+	// Check that ed25519 --> x25519 match for pubkeys and privkeys
+	t.Run("ed25519 --> x25519 priv+pub are matching", func(t *testing.T) {
+		for i := 0; i < 10; i++ {
+			pubEd, privEd, err := ed25519.GenerateKeyPair()
+			require.NoError(t, err)
+
+			pubX, err := x25519.PublicKeyFromEd25519(pubEd)
+			require.NoError(t, err)
+			privX, err := x25519.PrivateKeyFromEd25519(privEd)
+			require.NoError(t, err)
+
+			require.True(t, pubX.Equal(privX.PublicKey()))
+		}
+	})
+}
