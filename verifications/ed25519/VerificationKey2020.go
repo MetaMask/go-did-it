@@ -12,7 +12,6 @@ import (
 // Specification: https://w3c.github.io/cg-reports/credentials/CG-FINAL-di-eddsa-2020-20220724/
 
 const (
-	MultibaseCode = uint64(0xed)
 	JsonLdContext = "https://w3id.org/security/suites/ed25519-2020/v1"
 	Type          = "Ed25519VerificationKey2020"
 )

@@ -21,6 +21,8 @@ const (
 	PrivateKeySize = 32
 	// SignatureSize is the size, in bytes, of signatures generated and verified by this package.
 	SignatureSize = 32
+
+	MultibaseCode = uint64(0xec)
 )
 
 func GenerateKeyPair() (PublicKey, PrivateKey, error) {
@@ -35,6 +37,11 @@ func GenerateKeyPair() (PublicKey, PrivateKey, error) {
 // It errors if the slice is not the right size.
 func PublicKeyFromBytes(b []byte) (PublicKey, error) {
 	return ecdh.X25519().NewPublicKey(b)
+}
+
+// PublicKeyToBytes converts a public key to a byte slice.
+func PublicKeyToBytes(pub PublicKey) []byte {
+	return pub.Bytes()
 }
 
 // PublicKeyFromEd25519 converts an ed25519 public key to a x25519 public key.
@@ -106,7 +113,7 @@ func PublicKeyFromMultibase(multibase string) (PublicKey, error) {
 	if code != MultibaseCode {
 		return nil, fmt.Errorf("invalid code")
 	}
-	return ecdh.X25519().NewPublicKey(bytes)
+	return PublicKeyFromBytes(bytes)
 }
 
 // PublicKeyToMultibase encodes the public key in a suitable way for publicKeyMultibase
@@ -114,10 +121,15 @@ func PublicKeyToMultibase(pub PublicKey) string {
 	return helpers.MultibaseEncode(MultibaseCode, pub.Bytes())
 }
 
-// PrivateKeyFromBytes converts a serialized public key to a PrivateKey.
+// PrivateKeyFromBytes converts a serialized private key to a PrivateKey.
 // It errors if len(privateKey) is not [PrivateKeySize].
 func PrivateKeyFromBytes(b []byte) (PrivateKey, error) {
 	return ecdh.X25519().NewPrivateKey(b)
+}
+
+// PrivateKeyToBytes converts a private key to a byte slice.
+func PrivateKeyToBytes(priv PrivateKey) []byte {
+	return priv.Bytes()
 }
 
 // PrivateKeyFromEd25519 converts an ed25519 private key to a x25519 private key.

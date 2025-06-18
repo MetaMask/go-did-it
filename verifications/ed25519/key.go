@@ -18,6 +18,8 @@ const (
 	PrivateKeySize = ed25519.PrivateKeySize
 	// SignatureSize is the size, in bytes, of signatures generated and verified by this package.
 	SignatureSize = ed25519.SignatureSize
+
+	MultibaseCode = uint64(0xed)
 )
 
 func GenerateKeyPair() (PublicKey, PrivateKey, error) {
@@ -30,7 +32,16 @@ func PublicKeyFromBytes(b []byte) (PublicKey, error) {
 	if len(b) != PublicKeySize {
 		return nil, fmt.Errorf("invalid ed25519 public key size")
 	}
-	return PublicKey(b), nil
+	// make a copy
+	return PublicKey(append([]byte{}, b...)), nil
+}
+
+// PublicKeyToBytes converts a public key to a byte slice.
+func PublicKeyToBytes(pub PublicKey) []byte {
+	// Copy the private key to a fixed size buffer that can get allocated on the
+	// caller's stack after inlining.
+	var buf [PublicKeySize]byte
+	return append(buf[:0], pub...)
 }
 
 // PublicKeyFromMultibase decodes the public key from its Multibase form
@@ -45,7 +56,7 @@ func PublicKeyFromMultibase(multibase string) (PublicKey, error) {
 	if len(bytes) != PublicKeySize {
 		return nil, fmt.Errorf("invalid ed25519 public key size")
 	}
-	return bytes, nil
+	return PublicKeyFromBytes(bytes)
 }
 
 // PublicKeyToMultibase encodes the public key in a suitable way for publicKeyMultibase
@@ -53,13 +64,22 @@ func PublicKeyToMultibase(pub PublicKey) string {
 	return helpers.MultibaseEncode(MultibaseCode, pub)
 }
 
-// PrivateKeyFromBytes converts a serialized public key to a PrivateKey.
+// PrivateKeyFromBytes converts a serialized private key to a PrivateKey.
 // It errors if the slice is not the right size.
 func PrivateKeyFromBytes(b []byte) (PrivateKey, error) {
-	if len(b) != ed25519.PrivateKeySize {
+	if len(b) != PrivateKeySize {
 		return nil, fmt.Errorf("invalid ed25519 private key size")
 	}
-	return b, nil
+	// make a copy
+	return append([]byte{}, b...), nil
+}
+
+// PrivateKeyToBytes converts a private key to a byte slice.
+func PrivateKeyToBytes(priv PrivateKey) []byte {
+	// Copy the private key to a fixed size buffer that can get allocated on the
+	// caller's stack after inlining.
+	var buf [PrivateKeySize]byte
+	return append(buf[:0], priv...)
 }
 
 // Sign signs the message with privateKey and returns a signature.

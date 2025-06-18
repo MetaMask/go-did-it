@@ -12,7 +12,6 @@ import (
 // Specification: https://w3c-ccg.github.io/did-method-key/#ed25519-x25519
 
 const (
-	MultibaseCode = uint64(0xec)
 	JsonLdContext = "https://w3id.org/security/suites/x25519-2020/v1"
 	Type          = "X25519KeyAgreementKey2020"
 )

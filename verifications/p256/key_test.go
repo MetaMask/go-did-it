@@ -1,4 +1,4 @@
-package ed25519_test
+package p256_test
 
 import (
 	"testing"
@@ -6,10 +6,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/INFURA/go-did/verifications/ed25519"
+	"github.com/INFURA/go-did/verifications/p256"
 )
 
 func TestGenerateKey(t *testing.T) {
-	pub, priv, err := ed25519.GenerateKeyPair()
+	pub, priv, err := p256.GenerateKeyPair()
 	require.NoError(t, err)
 	require.NotNil(t, pub)
 	require.NotNil(t, priv)
@@ -17,26 +18,26 @@ func TestGenerateKey(t *testing.T) {
 }
 
 func TestBytesRoundTrip(t *testing.T) {
-	pub, priv, err := ed25519.GenerateKeyPair()
+	pub, priv, err := p256.GenerateKeyPair()
 	require.NoError(t, err)
 
-	bytes := ed25519.PublicKeyToBytes(pub)
-	rtPub, err := ed25519.PublicKeyFromBytes(bytes)
+	bytes := p256.PublicKeyToBytes(pub)
+	rtPub, err := p256.PublicKeyFromBytes(bytes)
 	require.NoError(t, err)
 	require.True(t, pub.Equal(rtPub))
 
-	bytes = ed25519.PrivateKeyToBytes(priv)
-	rtPriv, err := ed25519.PrivateKeyFromBytes(bytes)
+	bytes = p256.PrivateKeyToBytes(priv)
+	rtPriv, err := p256.PrivateKeyFromBytes(bytes)
 	require.NoError(t, err)
 	require.True(t, priv.Equal(rtPriv))
 }
 
 func TestMultibaseRoundTrip(t *testing.T) {
-	pub, _, err := ed25519.GenerateKeyPair()
+	pub, _, err := p256.GenerateKeyPair()
 	require.NoError(t, err)
 
-	mb := ed25519.PublicKeyToMultibase(pub)
-	rt, err := ed25519.PublicKeyFromMultibase(mb)
+	mb := p256.PublicKeyToMultibase(pub)
+	rt, err := p256.PublicKeyFromMultibase(mb)
 	require.NoError(t, err)
 	require.Equal(t, pub, rt)
 }

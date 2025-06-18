@@ -20,6 +20,21 @@ func TestGenerateKey(t *testing.T) {
 	require.True(t, pub.Equal(priv.Public()))
 }
 
+func TestBytesRoundTrip(t *testing.T) {
+	pub, priv, err := x25519.GenerateKeyPair()
+	require.NoError(t, err)
+
+	bytes := x25519.PublicKeyToBytes(pub)
+	rtPub, err := x25519.PublicKeyFromBytes(bytes)
+	require.NoError(t, err)
+	require.True(t, pub.Equal(rtPub))
+
+	bytes = x25519.PrivateKeyToBytes(priv)
+	rtPriv, err := x25519.PrivateKeyFromBytes(bytes)
+	require.NoError(t, err)
+	require.True(t, priv.Equal(rtPriv))
+}
+
 func TestMultibaseRoundTrip(t *testing.T) {
 	pub, _, err := x25519.GenerateKeyPair()
 	require.NoError(t, err)
