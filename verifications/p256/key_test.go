@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/INFURA/go-did/verifications/ed25519"
 	"github.com/INFURA/go-did/verifications/p256"
 )
 
@@ -30,6 +29,38 @@ func TestBytesRoundTrip(t *testing.T) {
 	rtPriv, err := p256.PrivateKeyFromBytes(bytes)
 	require.NoError(t, err)
 	require.True(t, priv.Equal(rtPriv))
+}
+
+func TestPublicKeyX509RoundTrip(t *testing.T) {
+	pub, _, err := p256.GenerateKeyPair()
+	require.NoError(t, err)
+
+	der := p256.PublicKeyToX509DER(pub)
+	rt, err := p256.PublicKeyFromX509DER(der)
+	require.NoError(t, err)
+	require.True(t, pub.Equal(rt))
+
+	pem := p256.PublicKeyToX509PEM(pub)
+	rt, err = p256.PublicKeyFromX509PEM(pem)
+	require.NoError(t, err)
+	require.True(t, pub.Equal(rt))
+}
+
+func TestPrivateKeyPKCS8RoundTrip(t *testing.T) {
+	pub, priv, err := p256.GenerateKeyPair()
+	require.NoError(t, err)
+
+	der := p256.PrivateKeyToPKCS8DER(priv)
+	rt, err := p256.PrivateKeyFromPKCS8DER(der)
+	require.NoError(t, err)
+	require.True(t, priv.Equal(rt))
+	require.True(t, pub.Equal(rt.Public()))
+
+	pem := p256.PrivateKeyToPKCS8PEM(priv)
+	rt, err = p256.PrivateKeyFromPKCS8PEM(pem)
+	require.NoError(t, err)
+	require.True(t, priv.Equal(rt))
+	require.True(t, pub.Equal(rt.Public()))
 }
 
 func TestMultibaseRoundTrip(t *testing.T) {

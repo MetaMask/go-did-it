@@ -29,7 +29,7 @@ func TestJsonRoundTrip(t *testing.T) {
 	require.JSONEq(t, data, string(bytes))
 }
 
-func TestSignature(t *testing.T) {
+func TestVerify(t *testing.T) {
 	// test vector from https://datatracker.ietf.org/doc/html/rfc8032#section-7.1
 
 	pkHex := "fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025"
