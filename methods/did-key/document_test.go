@@ -2,7 +2,6 @@ package didkey
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,8 +18,6 @@ func TestDocument(t *testing.T) {
 
 	bytes, err := json.MarshalIndent(doc, "", "  ")
 	require.NoError(t, err)
-
-	fmt.Println(string(bytes))
 
 	// TODO: https://github.com/w3c-ccg/did-key-spec/issues/71
 

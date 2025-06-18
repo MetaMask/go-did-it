@@ -15,7 +15,14 @@ import (
 type PublicKey = *ecdh.PublicKey
 type PrivateKey = *ecdh.PrivateKey
 
-const PublicKeySize = 32
+const (
+	// PublicKeySize is the size, in bytes, of public keys as used in this package.
+	PublicKeySize = 32
+	// PrivateKeySize is the size, in bytes, of private keys as used in this package.
+	PrivateKeySize = 32
+	// SignatureSize is the size, in bytes, of signatures generated and verified by this package.
+	SignatureSize = 32
+)
 
 func GenerateKeyPair() (PublicKey, PrivateKey, error) {
 	priv, err := ecdh.X25519().GenerateKey(rand.Reader)
@@ -25,6 +32,8 @@ func GenerateKeyPair() (PublicKey, PrivateKey, error) {
 	return priv.Public().(PublicKey), priv, nil
 }
 
+// PublicKeyFromBytes convert a serialized public key to a PublicKey.
+// It errors if the slice is not the right size.
 func PublicKeyFromBytes(b []byte) (PublicKey, error) {
 	return ecdh.X25519().NewPublicKey(b)
 }
@@ -113,6 +122,12 @@ func PublicKeyToMultibase(pub PublicKey) string {
 	// can only fail with an invalid encoding, but it's hardcoded
 	bytes, _ := mbase.Encode(mbase.Base58BTC, append(varint.ToUvarint(MultibaseCode), pub.Bytes()...))
 	return bytes
+}
+
+// PrivateKeyFromBytes convert a serialized public key to a PrivateKey.
+// It errors if len(privateKey) is not [PrivateKeySize].
+func PrivateKeyFromBytes(b []byte) (PrivateKey, error) {
+	return ecdh.X25519().NewPrivateKey(b)
 }
 
 func reverseBytes(b []byte) []byte {

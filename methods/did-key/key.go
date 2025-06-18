@@ -1,7 +1,6 @@
 package didkey
 
 import (
-	"crypto"
 	"fmt"
 	"strings"
 
@@ -65,7 +64,7 @@ func Decode(identifier string) (did.DID, error) {
 	return nil, fmt.Errorf("%w: unsupported did:key multicodec: 0x%x", did.ErrInvalidDid, code)
 }
 
-func FromPublicKey(pub PublicKey) (did.DID, error) {
+func FromPublicKey(pub did.PublicKey) (did.DID, error) {
 	var err error
 	switch pub := pub.(type) {
 	case ed25519.PublicKey:
@@ -90,8 +89,8 @@ func FromPublicKey(pub PublicKey) (did.DID, error) {
 	}
 }
 
-func FromPrivateKey(priv PrivateKey) (did.DID, error) {
-	return FromPublicKey(priv.Public().(PublicKey))
+func FromPrivateKey(priv did.PrivateKey) (did.DID, error) {
+	return FromPublicKey(priv.Public().(did.PublicKey))
 }
 
 func (d DidKey) Method() string {
@@ -119,19 +118,4 @@ func (d DidKey) Equal(d2 did.DID) bool {
 		return d.msi == d2.msi
 	}
 	return false
-}
-
-// ---------------
-
-// Below are the interfaces for crypto.PublicKey and crypto.PrivateKey in the go standard library.
-// They are not actually defined there for compatibility reasons.
-// They are useful for did:key, it's unclear if it's useful elsewhere.
-
-type PublicKey interface {
-	Equal(x crypto.PublicKey) bool
-}
-
-type PrivateKey interface {
-	Public() crypto.PublicKey
-	Equal(x crypto.PrivateKey) bool
 }

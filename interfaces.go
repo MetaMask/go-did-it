@@ -1,6 +1,7 @@
 package did
 
 import (
+	"crypto"
 	"encoding/json"
 	"net/url"
 )
@@ -108,5 +109,21 @@ type VerificationMethodSignature interface {
 type VerificationMethodKeyAgreement interface {
 	VerificationMethod
 
-	// TODO: function for key agreement
+	// PrivateKeyIsCompatible checks that the given PrivateKey is compatible with this method.
+	PrivateKeyIsCompatible(local PrivateKey) bool
+
+	// ECDH computes the shared key using the given PrivateKey.
+	ECDH(local PrivateKey) ([]byte, error)
+}
+
+// Below are the interfaces for crypto.PublicKey and crypto.PrivateKey in the go standard library.
+// They are not defined there for compatibility reasons, so we need to define them here.
+
+type PublicKey interface {
+	Equal(x crypto.PublicKey) bool
+}
+
+type PrivateKey interface {
+	Public() crypto.PublicKey
+	Equal(x crypto.PrivateKey) bool
 }

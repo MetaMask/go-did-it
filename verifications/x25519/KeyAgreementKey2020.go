@@ -96,7 +96,21 @@ func (k KeyAgreementKey2020) JsonLdContext() string {
 	return JsonLdContext
 }
 
-// TODO: make it part of did.VerificationMethodKeyAgreement in some way
-func (k KeyAgreementKey2020) KeyAgreement(priv PrivateKey) ([]byte, error) {
-	return priv.ECDH(k.pubkey)
+func (k KeyAgreementKey2020) PrivateKeyIsCompatible(local did.PrivateKey) bool {
+	_, ok := local.(PrivateKey)
+	return ok
+}
+
+func (k KeyAgreementKey2020) ECDH(local did.PrivateKey) ([]byte, error) {
+	cast, ok := local.(PrivateKey)
+	if !ok {
+		return nil, errors.New("private key type doesn't match the public key type")
+	}
+	if cast == nil {
+		return nil, errors.New("invalid private key")
+	}
+	if k.pubkey.Curve() != cast.Curve() {
+		return nil, errors.New("key curves don't match")
+	}
+	return cast.ECDH(k.pubkey)
 }

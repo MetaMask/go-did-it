@@ -17,7 +17,7 @@ type document struct {
 
 func (d document) MarshalJSON() ([]byte, error) {
 	// It's unclear where the KeyAgreement should be.
-	// Maybe it doesn't matter, but the spec contradict itself.
+	// Maybe it doesn't matter, but the spec contradicts itself.
 	// See https://github.com/w3c-ccg/did-key-spec/issues/71
 
 	return json.Marshal(struct {
