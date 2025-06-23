@@ -10,7 +10,7 @@ const (
 	// TODO
 	PublicKeySize  = 33
 	PrivateKeySize = 32
-	SignatureSize  = 123456
+	SignatureSize  = 64
 
 	MultibaseCode = uint64(0x1200)
 )

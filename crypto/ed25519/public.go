@@ -3,8 +3,11 @@ package ed25519
 import (
 	"crypto/ed25519"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
+
+	"golang.org/x/crypto/cryptobyte"
 
 	"github.com/INFURA/go-did/crypto"
 	"github.com/INFURA/go-did/crypto/internal"
@@ -94,6 +97,22 @@ func (p PublicKey) Equal(other crypto.PublicKey) bool {
 	return false
 }
 
-func (p PublicKey) Verify(message, signature []byte) bool {
+func (p PublicKey) VerifyBytes(message, signature []byte) bool {
 	return ed25519.Verify(p.k, message, signature)
+}
+
+// VerifyASN1 verifies a signature with ASN.1 encoding.
+// This ASN.1 encoding uses a BIT STRING, which would be correct for an X.509 certificate.
+func (p PublicKey) VerifyASN1(message, signature []byte) bool {
+	var s cryptobyte.String = signature
+	var bitString asn1.BitString
+
+	if !s.ReadASN1BitString(&bitString) {
+		return false
+	}
+	if bitString.BitLength != SignatureSize*8 {
+		return false
+	}
+
+	return ed25519.Verify(p.k, message, bitString.Bytes)
 }

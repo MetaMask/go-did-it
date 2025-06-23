@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -89,6 +90,33 @@ func (p *PrivateKey) ToPKCS8PEM() string {
 	}))
 }
 
-func (p *PrivateKey) Sign(message []byte) ([]byte, error) {
-	return (*ecdsa.PrivateKey)(p).Sign(rand.Reader, message, nil)
+/*
+	Note: signatures for the crypto.SigningPrivateKey interface assumes SHA256,
+	which should be correct almost always. If there is a need to use a different
+	hash function, we can add separate functions that have that flexibility.
+*/
+
+func (p *PrivateKey) SignToBytes(message []byte) ([]byte, error) {
+	// Hash the message with SHA-256
+	hash := sha256.Sum256(message)
+
+	r, s, err := ecdsa.Sign(rand.Reader, (*ecdsa.PrivateKey)(p), hash[:])
+	if err != nil {
+		return nil, err
+	}
+
+	sig := make([]byte, 64)
+	r.FillBytes(sig[:32])
+	s.FillBytes(sig[32:])
+
+	return sig, nil
+}
+
+func (p *PrivateKey) SignToASN1(message []byte) ([]byte, error) {
+	// Hash the message with SHA-256
+	hash := sha256.Sum256(message)
+
+	// Use ecdsa.SignASN1 for direct ASN.1 DER encoding
+	return ecdsa.SignASN1(rand.Reader, (*ecdsa.PrivateKey)(p), hash[:])
+
 }

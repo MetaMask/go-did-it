@@ -21,13 +21,15 @@ type PrivateKey interface {
 type SigningPublicKey interface {
 	PublicKey
 
-	Verify(message, signature []byte) bool
+	VerifyBytes(message, signature []byte) bool
+	VerifyASN1(message, signature []byte) bool
 }
 
 type SigningPrivateKey interface {
 	PrivateKey
 
-	Sign(message []byte) ([]byte, error)
+	SignToBytes(message []byte) ([]byte, error)
+	SignToASN1(message []byte) ([]byte, error)
 }
 
 type KeyExchangePublicKey interface {

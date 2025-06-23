@@ -3,9 +3,11 @@ package p256
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"math/big"
 
 	"github.com/INFURA/go-did/crypto"
 	helpers "github.com/INFURA/go-did/crypto/internal"
@@ -94,6 +96,30 @@ func (p *PublicKey) ToX509PEM() string {
 	}))
 }
 
-func (p *PublicKey) Verify(message, signature []byte) bool {
-	panic("not implemented")
+/*
+	Note: signatures for the crypto.SigningPrivateKey interface assumes SHA256,
+	which should be correct almost always. If there is a need to use a different
+	hash function, we can add separate functions that have that flexibility.
+*/
+
+func (p *PublicKey) VerifyBytes(message, signature []byte) bool {
+	if len(signature) != SignatureSize {
+		return false
+	}
+
+	// Hash the message with SHA-256
+	hash := sha256.Sum256(message)
+
+	r := new(big.Int).SetBytes(signature[:32])
+	s := new(big.Int).SetBytes(signature[32:])
+
+	// Use ecdsa.Verify
+	return ecdsa.Verify((*ecdsa.PublicKey)(p), hash[:], r, s)
+}
+
+func (p *PublicKey) VerifyASN1(message, signature []byte) bool {
+	// Hash the message with SHA-256
+	hash := sha256.Sum256(message)
+
+	return ecdsa.VerifyASN1((*ecdsa.PublicKey)(p), hash[:], signature)
 }
