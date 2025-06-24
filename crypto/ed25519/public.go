@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/cryptobyte"
 
 	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/internal"
+	"github.com/INFURA/go-did/crypto/_helpers"
 )
 
 var _ crypto.SigningPublicKey = &PublicKey{}

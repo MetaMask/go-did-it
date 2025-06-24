@@ -3,10 +3,10 @@ package p256
 import (
 	"testing"
 
-	"github.com/INFURA/go-did/crypto/internal"
+	"github.com/INFURA/go-did/crypto/_testsuite"
 )
 
-var harness = helpers.TestHarness[*PublicKey, *PrivateKey]{
+var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 	Name:                            "p256",
 	GenerateKeyPair:                 GenerateKeyPair,
 	PublicKeyFromBytes:              PublicKeyFromBytes,
@@ -23,9 +23,9 @@ var harness = helpers.TestHarness[*PublicKey, *PrivateKey]{
 }
 
 func TestSuite(t *testing.T) {
-	helpers.TestSuite(t, harness)
+	testsuite.TestSuite(t, harness)
 }
 
 func BenchmarkSuite(b *testing.B) {
-	helpers.BenchSuite(b, harness)
+	testsuite.BenchSuite(b, harness)
 }

@@ -1,4 +1,4 @@
-package helpers
+package testsuite
 
 import (
 	"fmt"

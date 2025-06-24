@@ -10,7 +10,7 @@ import (
 	"math/big"
 
 	"github.com/INFURA/go-did/crypto"
-	helpers "github.com/INFURA/go-did/crypto/internal"
+	helpers "github.com/INFURA/go-did/crypto/_helpers"
 )
 
 var _ crypto.SigningPublicKey = (*PublicKey)(nil)

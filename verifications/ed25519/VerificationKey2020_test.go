@@ -40,8 +40,7 @@ func TestSignature(t *testing.T) {
 
 	contDid := "did:key:" + pk.ToPublicKeyMultibase()
 	controller := did.MustParse(contDid)
-	vk, err := ed25519vm.NewVerificationKey2020("foo", pk, controller)
-	require.NoError(t, err)
+	vk := ed25519vm.NewVerificationKey2020("foo", pk, controller)
 
 	for _, tc := range []struct {
 		name      string
@@ -78,7 +77,9 @@ func TestSignature(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.valid, vk.Verify(tc.data, tc.signature))
+			valid, err := vk.Verify(tc.data, tc.signature)
+			require.NoError(t, err)
+			require.Equal(t, tc.valid, valid)
 		})
 	}
 }
