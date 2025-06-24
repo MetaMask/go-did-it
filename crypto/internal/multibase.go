@@ -7,8 +7,8 @@ import (
 	"github.com/multiformats/go-varint"
 )
 
-// MultibaseDecode is a helper for decoding multibase public keys.
-func MultibaseDecode(multibase string) (uint64, []byte, error) {
+// PublicKeyMultibaseDecode is a helper for decoding multibase public keys.
+func PublicKeyMultibaseDecode(multibase string) (uint64, []byte, error) {
 	baseCodec, bytes, err := mbase.Decode(multibase)
 	if err != nil {
 		return 0, nil, err
@@ -27,8 +27,8 @@ func MultibaseDecode(multibase string) (uint64, []byte, error) {
 	return code, bytes[read:], nil
 }
 
-// MultibaseEncode is a helper for encoding multibase public keys.
-func MultibaseEncode(code uint64, bytes []byte) string {
+// PublicKeyMultibaseEncode is a helper for encoding multibase public keys.
+func PublicKeyMultibaseEncode(code uint64, bytes []byte) string {
 	// can only fail with an invalid encoding, but it's hardcoded
 	res, _ := mbase.Encode(mbase.Base58BTC, append(varint.ToUvarint(code), bytes...))
 	return res

@@ -1,9 +1,10 @@
 package did
 
 import (
-	"crypto"
 	"encoding/json"
 	"net/url"
+
+	"github.com/INFURA/go-did/crypto"
 )
 
 // DID is a decoded (i.e. from a string) Decentralized Identifier.
@@ -110,20 +111,8 @@ type VerificationMethodKeyAgreement interface {
 	VerificationMethod
 
 	// PrivateKeyIsCompatible checks that the given PrivateKey is compatible with this method.
-	PrivateKeyIsCompatible(local PrivateKey) bool
+	PrivateKeyIsCompatible(local crypto.KeyExchangePrivateKey) bool
 
-	// ECDH computes the shared key using the given PrivateKey.
-	ECDH(local PrivateKey) ([]byte, error)
-}
-
-// Below are the interfaces for crypto.PublicKey and crypto.PrivateKey in the go standard library.
-// They are not defined there for compatibility reasons, so we need to define them here.
-
-type PublicKey interface {
-	Equal(x crypto.PublicKey) bool
-}
-
-type PrivateKey interface {
-	Public() crypto.PublicKey
-	Equal(x crypto.PrivateKey) bool
+	// KeyExchange computes the shared key using the given PrivateKey.
+	KeyExchange(local crypto.KeyExchangePrivateKey) ([]byte, error)
 }

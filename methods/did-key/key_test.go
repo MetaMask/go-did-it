@@ -8,36 +8,31 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/INFURA/go-did"
+	"github.com/INFURA/go-did/crypto/ed25519"
 	didkey "github.com/INFURA/go-did/methods/did-key"
-	"github.com/INFURA/go-did/verifications/ed25519"
 )
 
 func ExampleGenerateKeyPair() {
 	// Generate a key pair
 	pub, priv, err := ed25519.GenerateKeyPair()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Public key:", ed25519.PublicKeyToMultibase(pub))
-	fmt.Println("Private key:", base64.StdEncoding.EncodeToString(priv))
+	handleErr(err)
+	fmt.Println("Public key:", pub.ToPublicKeyMultibase())
+	fmt.Println("Private key:", base64.StdEncoding.EncodeToString(priv.ToBytes()))
 
 	// Make the associated did:key
 	dk, err := didkey.FromPrivateKey(priv)
-	if err != nil {
-		panic(err)
-	}
+	handleErr(err)
 	fmt.Println("Did:", dk.String())
 
 	// Produce a signature
 	msg := []byte("message")
-	sig := ed25519.Sign(priv, msg)
+	sig, err := priv.SignToBytes(msg)
+	handleErr(err)
 	fmt.Println("Signature:", base64.StdEncoding.EncodeToString(sig))
 
 	// Resolve the DID and verify a signature
 	doc, err := dk.Document()
-	if err != nil {
-		panic(err)
-	}
+	handleErr(err)
 	ok, _ := did.TryAllVerify(doc.Authentication(), msg, sig)
 	fmt.Println("Signature verified:", ok)
 }
@@ -71,4 +66,10 @@ func TestEquivalence(t *testing.T) {
 
 	require.True(t, did0A.Equal(did0B))
 	require.False(t, did0A.Equal(did1))
+}
+
+func handleErr(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

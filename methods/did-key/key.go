@@ -8,6 +8,10 @@ import (
 	"github.com/multiformats/go-varint"
 
 	"github.com/INFURA/go-did"
+	"github.com/INFURA/go-did/crypto"
+	"github.com/INFURA/go-did/crypto/ed25519"
+	"github.com/INFURA/go-did/crypto/p256"
+	"github.com/INFURA/go-did/crypto/x25519"
 	"github.com/INFURA/go-did/verifications/ed25519"
 	"github.com/INFURA/go-did/verifications/x25519"
 )
@@ -55,8 +59,13 @@ func Decode(identifier string) (did.DID, error) {
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
 		return FromPublicKey(pub)
+	case p256.MultibaseCode:
+		pub, err := p256.PublicKeyFromBytes(bytes[read:])
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+		}
+		return FromPublicKey(pub)
 
-		// case P256: // TODO
 		// case Secp256k1: // TODO
 		// case RSA: // TODO
 	}
@@ -64,12 +73,12 @@ func Decode(identifier string) (did.DID, error) {
 	return nil, fmt.Errorf("%w: unsupported did:key multicodec: 0x%x", did.ErrInvalidDid, code)
 }
 
-func FromPublicKey(pub did.PublicKey) (did.DID, error) {
+func FromPublicKey(pub crypto.PublicKey) (did.DID, error) {
 	var err error
 	switch pub := pub.(type) {
 	case ed25519.PublicKey:
-		d := DidKey{msi: ed25519.PublicKeyToMultibase(pub)}
-		d.signature, err = ed25519.NewVerificationKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
+		d := DidKey{msi: pub.ToPublicKeyMultibase()}
+		d.signature, err = ed25519vm.NewVerificationKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
 		if err != nil {
 			return nil, err
 		}
@@ -77,20 +86,22 @@ func FromPublicKey(pub did.PublicKey) (did.DID, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
-		xmsi := x25519.PublicKeyToMultibase(xpub)
-		d.keyAgreement, err = x25519.NewKeyAgreementKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, xmsi), xpub, d)
+		xmsi := xpub.ToPublicKeyMultibase()
+		d.keyAgreement, err = x25519vm.NewKeyAgreementKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, xmsi), xpub, d)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
 		return d, nil
+	// case *p256.PublicKey:
+	// 	d := DidKey{msi: pub.ToPublicKeyMultibase()}
 
 	default:
 		return nil, fmt.Errorf("unsupported public key: %T", pub)
 	}
 }
 
-func FromPrivateKey(priv did.PrivateKey) (did.DID, error) {
-	return FromPublicKey(priv.Public().(did.PublicKey))
+func FromPrivateKey(priv crypto.PrivateKey) (did.DID, error) {
+	return FromPublicKey(priv.Public().(crypto.PublicKey))
 }
 
 func (d DidKey) Method() string {
