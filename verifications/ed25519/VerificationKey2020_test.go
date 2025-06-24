@@ -1,4 +1,4 @@
-package ed25519_test
+package ed25519vm_test
 
 import (
 	"encoding/hex"
@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/INFURA/go-did"
+	"github.com/INFURA/go-did/crypto/ed25519"
 	_ "github.com/INFURA/go-did/methods/did-key"
 	"github.com/INFURA/go-did/verifications/ed25519"
 )
@@ -20,7 +21,7 @@ func TestJsonRoundTrip(t *testing.T) {
 		"publicKeyMultibase": "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
 	  }`
 
-	var vk ed25519.VerificationKey2020
+	var vk ed25519vm.VerificationKey2020
 	err := json.Unmarshal([]byte(data), &vk)
 	require.NoError(t, err)
 
@@ -37,9 +38,9 @@ func TestSignature(t *testing.T) {
 	pk, err := ed25519.PublicKeyFromBytes(pkBytes)
 	require.NoError(t, err)
 
-	contDid := "did:key:" + ed25519.PublicKeyToMultibase(pk)
+	contDid := "did:key:" + pk.ToPublicKeyMultibase()
 	controller := did.MustParse(contDid)
-	vk, err := ed25519.NewVerificationKey2020("foo", pk, controller)
+	vk, err := ed25519vm.NewVerificationKey2020("foo", pk, controller)
 	require.NoError(t, err)
 
 	for _, tc := range []struct {

@@ -113,7 +113,6 @@ func (p *PublicKey) VerifyBytes(message, signature []byte) bool {
 	r := new(big.Int).SetBytes(signature[:32])
 	s := new(big.Int).SetBytes(signature[32:])
 
-	// Use ecdsa.Verify
 	return ecdsa.Verify((*ecdsa.PublicKey)(p), hash[:], r, s)
 }
 

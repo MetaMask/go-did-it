@@ -1,18 +1,18 @@
-package x25519
+package x25519vm
 
 import (
-	"crypto/ecdh"
 	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/INFURA/go-did"
+	"github.com/INFURA/go-did/crypto"
+	"github.com/INFURA/go-did/crypto/x25519"
 )
 
 // Specification: https://w3c-ccg.github.io/did-method-key/#ed25519-x25519
 
 const (
-	MultibaseCode = uint64(0xec)
 	JsonLdContext = "https://w3id.org/security/suites/x25519-2020/v1"
 	Type          = "X25519KeyAgreementKey2020"
 )
@@ -21,15 +21,11 @@ var _ did.VerificationMethodKeyAgreement = &KeyAgreementKey2020{}
 
 type KeyAgreementKey2020 struct {
 	id         string
-	pubkey     PublicKey
+	pubkey     *x25519.PublicKey
 	controller string
 }
 
-func NewKeyAgreementKey2020(id string, pubkey PublicKey, controller did.DID) (*KeyAgreementKey2020, error) {
-	if pubkey.Curve() != ecdh.X25519() {
-		return nil, errors.New("x25519 key curve must be X25519")
-	}
-
+func NewKeyAgreementKey2020(id string, pubkey *x25519.PublicKey, controller did.DID) (*KeyAgreementKey2020, error) {
 	return &KeyAgreementKey2020{
 		id:         id,
 		pubkey:     pubkey,
@@ -47,7 +43,7 @@ func (k KeyAgreementKey2020) MarshalJSON() ([]byte, error) {
 		ID:                 k.ID(),
 		Type:               k.Type(),
 		Controller:         k.Controller(),
-		PublicKeyMultibase: PublicKeyToMultibase(k.pubkey),
+		PublicKeyMultibase: k.pubkey.ToPublicKeyMultibase(),
 	})
 }
 
@@ -69,7 +65,7 @@ func (k *KeyAgreementKey2020) UnmarshalJSON(bytes []byte) error {
 	if len(k.id) == 0 {
 		return errors.New("invalid id")
 	}
-	k.pubkey, err = PublicKeyFromMultibase(aux.PublicKeyMultibase)
+	k.pubkey, err = x25519.PublicKeyFromPublicKeyMultibase(aux.PublicKeyMultibase)
 	if err != nil {
 		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}
@@ -96,21 +92,10 @@ func (k KeyAgreementKey2020) JsonLdContext() string {
 	return JsonLdContext
 }
 
-func (k KeyAgreementKey2020) PrivateKeyIsCompatible(local did.PrivateKey) bool {
-	_, ok := local.(PrivateKey)
-	return ok
+func (k KeyAgreementKey2020) PrivateKeyIsCompatible(local crypto.KeyExchangePrivateKey) bool {
+	return local.PublicKeyIsCompatible(k.pubkey)
 }
 
-func (k KeyAgreementKey2020) ECDH(local did.PrivateKey) ([]byte, error) {
-	cast, ok := local.(PrivateKey)
-	if !ok {
-		return nil, errors.New("private key type doesn't match the public key type")
-	}
-	if cast == nil {
-		return nil, errors.New("invalid private key")
-	}
-	if k.pubkey.Curve() != cast.Curve() {
-		return nil, errors.New("key curves don't match")
-	}
-	return cast.ECDH(k.pubkey)
+func (k KeyAgreementKey2020) KeyExchange(local crypto.KeyExchangePrivateKey) ([]byte, error) {
+	return local.KeyExchange(k.pubkey)
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/INFURA/go-did/crypto/ed25519"
 )
 
-var _ crypto.PrivateKey = (*PrivateKey)(nil)
+var _ crypto.KeyExchangePrivateKey = (*PrivateKey)(nil)
 
 type PrivateKey ecdh.PrivateKey
 
@@ -94,4 +94,18 @@ func (p *PrivateKey) ToPKCS8PEM() string {
 		Type:  pemPrivBlockType,
 		Bytes: der,
 	}))
+}
+
+func (p *PrivateKey) PublicKeyIsCompatible(remote crypto.PublicKey) bool {
+	if _, ok := remote.(*PublicKey); ok {
+		return true
+	}
+	return false
+}
+
+func (p *PrivateKey) KeyExchange(remote crypto.PublicKey) ([]byte, error) {
+	if local, ok := remote.(*PublicKey); ok {
+		return (*ecdh.PrivateKey)(p).ECDH((*ecdh.PublicKey)(local))
+	}
+	return nil, fmt.Errorf("incompatible public key")
 }

@@ -19,10 +19,10 @@ func UnmarshalJSON(data []byte) (did.VerificationMethod, error) {
 
 	var res did.VerificationMethod
 	switch aux.Type {
-	case ed25519.Type:
-		res = &ed25519.VerificationKey2020{}
-	case x25519.Type:
-		res = &x25519.KeyAgreementKey2020{}
+	case ed25519vm.Type:
+		res = &ed25519vm.VerificationKey2020{}
+	case x25519vm.Type:
+		res = &x25519vm.KeyAgreementKey2020{}
 	default:
 		return nil, fmt.Errorf("unknown verification type: %s", aux.Type)
 	}

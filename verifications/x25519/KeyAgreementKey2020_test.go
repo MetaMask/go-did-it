@@ -1,4 +1,4 @@
-package x25519_test
+package x25519vm_test
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/INFURA/go-did/verifications/x25519"
+	x25519vm "github.com/INFURA/go-did/verifications/x25519"
 )
 
 func TestJsonRoundTrip(t *testing.T) {
@@ -17,7 +17,7 @@ func TestJsonRoundTrip(t *testing.T) {
       "publicKeyMultibase": "z6LShs9GGnqk85isEBzzshkuVWrVKsRp24GnDuHk8QWkARMW"
     }`
 
-	var vm x25519.KeyAgreementKey2020
+	var vm x25519vm.KeyAgreementKey2020
 	err := json.Unmarshal([]byte(data), &vm)
 	require.NoError(t, err)
 

@@ -14,6 +14,7 @@ import (
 )
 
 var _ crypto.SigningPrivateKey = (*PrivateKey)(nil)
+var _ crypto.KeyExchangePrivateKey = (*PrivateKey)(nil)
 
 type PrivateKey ecdsa.PrivateKey
 
@@ -116,7 +117,29 @@ func (p *PrivateKey) SignToASN1(message []byte) ([]byte, error) {
 	// Hash the message with SHA-256
 	hash := sha256.Sum256(message)
 
-	// Use ecdsa.SignASN1 for direct ASN.1 DER encoding
 	return ecdsa.SignASN1(rand.Reader, (*ecdsa.PrivateKey)(p), hash[:])
+}
 
+func (p *PrivateKey) PublicKeyIsCompatible(remote crypto.PublicKey) bool {
+	if _, ok := remote.(*PublicKey); ok {
+		return true
+	}
+	return false
+}
+
+func (p *PrivateKey) KeyExchange(remote crypto.PublicKey) ([]byte, error) {
+	if remote, ok := remote.(*PublicKey); ok {
+		// First, we need to convert the ECDSA (signing only) to the equivalent ECDH keys
+		ecdhPriv, err := (*ecdsa.PrivateKey)(p).ECDH()
+		if err != nil {
+			return nil, err
+		}
+		ecdhPub, err := (*ecdsa.PublicKey)(remote).ECDH()
+		if err != nil {
+			return nil, err
+		}
+
+		return ecdhPriv.ECDH(ecdhPub)
+	}
+	return nil, fmt.Errorf("incompatible public key")
 }

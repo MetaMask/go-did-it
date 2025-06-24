@@ -12,7 +12,7 @@ import (
 	helpers "github.com/INFURA/go-did/crypto/internal"
 )
 
-var _ crypto.KeyExchangePublicKey = (*PublicKey)(nil)
+var _ crypto.PublicKey = (*PublicKey)(nil)
 
 type PublicKey ecdh.PublicKey
 
@@ -143,20 +143,6 @@ func (p *PublicKey) ToX509PEM() string {
 		Type:  pemPubBlockType,
 		Bytes: der,
 	}))
-}
-
-func (p *PublicKey) PrivateKeyIsCompatible(local crypto.PrivateKey) bool {
-	if _, ok := local.(*PrivateKey); ok {
-		return true
-	}
-	return false
-}
-
-func (p *PublicKey) ECDH(local crypto.PrivateKey) ([]byte, error) {
-	if local, ok := local.(*PrivateKey); ok {
-		return (*ecdh.PrivateKey)(local).ECDH((*ecdh.PublicKey)(p))
-	}
-	return nil, fmt.Errorf("incompatible private key")
 }
 
 func reverseBytes(b []byte) []byte {

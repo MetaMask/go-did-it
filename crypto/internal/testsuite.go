@@ -229,25 +229,34 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 		require.NoError(t, err)
 		pub2, priv2, err := harness.GenerateKeyPair()
 		require.NoError(t, err)
+		pub3, _, err := harness.GenerateKeyPair()
+		require.NoError(t, err)
 
-		kePub1, ok := (crypto.PublicKey(pub1)).(crypto.KeyExchangePublicKey)
+		kePriv1, ok := crypto.PrivateKey(priv1).(crypto.KeyExchangePrivateKey)
 		if !ok {
 			t.Skip("Key exchange is not implemented")
 		}
-		kePub2 := (crypto.PublicKey(pub2)).(crypto.KeyExchangePublicKey)
+		kePriv2 := crypto.PrivateKey(priv2).(crypto.KeyExchangePrivateKey)
 
-		// TODO: test with incompatible private keys
-		require.True(t, kePub1.PrivateKeyIsCompatible(priv2))
-		require.True(t, kePub2.PrivateKeyIsCompatible(priv1))
+		// TODO: test with incompatible public keys
+		require.True(t, kePriv1.PublicKeyIsCompatible(pub2))
+		require.True(t, kePriv2.PublicKeyIsCompatible(pub1))
 
-		k1, err := kePub1.ECDH(priv2)
+		// 1 --> 2
+		kA, err := kePriv1.KeyExchange(pub2)
 		require.NoError(t, err)
-		require.NotEmpty(t, k1)
-		k2, err := kePub2.ECDH(priv1)
+		require.NotEmpty(t, kA)
+		// 2 --> 1
+		kB, err := kePriv2.KeyExchange(pub1)
 		require.NoError(t, err)
-		require.NotEmpty(t, k2)
+		require.NotEmpty(t, kB)
+		// 2 --> 3
+		kC, err := kePriv2.KeyExchange(pub3)
+		require.NoError(t, err)
+		require.NotEmpty(t, kC)
 
-		require.Equal(t, k1, k2)
+		require.Equal(t, kA, kB)
+		require.NotEqual(t, kB, kC)
 	})
 }
 
@@ -459,5 +468,24 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 		})
 	})
 
-	// TODO: add key exchange benchmarks
+	b.Run("Key exchange", func(b *testing.B) {
+		if _, ok := (crypto.PrivateKey(*new(PrivT))).(crypto.KeyExchangePrivateKey); !ok {
+			b.Skip("Key echange is not implemented")
+		}
+
+		b.Run("KeyExchange", func(b *testing.B) {
+			_, priv1, err := harness.GenerateKeyPair()
+			require.NoError(b, err)
+			kePriv1 := (crypto.PrivateKey(priv1)).(crypto.KeyExchangePrivateKey)
+			pub2, _, err := harness.GenerateKeyPair()
+			require.NoError(b, err)
+
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				_, _ = kePriv1.KeyExchange(pub2)
+			}
+		})
+	})
 }

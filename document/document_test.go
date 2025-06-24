@@ -51,11 +51,11 @@ func TestRoundTrip(t *testing.T) {
 
 	// basic testing
 	require.Equal(t, "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK", doc.ID())
-	require.Equal(t, ed25519.Type, doc.Authentication()[0].Type())
-	require.Equal(t, ed25519.Type, doc.Assertion()[0].Type())
-	require.Equal(t, x25519.Type, doc.KeyAgreement()[0].Type())
-	require.Equal(t, ed25519.Type, doc.CapabilityInvocation()[0].Type())
-	require.Equal(t, ed25519.Type, doc.CapabilityDelegation()[0].Type())
+	require.Equal(t, ed25519vm.Type, doc.Authentication()[0].Type())
+	require.Equal(t, ed25519vm.Type, doc.Assertion()[0].Type())
+	require.Equal(t, x25519vm.Type, doc.KeyAgreement()[0].Type())
+	require.Equal(t, ed25519vm.Type, doc.CapabilityInvocation()[0].Type())
+	require.Equal(t, ed25519vm.Type, doc.CapabilityDelegation()[0].Type())
 
 	roundtrip, err := json.Marshal(doc)
 	require.NoError(t, err)

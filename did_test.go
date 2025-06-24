@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/INFURA/go-did"
+	"github.com/INFURA/go-did/crypto/x25519"
 	_ "github.com/INFURA/go-did/methods/did-key"
-	"github.com/INFURA/go-did/verifications/x25519"
 )
 
 func ExampleSignature() {
