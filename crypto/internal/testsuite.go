@@ -29,9 +29,9 @@ type TestHarness[PubT crypto.PublicKey, PrivT crypto.PrivateKey] struct {
 
 	MultibaseCode uint64
 
-	PublicKeySize  int
-	PrivateKeySize int
-	SignatureSize  int
+	PublicKeyBytesSize  int
+	PrivateKeyBytesSize int
+	SignatureBytesSize  int
 }
 
 func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, harness TestHarness[PubT, PrivT]) {
@@ -108,12 +108,14 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 		rtPub, err := harness.PublicKeyFromBytes(bytes)
 		require.NoError(t, err)
 		require.True(t, pub.Equal(rtPub))
+		require.Equal(t, harness.PublicKeyBytesSize, len(bytes))
 
 		bytes = priv.ToBytes()
 		stats.bytesPrivSize = len(bytes)
 		rtPriv, err := harness.PrivateKeyFromBytes(bytes)
 		require.NoError(t, err)
 		require.True(t, priv.Equal(rtPriv))
+		require.Equal(t, harness.PrivateKeyBytesSize, len(bytes))
 	})
 
 	t.Run("MultibaseRoundTrip", func(t *testing.T) {
@@ -193,7 +195,7 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 				name:         "Bytes signature",
 				signer:       spriv.SignToBytes,
 				verifier:     spub.VerifyBytes,
-				expectedSize: harness.SignatureSize,
+				expectedSize: harness.SignatureBytesSize,
 				stats:        &stats.sigRawSize,
 			},
 			{

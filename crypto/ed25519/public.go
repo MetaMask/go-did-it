@@ -23,7 +23,7 @@ type PublicKey struct {
 // This compact serialization format is the raw key material, without metadata or structure.
 // It errors if the slice is not the right size.
 func PublicKeyFromBytes(b []byte) (PublicKey, error) {
-	if len(b) != PublicKeySize {
+	if len(b) != PublicKeyBytesSize {
 		return PublicKey{}, fmt.Errorf("invalid ed25519 public key size")
 	}
 	// make a copy
@@ -39,7 +39,7 @@ func PublicKeyFromPublicKeyMultibase(multibase string) (PublicKey, error) {
 	if code != MultibaseCode {
 		return PublicKey{}, fmt.Errorf("invalid code")
 	}
-	if len(bytes) != PublicKeySize {
+	if len(bytes) != PublicKeyBytesSize {
 		return PublicKey{}, fmt.Errorf("invalid ed25519 public key size")
 	}
 	return PublicKeyFromBytes(bytes)
@@ -69,7 +69,7 @@ func PublicKeyFromX509PEM(str string) (PublicKey, error) {
 func (p PublicKey) ToBytes() []byte {
 	// Copy the private key to a fixed size buffer that can get allocated on the
 	// caller's stack after inlining.
-	var buf [PublicKeySize]byte
+	var buf [PublicKeyBytesSize]byte
 	return append(buf[:0], p.k...)
 }
 
@@ -110,7 +110,7 @@ func (p PublicKey) VerifyASN1(message, signature []byte) bool {
 	if !s.ReadASN1BitString(&bitString) {
 		return false
 	}
-	if bitString.BitLength != SignatureSize*8 {
+	if bitString.BitLength != SignatureBytesSize*8 {
 		return false
 	}
 

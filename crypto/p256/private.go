@@ -22,7 +22,7 @@ type PrivateKey ecdsa.PrivateKey
 // This compact serialization format is the raw key material, without metadata or structure.
 // It errors if the slice is not the right size.
 func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
-	if len(b) != PrivateKeySize {
+	if len(b) != PrivateKeyBytesSize {
 		return nil, fmt.Errorf("invalid P-256 private key size")
 	}
 
@@ -73,7 +73,7 @@ func (p *PrivateKey) Public() crypto.PublicKey {
 
 func (p *PrivateKey) ToBytes() []byte {
 	// fixed size buffer that can get allocated on the caller's stack after inlining.
-	var buf [PrivateKeySize]byte
+	var buf [PrivateKeyBytesSize]byte
 	((*ecdsa.PrivateKey)(p)).D.FillBytes(buf[:])
 	return buf[:]
 }

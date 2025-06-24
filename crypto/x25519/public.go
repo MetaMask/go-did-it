@@ -40,7 +40,7 @@ func PublicKeyFromEd25519(pub ed25519.PublicKey) (*PublicKey, error) {
 	// Clear the sign bit (MSB of last byte)
 	// This is because ed25519 serialize as bytes with 255 bit for Y, and one bit for the sign.
 	// We only want Y, and the sign is irrelevant for the conversion.
-	pubBytes[ed25519.PublicKeySize-1] &= 0x7F
+	pubBytes[ed25519.PublicKeyBytesSize-1] &= 0x7F
 
 	// ed25519 are little-endian, but big.Int expects big-endian
 	// See https://www.rfc-editor.org/rfc/rfc8032
@@ -75,8 +75,8 @@ func PublicKeyFromEd25519(pub ed25519.PublicKey) (*PublicKey, error) {
 
 	// make sure we get 32 bytes, pad if necessary
 	uBytes := u.Bytes()
-	res := make([]byte, PublicKeySize)
-	copy(res[PublicKeySize-len(uBytes):], uBytes)
+	res := make([]byte, PublicKeyBytesSize)
+	copy(res[PublicKeyBytesSize-len(uBytes):], uBytes)
 
 	// x25519 are little-endian, but big.Int gives us big-endian.
 	// See https://www.ietf.org/rfc/rfc7748.txt

@@ -7,10 +7,12 @@ import (
 )
 
 const (
-	// TODO
-	PublicKeySize  = 33
-	PrivateKeySize = 32
-	SignatureSize  = 64
+	// PublicKeyBytesSize is the size, in bytes, of public keys in raw bytes.
+	PublicKeyBytesSize = 33
+	// PrivateKeyBytesSize is the size, in bytes, of private keys in raw bytes.
+	PrivateKeyBytesSize = 32
+	// SignatureBytesSize is the size, in bytes, of signatures in raw bytes.
+	SignatureBytesSize = 64
 
 	MultibaseCode = uint64(0x1200)
 )

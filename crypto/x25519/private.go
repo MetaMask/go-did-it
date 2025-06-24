@@ -17,7 +17,7 @@ type PrivateKey ecdh.PrivateKey
 
 // PrivateKeyFromBytes converts a serialized private key to a PrivateKey.
 // This compact serialization format is the raw key material, without metadata or structure.
-// It errors if len(privateKey) is not [PrivateKeySize].
+// It errors if len(privateKey) is not [PrivateKeyBytesSize].
 func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 	// this already check the size of b
 	priv, err := ecdh.X25519().NewPrivateKey(b)

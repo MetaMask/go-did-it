@@ -21,7 +21,7 @@ type PublicKey ecdsa.PublicKey
 // This compact serialization format is the raw key material, without metadata or structure.
 // It errors if the slice is not the right size.
 func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
-	if len(b) != PublicKeySize {
+	if len(b) != PublicKeyBytesSize {
 		return nil, fmt.Errorf("invalid P-256 public key size")
 	}
 	x, y := elliptic.UnmarshalCompressed(elliptic.P256(), b)
@@ -103,7 +103,7 @@ func (p *PublicKey) ToX509PEM() string {
 */
 
 func (p *PublicKey) VerifyBytes(message, signature []byte) bool {
-	if len(signature) != SignatureSize {
+	if len(signature) != SignatureBytesSize {
 		return false
 	}
 

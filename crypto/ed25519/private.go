@@ -21,7 +21,7 @@ type PrivateKey struct {
 // This compact serialization format is the raw key material, without metadata or structure.
 // It errors if the slice is not the right size.
 func PrivateKeyFromBytes(b []byte) (PrivateKey, error) {
-	if len(b) != PrivateKeySize {
+	if len(b) != PrivateKeyBytesSize {
 		return PrivateKey{}, fmt.Errorf("invalid ed25519 private key size")
 	}
 	// make a copy
@@ -76,7 +76,7 @@ func (p PrivateKey) SignToASN1(message []byte) ([]byte, error) {
 func (p PrivateKey) ToBytes() []byte {
 	// Copy the private key to a fixed size buffer that can get allocated on the
 	// caller's stack after inlining.
-	var buf [PrivateKeySize]byte
+	var buf [PrivateKeyBytesSize]byte
 	return append(buf[:0], p.k...)
 }
 

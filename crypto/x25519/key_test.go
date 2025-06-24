@@ -20,9 +20,9 @@ var harness = helpers.TestHarness[*PublicKey, *PrivateKey]{
 	PrivateKeyFromPKCS8DER:          PrivateKeyFromPKCS8DER,
 	PrivateKeyFromPKCS8PEM:          PrivateKeyFromPKCS8PEM,
 	MultibaseCode:                   MultibaseCode,
-	PublicKeySize:                   PublicKeySize,
-	PrivateKeySize:                  PrivateKeySize,
-	SignatureSize:                   SignatureSize,
+	PublicKeyBytesSize:              PublicKeyBytesSize,
+	PrivateKeyBytesSize:             PrivateKeyBytesSize,
+	SignatureBytesSize:              -1,
 }
 
 func TestSuite(t *testing.T) {
