@@ -43,15 +43,10 @@ func Decode(identifier string) (did.DID, error) {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 	}
 
-	decoder, ok := map[uint64]func(b []byte) (crypto.PublicKey, error){
-		ed25519.MultibaseCode: func(b []byte) (crypto.PublicKey, error) { return ed25519.PublicKeyFromBytes(b) },
-		p256.MultibaseCode:    func(b []byte) (crypto.PublicKey, error) { return p256.PublicKeyFromBytes(b) },
-		x25519.MultibaseCode:  func(b []byte) (crypto.PublicKey, error) { return x25519.PublicKeyFromBytes(b) },
-	}[code]
+	decoder, ok := decoders[code]
 	if !ok {
 		return nil, fmt.Errorf("%w: unsupported did:key multicodec: 0x%x", did.ErrInvalidDid, code)
 	}
-
 	pub, err := decoder(bytes)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
@@ -61,6 +56,12 @@ func Decode(identifier string) (did.DID, error) {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 	}
 	return d, nil
+}
+
+var decoders = map[uint64]func(b []byte) (crypto.PublicKey, error){
+	ed25519.MultibaseCode: func(b []byte) (crypto.PublicKey, error) { return ed25519.PublicKeyFromBytes(b) },
+	p256.MultibaseCode:    func(b []byte) (crypto.PublicKey, error) { return p256.PublicKeyFromBytes(b) },
+	x25519.MultibaseCode:  func(b []byte) (crypto.PublicKey, error) { return x25519.PublicKeyFromBytes(b) },
 }
 
 func FromPublicKey(pub crypto.PublicKey) (did.DID, error) {

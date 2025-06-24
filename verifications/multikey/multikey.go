@@ -74,11 +74,7 @@ func (m *MultiKey) UnmarshalJSON(bytes []byte) error {
 	if err != nil {
 		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}
-	decoder, ok := map[uint64]func(b []byte) (crypto.PublicKey, error){
-		ed25519.MultibaseCode: func(b []byte) (crypto.PublicKey, error) { return ed25519.PublicKeyFromBytes(b) },
-		p256.MultibaseCode:    func(b []byte) (crypto.PublicKey, error) { return p256.PublicKeyFromBytes(b) },
-		x25519.MultibaseCode:  func(b []byte) (crypto.PublicKey, error) { return x25519.PublicKeyFromBytes(b) },
-	}[code]
+	decoder, ok := decoders[code]
 	if !ok {
 		return fmt.Errorf("unsupported publicKeyMultibase code: %d", code)
 	}
@@ -92,6 +88,12 @@ func (m *MultiKey) UnmarshalJSON(bytes []byte) error {
 		return errors.New("invalid controller")
 	}
 	return nil
+}
+
+var decoders = map[uint64]func(b []byte) (crypto.PublicKey, error){
+	ed25519.MultibaseCode: func(b []byte) (crypto.PublicKey, error) { return ed25519.PublicKeyFromBytes(b) },
+	p256.MultibaseCode:    func(b []byte) (crypto.PublicKey, error) { return p256.PublicKeyFromBytes(b) },
+	x25519.MultibaseCode:  func(b []byte) (crypto.PublicKey, error) { return x25519.PublicKeyFromBytes(b) },
 }
 
 func (m MultiKey) ID() string {
