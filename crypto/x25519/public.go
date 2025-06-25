@@ -14,7 +14,9 @@ import (
 
 var _ crypto.PublicKey = (*PublicKey)(nil)
 
-type PublicKey ecdh.PublicKey
+type PublicKey struct {
+	k *ecdh.PublicKey
+}
 
 // PublicKeyFromBytes converts a serialized public key to a PublicKey.
 // This compact serialization format is the raw key material, without metadata or structure.
@@ -24,7 +26,7 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return (*PublicKey)(pub), nil
+	return &PublicKey{k: pub}, nil
 }
 
 // PublicKeyFromEd25519 converts an ed25519 public key to a x25519 public key.
@@ -101,8 +103,7 @@ func PublicKeyFromX509DER(bytes []byte) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	ecdhPub := pub.(*ecdh.PublicKey)
-	return (*PublicKey)(ecdhPub), nil
+	return &PublicKey{k: pub.(*ecdh.PublicKey)}, nil
 }
 
 // PublicKeyFromX509PEM decodes an X.509 PEM (string) encoded public key.
@@ -119,21 +120,21 @@ func PublicKeyFromX509PEM(str string) (*PublicKey, error) {
 
 func (p *PublicKey) Equal(other crypto.PublicKey) bool {
 	if other, ok := other.(*PublicKey); ok {
-		return (*ecdh.PublicKey)(p).Equal((*ecdh.PublicKey)(other))
+		return p.k.Equal(other.k)
 	}
 	return false
 }
 
 func (p *PublicKey) ToBytes() []byte {
-	return (*ecdh.PublicKey)(p).Bytes()
+	return p.k.Bytes()
 }
 
 func (p *PublicKey) ToPublicKeyMultibase() string {
-	return helpers.PublicKeyMultibaseEncode(MultibaseCode, (*ecdh.PublicKey)(p).Bytes())
+	return helpers.PublicKeyMultibaseEncode(MultibaseCode, p.k.Bytes())
 }
 
 func (p *PublicKey) ToX509DER() []byte {
-	res, _ := x509.MarshalPKIXPublicKey((*ecdh.PublicKey)(p))
+	res, _ := x509.MarshalPKIXPublicKey(p.k)
 	return res
 }
 

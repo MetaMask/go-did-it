@@ -13,9 +13,11 @@ import (
 	helpers "github.com/INFURA/go-did/crypto/internal"
 )
 
-var _ crypto.SigningPublicKey = (*PublicKey)(nil)
+var _ crypto.SigningPublicKey = &PublicKey{}
 
-type PublicKey ecdsa.PublicKey
+type PublicKey struct {
+	k *ecdsa.PublicKey
+}
 
 // PublicKeyFromBytes converts a serialized public key to a PublicKey.
 // This compact serialization format is the raw key material, without metadata or structure.
@@ -28,7 +30,7 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	if x == nil {
 		return nil, fmt.Errorf("invalid P-256 public key")
 	}
-	return (*PublicKey)(&ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}), nil
+	return &PublicKey{k: &ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}}, nil
 }
 
 // PublicKeyFromXY converts x and y coordinates into a PublicKey.
@@ -36,7 +38,7 @@ func PublicKeyFromXY(x, y *big.Int) (*PublicKey, error) {
 	if !elliptic.P256().IsOnCurve(x, y) {
 		return nil, fmt.Errorf("invalid P-256 public key")
 	}
-	return (*PublicKey)(&ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}), nil
+	return &PublicKey{k: &ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}}, nil
 }
 
 // PublicKeyFromPublicKeyMultibase decodes the public key from its Multibase form
@@ -57,8 +59,7 @@ func PublicKeyFromX509DER(bytes []byte) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	ecdsaPub := pub.(*ecdsa.PublicKey)
-	return (*PublicKey)(ecdsaPub), nil
+	return &PublicKey{k: pub.(*ecdsa.PublicKey)}, nil
 }
 
 // PublicKeyFromX509PEM decodes an X.509 PEM (string) encoded public key.
@@ -75,24 +76,22 @@ func PublicKeyFromX509PEM(str string) (*PublicKey, error) {
 
 func (p *PublicKey) Equal(other crypto.PublicKey) bool {
 	if other, ok := other.(*PublicKey); ok {
-		return (*ecdsa.PublicKey)(p).Equal((*ecdsa.PublicKey)(other))
+		return p.k.Equal(other.k)
 	}
 	return false
 }
 
 func (p *PublicKey) ToBytes() []byte {
-	ecdsaPub := (*ecdsa.PublicKey)(p)
-	return elliptic.MarshalCompressed(elliptic.P256(), ecdsaPub.X, ecdsaPub.Y)
+	return elliptic.MarshalCompressed(elliptic.P256(), p.k.X, p.k.Y)
 }
 
 func (p *PublicKey) ToPublicKeyMultibase() string {
-	ecdsaPub := (*ecdsa.PublicKey)(p)
-	bytes := elliptic.MarshalCompressed(elliptic.P256(), ecdsaPub.X, ecdsaPub.Y)
+	bytes := elliptic.MarshalCompressed(elliptic.P256(), p.k.X, p.k.Y)
 	return helpers.PublicKeyMultibaseEncode(MultibaseCode, bytes)
 }
 
 func (p *PublicKey) ToX509DER() []byte {
-	res, _ := x509.MarshalPKIXPublicKey((*ecdsa.PublicKey)(p))
+	res, _ := x509.MarshalPKIXPublicKey(p.k)
 	return res
 }
 
@@ -121,12 +120,12 @@ func (p *PublicKey) VerifyBytes(message, signature []byte) bool {
 	r := new(big.Int).SetBytes(signature[:SignatureBytesSize/2])
 	s := new(big.Int).SetBytes(signature[SignatureBytesSize/2:])
 
-	return ecdsa.Verify((*ecdsa.PublicKey)(p), hash[:], r, s)
+	return ecdsa.Verify(p.k, hash[:], r, s)
 }
 
 func (p *PublicKey) VerifyASN1(message, signature []byte) bool {
 	// Hash the message with SHA-256
 	hash := sha256.Sum256(message)
 
-	return ecdsa.VerifyASN1((*ecdsa.PublicKey)(p), hash[:], signature)
+	return ecdsa.VerifyASN1(p.k, hash[:], signature)
 }

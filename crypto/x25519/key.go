@@ -20,7 +20,7 @@ func GenerateKeyPair() (*PublicKey, *PrivateKey, error) {
 		return nil, nil, err
 	}
 	pub := priv.Public().(*ecdh.PublicKey)
-	return (*PublicKey)(pub), (*PrivateKey)(priv), nil
+	return &PublicKey{k: pub}, &PrivateKey{k: priv}, nil
 }
 
 const (

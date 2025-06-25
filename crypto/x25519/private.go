@@ -13,7 +13,9 @@ import (
 
 var _ crypto.KeyExchangePrivateKey = (*PrivateKey)(nil)
 
-type PrivateKey ecdh.PrivateKey
+type PrivateKey struct {
+	k *ecdh.PrivateKey
+}
 
 // PrivateKeyFromBytes converts a serialized private key to a PrivateKey.
 // This compact serialization format is the raw key material, without metadata or structure.
@@ -24,7 +26,7 @@ func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return (*PrivateKey)(priv), nil
+	return &PrivateKey{k: priv}, nil
 }
 
 // PrivateKeyFromEd25519 converts an ed25519 private key to a x25519 private key.
@@ -52,7 +54,7 @@ func PrivateKeyFromPKCS8DER(bytes []byte) (*PrivateKey, error) {
 		return nil, err
 	}
 	ecdhPriv := priv.(*ecdh.PrivateKey)
-	return (*PrivateKey)(ecdhPriv), nil
+	return &PrivateKey{k: ecdhPriv}, nil
 }
 
 // PrivateKeyFromPKCS8PEM decodes an PKCS#8 PEM (string) encoded private key.
@@ -69,22 +71,21 @@ func PrivateKeyFromPKCS8PEM(str string) (*PrivateKey, error) {
 
 func (p *PrivateKey) Equal(other crypto.PrivateKey) bool {
 	if other, ok := other.(*PrivateKey); ok {
-		return (*ecdh.PrivateKey)(p).Equal((*ecdh.PrivateKey)(other))
+		return p.k.Equal(other.k)
 	}
 	return false
 }
 
 func (p *PrivateKey) Public() crypto.PublicKey {
-	ecdhPub := (*ecdh.PrivateKey)(p).Public().(*ecdh.PublicKey)
-	return (*PublicKey)(ecdhPub)
+	return &PublicKey{k: p.k.Public().(*ecdh.PublicKey)}
 }
 
 func (p *PrivateKey) ToBytes() []byte {
-	return (*ecdh.PrivateKey)(p).Bytes()
+	return p.k.Bytes()
 }
 
 func (p *PrivateKey) ToPKCS8DER() []byte {
-	res, _ := x509.MarshalPKCS8PrivateKey((*ecdh.PrivateKey)(p))
+	res, _ := x509.MarshalPKCS8PrivateKey(p.k)
 	return res
 }
 
@@ -105,7 +106,7 @@ func (p *PrivateKey) PublicKeyIsCompatible(remote crypto.PublicKey) bool {
 
 func (p *PrivateKey) KeyExchange(remote crypto.PublicKey) ([]byte, error) {
 	if local, ok := remote.(*PublicKey); ok {
-		return (*ecdh.PrivateKey)(p).ECDH((*ecdh.PublicKey)(local))
+		return p.k.ECDH(local.k)
 	}
 	return nil, fmt.Errorf("incompatible public key")
 }
