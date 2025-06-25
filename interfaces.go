@@ -102,7 +102,7 @@ type VerificationMethodSignature interface {
 	VerificationMethod
 
 	// Verify checks that 'sig' is a valid signature of 'data'.
-	Verify(data []byte, sig []byte) bool
+	Verify(data []byte, sig []byte) (bool, error)
 }
 
 // VerificationMethodKeyAgreement is a VerificationMethod implementing a shared key agreement.

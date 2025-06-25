@@ -8,8 +8,8 @@ import (
 	"math/big"
 
 	"github.com/INFURA/go-did/crypto"
+	helpers "github.com/INFURA/go-did/crypto/_helpers"
 	"github.com/INFURA/go-did/crypto/ed25519"
-	helpers "github.com/INFURA/go-did/crypto/internal"
 )
 
 var _ crypto.PublicKey = (*PublicKey)(nil)

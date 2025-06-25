@@ -24,12 +24,12 @@ type VerificationKey2020 struct {
 	controller string
 }
 
-func NewVerificationKey2020(id string, pubkey ed25519.PublicKey, controller did.DID) (*VerificationKey2020, error) {
+func NewVerificationKey2020(id string, pubkey ed25519.PublicKey, controller did.DID) *VerificationKey2020 {
 	return &VerificationKey2020{
 		id:         id,
 		pubkey:     pubkey,
 		controller: controller.String(),
-	}, nil
+	}
 }
 
 func (v VerificationKey2020) MarshalJSON() ([]byte, error) {
@@ -91,6 +91,6 @@ func (v VerificationKey2020) JsonLdContext() string {
 	return JsonLdContext
 }
 
-func (v VerificationKey2020) Verify(data []byte, sig []byte) bool {
-	return v.pubkey.VerifyBytes(data, sig)
+func (v VerificationKey2020) Verify(data []byte, sig []byte) (bool, error) {
+	return v.pubkey.VerifyBytes(data, sig), nil
 }

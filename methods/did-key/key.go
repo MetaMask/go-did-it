@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	mbase "github.com/multiformats/go-multibase"
-	"github.com/multiformats/go-varint"
-
 	"github.com/INFURA/go-did"
 	"github.com/INFURA/go-did/crypto"
+	"github.com/INFURA/go-did/crypto/_helpers"
 	"github.com/INFURA/go-did/crypto/ed25519"
 	"github.com/INFURA/go-did/crypto/p256"
 	"github.com/INFURA/go-did/crypto/x25519"
 	"github.com/INFURA/go-did/verifications/ed25519"
+	"github.com/INFURA/go-did/verifications/multikey"
 	"github.com/INFURA/go-did/verifications/x25519"
 )
 
@@ -34,66 +33,55 @@ func Decode(identifier string) (did.DID, error) {
 	const keyPrefix = "did:key:"
 
 	if !strings.HasPrefix(identifier, keyPrefix) {
-		return nil, fmt.Errorf("must start with 'did:key'")
+		return nil, fmt.Errorf("%w: must start with 'did:key'", did.ErrInvalidDid)
 	}
 
 	msi := identifier[len(keyPrefix):]
 
-	baseCodec, bytes, err := mbase.Decode(msi)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-	}
-	// the specification enforces that encoding
-	if baseCodec != mbase.Base58BTC {
-		return nil, fmt.Errorf("%w: not Base58BTC encoded", did.ErrInvalidDid)
-	}
-	code, read, err := varint.FromUvarint(bytes)
+	code, bytes, err := helpers.PublicKeyMultibaseDecode(msi)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 	}
 
-	switch code {
-	case ed25519.MultibaseCode:
-		pub, err := ed25519.PublicKeyFromBytes(bytes[read:])
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-		}
-		return FromPublicKey(pub)
-	case p256.MultibaseCode:
-		pub, err := p256.PublicKeyFromBytes(bytes[read:])
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-		}
-		return FromPublicKey(pub)
-
-		// case Secp256k1: // TODO
-		// case RSA: // TODO
+	decoder, ok := decoders[code]
+	if !ok {
+		return nil, fmt.Errorf("%w: unsupported did:key multicodec: 0x%x", did.ErrInvalidDid, code)
 	}
+	pub, err := decoder(bytes)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+	}
+	d, err := FromPublicKey(pub)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+	}
+	return d, nil
+}
 
-	return nil, fmt.Errorf("%w: unsupported did:key multicodec: 0x%x", did.ErrInvalidDid, code)
+var decoders = map[uint64]func(b []byte) (crypto.PublicKey, error){
+	ed25519.MultibaseCode: func(b []byte) (crypto.PublicKey, error) { return ed25519.PublicKeyFromBytes(b) },
+	p256.MultibaseCode:    func(b []byte) (crypto.PublicKey, error) { return p256.PublicKeyFromBytes(b) },
+	x25519.MultibaseCode:  func(b []byte) (crypto.PublicKey, error) { return x25519.PublicKeyFromBytes(b) },
 }
 
 func FromPublicKey(pub crypto.PublicKey) (did.DID, error) {
-	var err error
 	switch pub := pub.(type) {
 	case ed25519.PublicKey:
 		d := DidKey{msi: pub.ToPublicKeyMultibase()}
-		d.signature, err = ed25519vm.NewVerificationKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
+		d.signature = ed25519vm.NewVerificationKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
+		xpub, err := x25519.PublicKeyFromEd25519(pub)
 		if err != nil {
 			return nil, err
 		}
-		xpub, err := x25519.PublicKeyFromEd25519(pub)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-		}
 		xmsi := xpub.ToPublicKeyMultibase()
-		d.keyAgreement, err = x25519vm.NewKeyAgreementKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, xmsi), xpub, d)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-		}
+		d.keyAgreement = x25519vm.NewKeyAgreementKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, xmsi), xpub, d)
 		return d, nil
-	// case *p256.PublicKey:
-	// 	d := DidKey{msi: pub.ToPublicKeyMultibase()}
+	case *p256.PublicKey:
+		d := DidKey{msi: pub.ToPublicKeyMultibase()}
+		mk := multikey.NewMultiKey(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
+		d.signature = mk
+		d.keyAgreement = mk
+		return d, nil
 
 	default:
 		return nil, fmt.Errorf("unsupported public key: %T", pub)

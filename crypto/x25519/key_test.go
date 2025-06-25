@@ -5,11 +5,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/INFURA/go-did/crypto/_testsuite"
 	"github.com/INFURA/go-did/crypto/ed25519"
-	"github.com/INFURA/go-did/crypto/internal"
 )
 
-var harness = helpers.TestHarness[*PublicKey, *PrivateKey]{
+var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 	Name:                            "x25519",
 	GenerateKeyPair:                 GenerateKeyPair,
 	PublicKeyFromBytes:              PublicKeyFromBytes,
@@ -26,11 +26,11 @@ var harness = helpers.TestHarness[*PublicKey, *PrivateKey]{
 }
 
 func TestSuite(t *testing.T) {
-	helpers.TestSuite(t, harness)
+	testsuite.TestSuite(t, harness)
 }
 
 func BenchmarkSuite(b *testing.B) {
-	helpers.BenchSuite(b, harness)
+	testsuite.BenchSuite(b, harness)
 }
 
 func TestEd25519ToX25519(t *testing.T) {

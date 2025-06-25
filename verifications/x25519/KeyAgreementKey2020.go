@@ -25,12 +25,12 @@ type KeyAgreementKey2020 struct {
 	controller string
 }
 
-func NewKeyAgreementKey2020(id string, pubkey *x25519.PublicKey, controller did.DID) (*KeyAgreementKey2020, error) {
+func NewKeyAgreementKey2020(id string, pubkey *x25519.PublicKey, controller did.DID) *KeyAgreementKey2020 {
 	return &KeyAgreementKey2020{
 		id:         id,
 		pubkey:     pubkey,
 		controller: controller.String(),
-	}, nil
+	}
 }
 
 func (k KeyAgreementKey2020) MarshalJSON() ([]byte, error) {

@@ -11,7 +11,7 @@ import (
 // If no method verifies the signature, it returns false and nil.
 func TryAllVerify(methods []VerificationMethodSignature, data []byte, sig []byte) (bool, VerificationMethodSignature) {
 	for _, method := range methods {
-		if method.Verify(data, sig) {
+		if valid, err := method.Verify(data, sig); err == nil && valid {
 			return true, method
 		}
 	}
