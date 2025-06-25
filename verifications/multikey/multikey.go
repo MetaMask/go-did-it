@@ -7,10 +7,7 @@ import (
 
 	"github.com/INFURA/go-did"
 	"github.com/INFURA/go-did/crypto"
-	helpers "github.com/INFURA/go-did/crypto/_helpers"
-	"github.com/INFURA/go-did/crypto/ed25519"
-	"github.com/INFURA/go-did/crypto/p256"
-	"github.com/INFURA/go-did/crypto/x25519"
+	allkeys "github.com/INFURA/go-did/crypto/_allkeys"
 )
 
 // Specification: https://www.w3.org/TR/cid-1.0/#Multikey
@@ -74,26 +71,12 @@ func (m *MultiKey) UnmarshalJSON(bytes []byte) error {
 		return errors.New("invalid controller")
 	}
 
-	code, pubBytes, err := helpers.PublicKeyMultibaseDecode(aux.PublicKeyMultibase)
-	if err != nil {
-		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
-	}
-	decoder, ok := decoders[code]
-	if !ok {
-		return fmt.Errorf("unsupported publicKeyMultibase code: %d", code)
-	}
-	m.pubkey, err = decoder(pubBytes)
+	m.pubkey, err = allkeys.PublicKeyFromPublicKeyMultibase(aux.PublicKeyMultibase)
 	if err != nil {
 		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}
 
 	return nil
-}
-
-var decoders = map[uint64]func(b []byte) (crypto.PublicKey, error){
-	ed25519.MultibaseCode: func(b []byte) (crypto.PublicKey, error) { return ed25519.PublicKeyFromBytes(b) },
-	p256.MultibaseCode:    func(b []byte) (crypto.PublicKey, error) { return p256.PublicKeyFromBytes(b) },
-	x25519.MultibaseCode:  func(b []byte) (crypto.PublicKey, error) { return x25519.PublicKeyFromBytes(b) },
 }
 
 func (m MultiKey) ID() string {

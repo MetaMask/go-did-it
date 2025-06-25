@@ -1,9 +1,9 @@
-package p256
+package p384
 
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -22,21 +22,21 @@ type PublicKey ecdsa.PublicKey
 // It errors if the slice is not the right size.
 func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	if len(b) != PublicKeyBytesSize {
-		return nil, fmt.Errorf("invalid P-256 public key size")
+		return nil, fmt.Errorf("invalid P-384 public key size")
 	}
-	x, y := elliptic.UnmarshalCompressed(elliptic.P256(), b)
+	x, y := elliptic.UnmarshalCompressed(elliptic.P384(), b)
 	if x == nil {
-		return nil, fmt.Errorf("invalid P-256 public key")
+		return nil, fmt.Errorf("invalid P-384 public key")
 	}
-	return (*PublicKey)(&ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}), nil
+	return (*PublicKey)(&ecdsa.PublicKey{Curve: elliptic.P384(), X: x, Y: y}), nil
 }
 
 // PublicKeyFromXY converts x and y coordinates into a PublicKey.
 func PublicKeyFromXY(x, y *big.Int) (*PublicKey, error) {
-	if !elliptic.P256().IsOnCurve(x, y) {
-		return nil, fmt.Errorf("invalid P-256 public key")
+	if !elliptic.P384().IsOnCurve(x, y) {
+		return nil, fmt.Errorf("invalid P-384 public key")
 	}
-	return (*PublicKey)(&ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}), nil
+	return (*PublicKey)(&ecdsa.PublicKey{Curve: elliptic.P384(), X: x, Y: y}), nil
 }
 
 // PublicKeyFromPublicKeyMultibase decodes the public key from its Multibase form
@@ -82,12 +82,12 @@ func (p *PublicKey) Equal(other crypto.PublicKey) bool {
 
 func (p *PublicKey) ToBytes() []byte {
 	ecdsaPub := (*ecdsa.PublicKey)(p)
-	return elliptic.MarshalCompressed(elliptic.P256(), ecdsaPub.X, ecdsaPub.Y)
+	return elliptic.MarshalCompressed(elliptic.P384(), ecdsaPub.X, ecdsaPub.Y)
 }
 
 func (p *PublicKey) ToPublicKeyMultibase() string {
 	ecdsaPub := (*ecdsa.PublicKey)(p)
-	bytes := elliptic.MarshalCompressed(elliptic.P256(), ecdsaPub.X, ecdsaPub.Y)
+	bytes := elliptic.MarshalCompressed(elliptic.P384(), ecdsaPub.X, ecdsaPub.Y)
 	return helpers.PublicKeyMultibaseEncode(MultibaseCode, bytes)
 }
 
@@ -105,7 +105,7 @@ func (p *PublicKey) ToX509PEM() string {
 }
 
 /*
-	Note: signatures for the crypto.SigningPrivateKey interface assumes SHA256,
+	Note: signatures for the crypto.SigningPrivateKey interface assumes SHA384,
 	which should be correct almost always. If there is a need to use a different
 	hash function, we can add separate functions that have that flexibility.
 */
@@ -115,8 +115,8 @@ func (p *PublicKey) VerifyBytes(message, signature []byte) bool {
 		return false
 	}
 
-	// Hash the message with SHA-256
-	hash := sha256.Sum256(message)
+	// Hash the message with SHA-384
+	hash := sha512.Sum384(message)
 
 	r := new(big.Int).SetBytes(signature[:SignatureBytesSize/2])
 	s := new(big.Int).SetBytes(signature[SignatureBytesSize/2:])
@@ -125,8 +125,8 @@ func (p *PublicKey) VerifyBytes(message, signature []byte) bool {
 }
 
 func (p *PublicKey) VerifyASN1(message, signature []byte) bool {
-	// Hash the message with SHA-256
-	hash := sha256.Sum256(message)
+	// Hash the message with SHA-384
+	hash := sha512.Sum384(message)
 
 	return ecdsa.VerifyASN1((*ecdsa.PublicKey)(p), hash[:], signature)
 }

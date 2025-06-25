@@ -1,10 +1,10 @@
-package p256
+package p384
 
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -23,12 +23,12 @@ type PrivateKey ecdsa.PrivateKey
 // It errors if the slice is not the right size.
 func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 	if len(b) != PrivateKeyBytesSize {
-		return nil, fmt.Errorf("invalid P-256 private key size")
+		return nil, fmt.Errorf("invalid P-384 private key size")
 	}
 
 	res := &ecdsa.PrivateKey{
 		D:         new(big.Int).SetBytes(b),
-		PublicKey: ecdsa.PublicKey{Curve: elliptic.P256()},
+		PublicKey: ecdsa.PublicKey{Curve: elliptic.P384()},
 	}
 
 	// recompute the public key
@@ -92,14 +92,14 @@ func (p *PrivateKey) ToPKCS8PEM() string {
 }
 
 /*
-	Note: signatures for the crypto.SigningPrivateKey interface assumes SHA256,
+	Note: signatures for the crypto.SigningPrivateKey interface assumes SHA384,
 	which should be correct almost always. If there is a need to use a different
 	hash function, we can add separate functions that have that flexibility.
 */
 
 func (p *PrivateKey) SignToBytes(message []byte) ([]byte, error) {
-	// Hash the message with SHA-256
-	hash := sha256.Sum256(message)
+	// Hash the message with SHA-384
+	hash := sha512.Sum384(message)
 
 	r, s, err := ecdsa.Sign(rand.Reader, (*ecdsa.PrivateKey)(p), hash[:])
 	if err != nil {
@@ -114,8 +114,8 @@ func (p *PrivateKey) SignToBytes(message []byte) ([]byte, error) {
 }
 
 func (p *PrivateKey) SignToASN1(message []byte) ([]byte, error) {
-	// Hash the message with SHA-256
-	hash := sha256.Sum256(message)
+	// Hash the message with SHA-384
+	hash := sha512.Sum384(message)
 
 	return ecdsa.SignASN1(rand.Reader, (*ecdsa.PrivateKey)(p), hash[:])
 }

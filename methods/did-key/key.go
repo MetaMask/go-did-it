@@ -6,9 +6,10 @@ import (
 
 	"github.com/INFURA/go-did"
 	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/_helpers"
+	allkeys "github.com/INFURA/go-did/crypto/_allkeys"
 	"github.com/INFURA/go-did/crypto/ed25519"
 	"github.com/INFURA/go-did/crypto/p256"
+	"github.com/INFURA/go-did/crypto/p384"
 	"github.com/INFURA/go-did/crypto/x25519"
 	"github.com/INFURA/go-did/verifications/ed25519"
 	"github.com/INFURA/go-did/verifications/multikey"
@@ -38,16 +39,7 @@ func Decode(identifier string) (did.DID, error) {
 
 	msi := identifier[len(keyPrefix):]
 
-	code, bytes, err := helpers.PublicKeyMultibaseDecode(msi)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-	}
-
-	decoder, ok := decoders[code]
-	if !ok {
-		return nil, fmt.Errorf("%w: unsupported did:key multicodec: 0x%x", did.ErrInvalidDid, code)
-	}
-	pub, err := decoder(bytes)
+	pub, err := allkeys.PublicKeyFromPublicKeyMultibase(msi)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 	}
@@ -56,12 +48,6 @@ func Decode(identifier string) (did.DID, error) {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 	}
 	return d, nil
-}
-
-var decoders = map[uint64]func(b []byte) (crypto.PublicKey, error){
-	ed25519.MultibaseCode: func(b []byte) (crypto.PublicKey, error) { return ed25519.PublicKeyFromBytes(b) },
-	p256.MultibaseCode:    func(b []byte) (crypto.PublicKey, error) { return p256.PublicKeyFromBytes(b) },
-	x25519.MultibaseCode:  func(b []byte) (crypto.PublicKey, error) { return x25519.PublicKeyFromBytes(b) },
 }
 
 func FromPublicKey(pub crypto.PublicKey) (did.DID, error) {
@@ -76,7 +62,7 @@ func FromPublicKey(pub crypto.PublicKey) (did.DID, error) {
 		xmsi := xpub.ToPublicKeyMultibase()
 		d.keyAgreement = x25519vm.NewKeyAgreementKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, xmsi), xpub, d)
 		return d, nil
-	case *p256.PublicKey:
+	case *p256.PublicKey, *p384.PublicKey:
 		d := DidKey{msi: pub.ToPublicKeyMultibase()}
 		mk := multikey.NewMultiKey(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
 		d.signature = mk

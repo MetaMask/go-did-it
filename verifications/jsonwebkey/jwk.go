@@ -9,6 +9,7 @@ import (
 	"github.com/INFURA/go-did/crypto"
 	"github.com/INFURA/go-did/crypto/ed25519"
 	"github.com/INFURA/go-did/crypto/p256"
+	"github.com/INFURA/go-did/crypto/p384"
 	"github.com/INFURA/go-did/crypto/x25519"
 )
 
@@ -22,6 +23,16 @@ type jwk struct {
 
 func (j jwk) MarshalJSON() ([]byte, error) {
 	switch pubkey := j.pubkey.(type) {
+	case ed25519.PublicKey:
+		return json.Marshal(struct {
+			Kty string `json:"kty"`
+			Crv string `json:"crv"`
+			X   string `json:"x"`
+		}{
+			Kty: "OKP",
+			Crv: "Ed25519",
+			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
+		})
 	case *p256.PublicKey:
 		return json.Marshal(struct {
 			Kty string `json:"kty"`
@@ -34,15 +45,17 @@ func (j jwk) MarshalJSON() ([]byte, error) {
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.X.Bytes()),
 			Y:   base64.RawURLEncoding.EncodeToString(pubkey.Y.Bytes()),
 		})
-	case ed25519.PublicKey:
+	case *p384.PublicKey:
 		return json.Marshal(struct {
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
+			Y   string `json:"y"`
 		}{
-			Kty: "OKP",
-			Crv: "Ed25519",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
+			Kty: "EC",
+			Crv: "P-384",
+			X:   base64.RawURLEncoding.EncodeToString(pubkey.X.Bytes()),
+			Y:   base64.RawURLEncoding.EncodeToString(pubkey.Y.Bytes()),
 		})
 	case *x25519.PublicKey:
 		return json.Marshal(struct {
@@ -88,6 +101,9 @@ func (j *jwk) UnmarshalJSON(bytes []byte) error {
 		switch aux["crv"] {
 		case "P-256":
 			j.pubkey, err = p256.PublicKeyFromXY(x, y)
+			return err
+		case "P-384":
+			j.pubkey, err = p384.PublicKeyFromXY(x, y)
 			return err
 
 		default:
