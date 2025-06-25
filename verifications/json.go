@@ -6,6 +6,7 @@ import (
 
 	"github.com/INFURA/go-did"
 	"github.com/INFURA/go-did/verifications/ed25519"
+	"github.com/INFURA/go-did/verifications/jsonwebkey"
 	"github.com/INFURA/go-did/verifications/multikey"
 	"github.com/INFURA/go-did/verifications/x25519"
 )
@@ -26,6 +27,8 @@ func UnmarshalJSON(data []byte) (did.VerificationMethod, error) {
 		res = &multikey.MultiKey{}
 	case x25519vm.Type:
 		res = &x25519vm.KeyAgreementKey2020{}
+	case jsonwebkey.Type:
+		res = &jsonwebkey.JsonWebKey2020{}
 	default:
 		return nil, fmt.Errorf("unknown verification type: %s", aux.Type)
 	}

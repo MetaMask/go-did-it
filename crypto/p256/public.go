@@ -31,6 +31,14 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	return (*PublicKey)(&ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}), nil
 }
 
+// PublicKeyFromXY converts x and y coordinates into a PublicKey.
+func PublicKeyFromXY(x, y *big.Int) (*PublicKey, error) {
+	if !elliptic.P256().IsOnCurve(x, y) {
+		return nil, fmt.Errorf("invalid P-256 public key")
+	}
+	return (*PublicKey)(&ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}), nil
+}
+
 // PublicKeyFromPublicKeyMultibase decodes the public key from its Multibase form
 func PublicKeyFromPublicKeyMultibase(multibase string) (*PublicKey, error) {
 	code, bytes, err := helpers.PublicKeyMultibaseDecode(multibase)

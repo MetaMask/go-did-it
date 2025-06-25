@@ -69,6 +69,10 @@ func (m *MultiKey) UnmarshalJSON(bytes []byte) error {
 	if len(m.id) == 0 {
 		return errors.New("invalid id")
 	}
+	m.controller = aux.Controller
+	if !did.HasValidDIDSyntax(m.controller) {
+		return errors.New("invalid controller")
+	}
 
 	code, pubBytes, err := helpers.PublicKeyMultibaseDecode(aux.PublicKeyMultibase)
 	if err != nil {
@@ -83,10 +87,6 @@ func (m *MultiKey) UnmarshalJSON(bytes []byte) error {
 		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}
 
-	m.controller = aux.Controller
-	if !did.HasValidDIDSyntax(m.controller) {
-		return errors.New("invalid controller")
-	}
 	return nil
 }
 
