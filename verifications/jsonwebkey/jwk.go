@@ -57,6 +57,18 @@ func (j jwk) MarshalJSON() ([]byte, error) {
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.X.Bytes()),
 			Y:   base64.RawURLEncoding.EncodeToString(pubkey.Y.Bytes()),
 		})
+	case *p521.PublicKey:
+		return json.Marshal(struct {
+			Kty string `json:"kty"`
+			Crv string `json:"crv"`
+			X   string `json:"x"`
+			Y   string `json:"y"`
+		}{
+			Kty: "EC",
+			Crv: "P-521",
+			X:   base64.RawURLEncoding.EncodeToString(pubkey.X.Bytes()),
+			Y:   base64.RawURLEncoding.EncodeToString(pubkey.Y.Bytes()),
+		})
 	case *x25519.PublicKey:
 		return json.Marshal(struct {
 			Kty string `json:"kty"`
@@ -104,6 +116,9 @@ func (j *jwk) UnmarshalJSON(bytes []byte) error {
 			return err
 		case "P-384":
 			j.pubkey, err = p384.PublicKeyFromXY(x, y)
+			return err
+		case "P-521":
+			j.pubkey, err = p521.PublicKeyFromXY(x, y)
 			return err
 
 		default:

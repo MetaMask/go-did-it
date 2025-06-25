@@ -10,6 +10,7 @@ import (
 	"github.com/INFURA/go-did/crypto/ed25519"
 	"github.com/INFURA/go-did/crypto/p256"
 	"github.com/INFURA/go-did/crypto/p384"
+	"github.com/INFURA/go-did/crypto/p521"
 	"github.com/INFURA/go-did/crypto/x25519"
 	"github.com/INFURA/go-did/verifications/ed25519"
 	"github.com/INFURA/go-did/verifications/multikey"
@@ -62,7 +63,7 @@ func FromPublicKey(pub crypto.PublicKey) (did.DID, error) {
 		xmsi := xpub.ToPublicKeyMultibase()
 		d.keyAgreement = x25519vm.NewKeyAgreementKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, xmsi), xpub, d)
 		return d, nil
-	case *p256.PublicKey, *p384.PublicKey:
+	case *p256.PublicKey, *p384.PublicKey, *p521.PublicKey:
 		d := DidKey{msi: pub.ToPublicKeyMultibase()}
 		mk := multikey.NewMultiKey(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
 		d.signature = mk
