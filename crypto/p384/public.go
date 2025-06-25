@@ -74,6 +74,20 @@ func PublicKeyFromX509PEM(str string) (*PublicKey, error) {
 	return PublicKeyFromX509DER(block.Bytes)
 }
 
+func (p *PublicKey) XBytes() []byte {
+	// fixed size buffer that can get allocated on the caller's stack after inlining.
+	var buf [coordinateSize]byte
+	(p.k).X.FillBytes(buf[:])
+	return buf[:]
+}
+
+func (p *PublicKey) YBytes() []byte {
+	// fixed size buffer that can get allocated on the caller's stack after inlining.
+	var buf [coordinateSize]byte
+	(p.k).Y.FillBytes(buf[:])
+	return buf[:]
+}
+
 func (p *PublicKey) Equal(other crypto.PublicKey) bool {
 	if other, ok := other.(*PublicKey); ok {
 		return p.k.Equal(other.k)

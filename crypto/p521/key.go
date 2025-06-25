@@ -8,13 +8,16 @@ import (
 
 const (
 	// PublicKeyBytesSize is the size, in bytes, of public keys in raw bytes.
-	PublicKeyBytesSize = 67
+	PublicKeyBytesSize = 1 + coordinateSize
 	// PrivateKeyBytesSize is the size, in bytes, of private keys in raw bytes.
-	PrivateKeyBytesSize = 66
+	PrivateKeyBytesSize = coordinateSize
 	// SignatureBytesSize is the size, in bytes, of signatures in raw bytes.
-	SignatureBytesSize = 132
+	SignatureBytesSize = 2 * coordinateSize
 
 	MultibaseCode = uint64(0x1202)
+
+	// coordinateSize is the size, in bytes, of one coordinate in the elliptic curve.
+	coordinateSize = 66
 )
 
 func GenerateKeyPair() (*PublicKey, *PrivateKey, error) {
