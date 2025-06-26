@@ -6,6 +6,7 @@ import (
 
 	"github.com/INFURA/go-did"
 	"github.com/INFURA/go-did/crypto"
+	"github.com/INFURA/go-did/crypto/jwk"
 )
 
 // Specification: https://www.w3.org/TR/vc-jws-2020/
@@ -34,24 +35,24 @@ func NewJsonWebKey2020(id string, pubkey crypto.PublicKey, controller did.DID) *
 
 func (j JsonWebKey2020) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		ID           string `json:"id"`
-		Type         string `json:"type"`
-		Controller   string `json:"controller"`
-		PublicKeyJWK jwk    `json:"publicKeyJwk"`
+		ID           string        `json:"id"`
+		Type         string        `json:"type"`
+		Controller   string        `json:"controller"`
+		PublicKeyJWK jwk.PublicJwk `json:"publicKeyJwk"`
 	}{
 		ID:           j.ID(),
 		Type:         j.Type(),
 		Controller:   j.Controller(),
-		PublicKeyJWK: jwk{pubkey: j.pubkey},
+		PublicKeyJWK: jwk.PublicJwk{Pubkey: j.pubkey},
 	})
 }
 
 func (j *JsonWebKey2020) UnmarshalJSON(bytes []byte) error {
 	aux := struct {
-		ID           string `json:"id"`
-		Type         string `json:"type"`
-		Controller   string `json:"controller"`
-		PublicKeyJWK jwk    `json:"publicKeyJwk"`
+		ID           string        `json:"id"`
+		Type         string        `json:"type"`
+		Controller   string        `json:"controller"`
+		PublicKeyJWK jwk.PublicJwk `json:"publicKeyJwk"`
 	}{}
 	err := json.Unmarshal(bytes, &aux)
 	if err != nil {
@@ -69,7 +70,7 @@ func (j *JsonWebKey2020) UnmarshalJSON(bytes []byte) error {
 		return errors.New("invalid controller")
 	}
 
-	j.pubkey = aux.PublicKeyJWK.pubkey
+	j.pubkey = aux.PublicKeyJWK.Pubkey
 
 	return nil
 }

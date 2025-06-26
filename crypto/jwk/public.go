@@ -1,16 +1,16 @@
-package jsonwebkey
+package jwk
 
 import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"math/big"
 
 	"github.com/INFURA/go-did/crypto"
 	"github.com/INFURA/go-did/crypto/ed25519"
 	"github.com/INFURA/go-did/crypto/p256"
 	"github.com/INFURA/go-did/crypto/p384"
 	"github.com/INFURA/go-did/crypto/p521"
+	"github.com/INFURA/go-did/crypto/secp256k1"
 	"github.com/INFURA/go-did/crypto/x25519"
 )
 
@@ -18,12 +18,12 @@ import (
 // - https://www.rfc-editor.org/rfc/rfc7517#section-4 (JWK)
 // - https://www.iana.org/assignments/jose/jose.xhtml#web-key-types (key parameters)
 
-type jwk struct {
-	pubkey crypto.PublicKey
+type PublicJwk struct {
+	Pubkey crypto.PublicKey
 }
 
-func (j jwk) MarshalJSON() ([]byte, error) {
-	switch pubkey := j.pubkey.(type) {
+func (pj PublicJwk) MarshalJSON() ([]byte, error) {
+	switch pubkey := pj.Pubkey.(type) {
 	case ed25519.PublicKey:
 		return json.Marshal(struct {
 			Kty string `json:"kty"`
@@ -70,6 +70,18 @@ func (j jwk) MarshalJSON() ([]byte, error) {
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
 			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
 		})
+	case *secp256k1.PublicKey:
+		return json.Marshal(struct {
+			Kty string `json:"kty"`
+			Crv string `json:"crv"`
+			X   string `json:"x"`
+			Y   string `json:"y"`
+		}{
+			Kty: "EC",
+			Crv: "secp256k1",
+			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
+			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
+		})
 	case *x25519.PublicKey:
 		return json.Marshal(struct {
 			Kty string `json:"kty"`
@@ -86,40 +98,35 @@ func (j jwk) MarshalJSON() ([]byte, error) {
 	}
 }
 
-func (j *jwk) UnmarshalJSON(bytes []byte) error {
+func (pj *PublicJwk) UnmarshalJSON(bytes []byte) error {
 	aux := make(map[string]string)
 	err := json.Unmarshal(bytes, &aux)
 	if err != nil {
 		return err
 	}
 
-	bigIntBase64Url := func(s string) (*big.Int, error) {
-		raw, err := base64.RawURLEncoding.DecodeString(s)
-		if err != nil {
-			return nil, err
-		}
-		return new(big.Int).SetBytes(raw), nil
-	}
-
 	switch aux["kty"] {
 	case "EC": // Elliptic curve
-		x, err := bigIntBase64Url(aux["x"])
+		x, err := base64.RawURLEncoding.DecodeString(aux["x"])
 		if err != nil {
 			return fmt.Errorf("invalid x parameter with kty=EC: %w", err)
 		}
-		y, err := bigIntBase64Url(aux["y"])
+		y, err := base64.RawURLEncoding.DecodeString(aux["y"])
 		if err != nil {
 			return fmt.Errorf("invalid y parameter with kty=EC: %w", err)
 		}
 		switch aux["crv"] {
 		case "P-256":
-			j.pubkey, err = p256.PublicKeyFromXY(x, y)
+			pj.Pubkey, err = p256.PublicKeyFromXY(x, y)
 			return err
 		case "P-384":
-			j.pubkey, err = p384.PublicKeyFromXY(x, y)
+			pj.Pubkey, err = p384.PublicKeyFromXY(x, y)
 			return err
 		case "P-521":
-			j.pubkey, err = p521.PublicKeyFromXY(x, y)
+			pj.Pubkey, err = p521.PublicKeyFromXY(x, y)
+			return err
+		case "secp256k1":
+			pj.Pubkey, err = secp256k1.PublicKeyFromXY(x, y)
 			return err
 
 		default:
@@ -136,10 +143,10 @@ func (j *jwk) UnmarshalJSON(bytes []byte) error {
 		}
 		switch aux["crv"] {
 		case "Ed25519":
-			j.pubkey, err = ed25519.PublicKeyFromBytes(x)
+			pj.Pubkey, err = ed25519.PublicKeyFromBytes(x)
 			return err
 		case "X25519":
-			j.pubkey, err = x25519.PublicKeyFromBytes(x)
+			pj.Pubkey, err = x25519.PublicKeyFromBytes(x)
 			return err
 
 		default:
