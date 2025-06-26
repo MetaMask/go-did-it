@@ -34,11 +34,17 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 }
 
 // PublicKeyFromXY converts x and y coordinates into a PublicKey.
-func PublicKeyFromXY(x, y *big.Int) (*PublicKey, error) {
-	if !elliptic.P521().IsOnCurve(x, y) {
+func PublicKeyFromXY(x, y []byte) (*PublicKey, error) {
+	pub := &PublicKey{k: &ecdsa.PublicKey{
+		Curve: elliptic.P521(),
+		X:     new(big.Int).SetBytes(x),
+		Y:     new(big.Int).SetBytes(y),
+	}}
+
+	if !elliptic.P521().IsOnCurve(pub.k.X, pub.k.Y) {
 		return nil, fmt.Errorf("invalid P-521 public key")
 	}
-	return &PublicKey{k: &ecdsa.PublicKey{Curve: elliptic.P521(), X: x, Y: y}}, nil
+	return pub, nil
 }
 
 // PublicKeyFromPublicKeyMultibase decodes the public key from its Multibase form
@@ -128,13 +134,14 @@ func (p *PublicKey) VerifyBytes(message, signature []byte) bool {
 		return false
 	}
 
-	// Hash the message with SHA-512
-	hash := sha512.Sum512(message)
+	// For some reason, the go crypto library in ecdsa.Verify() encodes the signature as ASN.1 to then decode it.
+	// This means it's actually more efficient to encode the signature as ASN.1 here.
+	sigAsn1, err := helpers.EncodeSignatureToASN1(signature[:SignatureBytesSize/2], signature[SignatureBytesSize/2:])
+	if err != nil {
+		return false
+	}
 
-	r := new(big.Int).SetBytes(signature[:SignatureBytesSize/2])
-	s := new(big.Int).SetBytes(signature[SignatureBytesSize/2:])
-
-	return ecdsa.Verify(p.k, hash[:], r, s)
+	return p.VerifyASN1(message, sigAsn1)
 }
 
 func (p *PublicKey) VerifyASN1(message, signature []byte) bool {
