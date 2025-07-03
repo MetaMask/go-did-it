@@ -14,7 +14,7 @@ type DID interface {
 
 	// Document resolves the DID into a DID Document usable for e.g. signature check.
 	// This can be simply expanding the DID into a Document, or involve external resolution.
-	Document() (Document, error)
+	Document(opts ...ResolutionOption) (Document, error)
 
 	// String returns the string representation of the DID.
 	String() string
