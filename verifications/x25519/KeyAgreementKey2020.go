@@ -13,8 +13,8 @@ import (
 // Specification: https://w3c-ccg.github.io/did-method-key/#ed25519-x25519
 
 const (
-	JsonLdContext = "https://w3id.org/security/suites/x25519-2020/v1"
-	Type          = "X25519KeyAgreementKey2020"
+	JsonLdContext2020 = "https://w3id.org/security/suites/x25519-2020/v1"
+	Type2020          = "X25519KeyAgreementKey2020"
 )
 
 var _ did.VerificationMethodKeyAgreement = &KeyAgreementKey2020{}
@@ -81,7 +81,7 @@ func (k KeyAgreementKey2020) ID() string {
 }
 
 func (k KeyAgreementKey2020) Type() string {
-	return Type
+	return Type2020
 }
 
 func (k KeyAgreementKey2020) Controller() string {
@@ -89,13 +89,13 @@ func (k KeyAgreementKey2020) Controller() string {
 }
 
 func (k KeyAgreementKey2020) JsonLdContext() string {
-	return JsonLdContext
+	return JsonLdContext2020
 }
 
-func (k KeyAgreementKey2020) PrivateKeyIsCompatible(local crypto.KeyExchangePrivateKey) bool {
+func (k KeyAgreementKey2020) PrivateKeyIsCompatible(local crypto.PrivateKeyKeyExchange) bool {
 	return local.PublicKeyIsCompatible(k.pubkey)
 }
 
-func (k KeyAgreementKey2020) KeyExchange(local crypto.KeyExchangePrivateKey) ([]byte, error) {
+func (k KeyAgreementKey2020) KeyExchange(local crypto.PrivateKeyKeyExchange) ([]byte, error) {
 	return local.KeyExchange(k.pubkey)
 }
