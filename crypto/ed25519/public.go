@@ -13,7 +13,8 @@ import (
 	"github.com/INFURA/go-did/crypto/internal"
 )
 
-var _ crypto.SigningPublicKey = &PublicKey{}
+var _ crypto.PublicKeySigning = PublicKey{}
+var _ crypto.PublicKeyToBytes = PublicKey{}
 
 type PublicKey struct {
 	k ed25519.PublicKey

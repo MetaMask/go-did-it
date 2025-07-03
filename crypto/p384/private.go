@@ -13,8 +13,9 @@ import (
 	"github.com/INFURA/go-did/crypto"
 )
 
-var _ crypto.SigningPrivateKey = (*PrivateKey)(nil)
-var _ crypto.KeyExchangePrivateKey = (*PrivateKey)(nil)
+var _ crypto.PrivateKeySigning = &PrivateKey{}
+var _ crypto.PrivateKeyToBytes = &PrivateKey{}
+var _ crypto.PrivateKeyKeyExchange = &PrivateKey{}
 
 type PrivateKey struct {
 	k *ecdsa.PrivateKey
@@ -96,7 +97,7 @@ func (p *PrivateKey) ToPKCS8PEM() string {
 }
 
 /*
-	Note: signatures for the crypto.SigningPrivateKey interface assumes SHA384,
+	Note: signatures for the crypto.PrivateKeySigning interface assumes SHA384,
 	which should be correct almost always. If there is a need to use a different
 	hash function, we can add separate functions that have that flexibility.
 */

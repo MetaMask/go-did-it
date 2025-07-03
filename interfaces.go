@@ -111,8 +111,8 @@ type VerificationMethodKeyAgreement interface {
 	VerificationMethod
 
 	// PrivateKeyIsCompatible checks that the given PrivateKey is compatible with this method.
-	PrivateKeyIsCompatible(local crypto.KeyExchangePrivateKey) bool
+	PrivateKeyIsCompatible(local crypto.PrivateKeyKeyExchange) bool
 
 	// KeyExchange computes the shared key using the given PrivateKey.
-	KeyExchange(local crypto.KeyExchangePrivateKey) ([]byte, error)
+	KeyExchange(local crypto.PrivateKeyKeyExchange) ([]byte, error)
 }

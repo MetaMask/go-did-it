@@ -78,8 +78,14 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 	})
 
 	t.Run("Equality", func(t *testing.T) {
+		if !pubImplements[PubT, crypto.PublicKeyToBytes]() {
+			t.Skip("Public key does not implement crypto.PublicKeyToBytes")
+		}
+
 		pub1, priv1, err := harness.GenerateKeyPair()
 		require.NoError(t, err)
+		pub1Tb := (crypto.PublicKey(pub1)).(crypto.PublicKeyToBytes)
+		priv1Tb := (crypto.PrivateKey(priv1)).(crypto.PrivateKeyToBytes)
 		pub2, priv2, err := harness.GenerateKeyPair()
 		require.NoError(t, err)
 
@@ -88,29 +94,35 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 		require.False(t, pub1.Equal(pub2))
 		require.False(t, priv1.Equal(priv2))
 
-		pub1copy, err := harness.PublicKeyFromBytes(pub1.ToBytes())
+		pub1copy, err := harness.PublicKeyFromBytes(pub1Tb.ToBytes())
 		require.NoError(t, err)
 		require.True(t, pub1.Equal(pub1copy))
 		require.True(t, pub1copy.Equal(pub1))
 
-		priv1copy, err := harness.PrivateKeyFromBytes(priv1.ToBytes())
+		priv1copy, err := harness.PrivateKeyFromBytes(priv1Tb.ToBytes())
 		require.NoError(t, err)
 		require.True(t, priv1.Equal(priv1copy))
 		require.True(t, priv1copy.Equal(priv1))
 	})
 
 	t.Run("BytesRoundTrip", func(t *testing.T) {
+		if !pubImplements[PubT, crypto.PublicKeyToBytes]() {
+			t.Skip("Public key does not implement crypto.PublicKeyToBytes")
+		}
+
 		pub, priv, err := harness.GenerateKeyPair()
 		require.NoError(t, err)
+		pubTb := (crypto.PublicKey(pub)).(crypto.PublicKeyToBytes)
+		privTb := (crypto.PrivateKey(priv)).(crypto.PrivateKeyToBytes)
 
-		bytes := pub.ToBytes()
+		bytes := pubTb.ToBytes()
 		stats.bytesPubSize = len(bytes)
 		rtPub, err := harness.PublicKeyFromBytes(bytes)
 		require.NoError(t, err)
 		require.True(t, pub.Equal(rtPub))
 		require.Equal(t, harness.PublicKeyBytesSize, len(bytes))
 
-		bytes = priv.ToBytes()
+		bytes = privTb.ToBytes()
 		stats.bytesPrivSize = len(bytes)
 		rtPriv, err := harness.PrivateKeyFromBytes(bytes)
 		require.NoError(t, err)
@@ -175,11 +187,11 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 		pub, priv, err := harness.GenerateKeyPair()
 		require.NoError(t, err)
 
-		spub, ok := (crypto.PublicKey(pub)).(crypto.SigningPublicKey)
+		spub, ok := (crypto.PublicKey(pub)).(crypto.PublicKeySigning)
 		if !ok {
 			t.Skip("Signature is not implemented")
 		}
-		spriv, ok := (crypto.PrivateKey(priv)).(crypto.SigningPrivateKey)
+		spriv, ok := (crypto.PrivateKey(priv)).(crypto.PrivateKeySigning)
 		if !ok {
 			t.Skip("Signature is not implemented")
 		}
@@ -234,11 +246,11 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 		pub3, _, err := harness.GenerateKeyPair()
 		require.NoError(t, err)
 
-		kePriv1, ok := crypto.PrivateKey(priv1).(crypto.KeyExchangePrivateKey)
+		kePriv1, ok := crypto.PrivateKey(priv1).(crypto.PrivateKeyKeyExchange)
 		if !ok {
 			t.Skip("Key exchange is not implemented")
 		}
-		kePriv2 := crypto.PrivateKey(priv2).(crypto.KeyExchangePrivateKey)
+		kePriv2 := crypto.PrivateKey(priv2).(crypto.PrivateKeyKeyExchange)
 
 		// TODO: test with incompatible public keys
 		require.True(t, kePriv1.PublicKeyIsCompatible(pub2))
@@ -271,20 +283,26 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 	})
 
 	b.Run("Bytes", func(b *testing.B) {
+		if !pubImplements[PubT, crypto.PublicKeyToBytes]() {
+			b.Skip("Public key does not implement crypto.PublicKeyToBytes")
+		}
+
 		b.Run("PubToBytes", func(b *testing.B) {
 			pub, _, err := harness.GenerateKeyPair()
 			require.NoError(b, err)
+			pubTb := (crypto.PublicKey(pub)).(crypto.PublicKeyToBytes)
 			b.ResetTimer()
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				_ = pub.ToBytes()
+				_ = pubTb.ToBytes()
 			}
 		})
 
 		b.Run("PubFromBytes", func(b *testing.B) {
 			pub, _, err := harness.GenerateKeyPair()
 			require.NoError(b, err)
-			buf := pub.ToBytes()
+			pubTb := (crypto.PublicKey(pub)).(crypto.PublicKeyToBytes)
+			buf := pubTb.ToBytes()
 			b.ResetTimer()
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
@@ -295,17 +313,19 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 		b.Run("PrivToBytes", func(b *testing.B) {
 			_, priv, err := harness.GenerateKeyPair()
 			require.NoError(b, err)
+			privTb := (crypto.PrivateKey(priv)).(crypto.PrivateKeyToBytes)
 			b.ResetTimer()
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				_ = priv.ToBytes()
+				_ = privTb.ToBytes()
 			}
 		})
 
 		b.Run("PrivFromBytes", func(b *testing.B) {
 			_, priv, err := harness.GenerateKeyPair()
 			require.NoError(b, err)
-			buf := priv.ToBytes()
+			privTb := (crypto.PrivateKey(priv)).(crypto.PrivateKeyToBytes)
+			buf := privTb.ToBytes()
 			b.ResetTimer()
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
@@ -403,7 +423,7 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 	})
 
 	b.Run("Signatures", func(b *testing.B) {
-		if _, ok := (crypto.PublicKey(*new(PubT))).(crypto.SigningPublicKey); !ok {
+		if !pubImplements[PubT, crypto.PublicKeySigning]() {
 			b.Skip("Signature is not implemented")
 		}
 
@@ -411,7 +431,7 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 			_, priv, err := harness.GenerateKeyPair()
 			require.NoError(b, err)
 
-			spriv := (crypto.PrivateKey(priv)).(crypto.SigningPrivateKey)
+			spriv := (crypto.PrivateKey(priv)).(crypto.PrivateKeySigning)
 
 			b.ResetTimer()
 			b.ReportAllocs()
@@ -425,8 +445,8 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 			pub, priv, err := harness.GenerateKeyPair()
 			require.NoError(b, err)
 
-			spub := (crypto.PublicKey(pub)).(crypto.SigningPublicKey)
-			spriv := (crypto.PrivateKey(priv)).(crypto.SigningPrivateKey)
+			spub := (crypto.PublicKey(pub)).(crypto.PublicKeySigning)
+			spriv := (crypto.PrivateKey(priv)).(crypto.PrivateKeySigning)
 			sig, err := spriv.SignToBytes([]byte("message"))
 			require.NoError(b, err)
 
@@ -442,7 +462,7 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 			_, priv, err := harness.GenerateKeyPair()
 			require.NoError(b, err)
 
-			spriv := (crypto.PrivateKey(priv)).(crypto.SigningPrivateKey)
+			spriv := (crypto.PrivateKey(priv)).(crypto.PrivateKeySigning)
 
 			b.ResetTimer()
 			b.ReportAllocs()
@@ -456,8 +476,8 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 			pub, priv, err := harness.GenerateKeyPair()
 			require.NoError(b, err)
 
-			spub := (crypto.PublicKey(pub)).(crypto.SigningPublicKey)
-			spriv := (crypto.PrivateKey(priv)).(crypto.SigningPrivateKey)
+			spub := (crypto.PublicKey(pub)).(crypto.PublicKeySigning)
+			spriv := (crypto.PrivateKey(priv)).(crypto.PrivateKeySigning)
 			sig, err := spriv.SignToASN1([]byte("message"))
 			require.NoError(b, err)
 
@@ -471,14 +491,14 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 	})
 
 	b.Run("Key exchange", func(b *testing.B) {
-		if _, ok := (crypto.PrivateKey(*new(PrivT))).(crypto.KeyExchangePrivateKey); !ok {
+		if !privImplements[PrivT, crypto.PrivateKeyKeyExchange]() {
 			b.Skip("Key echange is not implemented")
 		}
 
 		b.Run("KeyExchange", func(b *testing.B) {
 			_, priv1, err := harness.GenerateKeyPair()
 			require.NoError(b, err)
-			kePriv1 := (crypto.PrivateKey(priv1)).(crypto.KeyExchangePrivateKey)
+			kePriv1 := (crypto.PrivateKey(priv1)).(crypto.PrivateKeyKeyExchange)
 			pub2, _, err := harness.GenerateKeyPair()
 			require.NoError(b, err)
 
@@ -490,4 +510,14 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 			}
 		})
 	})
+}
+
+func privImplements[PrivT crypto.PrivateKey, wanted crypto.PrivateKey]() bool {
+	_, ok := crypto.PrivateKey(*new(PrivT)).(wanted)
+	return ok
+}
+
+func pubImplements[PubT crypto.PublicKey, wanted crypto.PublicKey]() bool {
+	_, ok := crypto.PublicKey(*new(PubT)).(wanted)
+	return ok
 }

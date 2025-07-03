@@ -13,7 +13,8 @@ import (
 	helpers "github.com/INFURA/go-did/crypto/internal"
 )
 
-var _ crypto.SigningPublicKey = &PublicKey{}
+var _ crypto.PublicKeySigning = &PublicKey{}
+var _ crypto.PublicKeyToBytes = &PublicKey{}
 
 type PublicKey struct {
 	k *ecdsa.PublicKey
@@ -124,7 +125,7 @@ func (p *PublicKey) ToX509PEM() string {
 }
 
 /*
-	Note: signatures for the crypto.SigningPrivateKey interface assumes SHA512,
+	Note: signatures for the crypto.PrivateKeySigning interface assumes SHA512,
 	which should be correct almost always. If there is a need to use a different
 	hash function, we can add separate functions that have that flexibility.
 */

@@ -11,7 +11,7 @@ import (
 	"github.com/INFURA/go-did/crypto/ed25519"
 )
 
-var _ crypto.KeyExchangePrivateKey = (*PrivateKey)(nil)
+var _ crypto.PrivateKeyKeyExchange = (*PrivateKey)(nil)
 
 type PrivateKey struct {
 	k *ecdh.PrivateKey

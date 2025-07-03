@@ -96,16 +96,16 @@ func (m MultiKey) JsonLdContext() string {
 }
 
 func (m MultiKey) Verify(data []byte, sig []byte) (bool, error) {
-	if pub, ok := m.pubkey.(crypto.SigningPublicKey); ok {
+	if pub, ok := m.pubkey.(crypto.PublicKeySigning); ok {
 		return pub.VerifyBytes(data, sig), nil
 	}
 	return false, errors.New("not a signing public key")
 }
 
-func (m MultiKey) PrivateKeyIsCompatible(local crypto.KeyExchangePrivateKey) bool {
+func (m MultiKey) PrivateKeyIsCompatible(local crypto.PrivateKeyKeyExchange) bool {
 	return local.PublicKeyIsCompatible(m.pubkey)
 }
 
-func (m MultiKey) KeyExchange(local crypto.KeyExchangePrivateKey) ([]byte, error) {
+func (m MultiKey) KeyExchange(local crypto.PrivateKeyKeyExchange) ([]byte, error) {
 	return local.KeyExchange(m.pubkey)
 }
