@@ -29,6 +29,13 @@ func PrivateKeyFromBytes(b []byte) (PrivateKey, error) {
 	return PrivateKey{k: append([]byte{}, b...)}, nil
 }
 
+func PrivateKeyFromSeed(seed []byte) (PrivateKey, error) {
+	if len(seed) != ed25519.SeedSize {
+		return PrivateKey{}, fmt.Errorf("invalid ed25519 seed size")
+	}
+	return PrivateKey{k: ed25519.NewKeyFromSeed(seed)}, nil
+}
+
 // PrivateKeyFromPKCS8DER decodes a PKCS#8 DER (binary) encoded private key.
 func PrivateKeyFromPKCS8DER(bytes []byte) (PrivateKey, error) {
 	priv, err := x509.ParsePKCS8PrivateKey(bytes)
