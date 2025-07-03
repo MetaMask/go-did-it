@@ -23,11 +23,11 @@ func TestRoundTrip(t *testing.T) {
 			strDoc: ed25519Doc,
 			assertion: func(t *testing.T, doc *Document) {
 				require.Equal(t, "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK", doc.ID())
-				require.Equal(t, ed25519vm.Type, doc.Authentication()[0].Type())
-				require.Equal(t, ed25519vm.Type, doc.Assertion()[0].Type())
-				require.Equal(t, x25519vm.Type, doc.KeyAgreement()[0].Type())
-				require.Equal(t, ed25519vm.Type, doc.CapabilityInvocation()[0].Type())
-				require.Equal(t, ed25519vm.Type, doc.CapabilityDelegation()[0].Type())
+				require.Equal(t, ed25519vm.Type2020, doc.Authentication()[0].Type())
+				require.Equal(t, ed25519vm.Type2020, doc.Assertion()[0].Type())
+				require.Equal(t, x25519vm.Type2020, doc.KeyAgreement()[0].Type())
+				require.Equal(t, ed25519vm.Type2020, doc.CapabilityInvocation()[0].Type())
+				require.Equal(t, ed25519vm.Type2020, doc.CapabilityDelegation()[0].Type())
 			},
 		},
 		{
