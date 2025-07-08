@@ -29,6 +29,9 @@ type TestHarness[PubT crypto.PublicKey, PrivT crypto.PrivateKey] struct {
 
 	MultibaseCode uint64
 
+	DefaultHash crypto.Hash
+	OtherHashes []crypto.Hash
+
 	PublicKeyBytesSize  int
 	PrivateKeyBytesSize int
 	SignatureBytesSize  int
@@ -198,10 +201,12 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 
 		for _, tc := range []struct {
 			name         string
-			signer       func(msg []byte) ([]byte, error)
-			verifier     func(msg []byte, sig []byte) bool
+			signer       func(msg []byte, opts ...crypto.SigningOption) ([]byte, error)
+			verifier     func(msg []byte, sig []byte, opts ...crypto.SigningOption) bool
 			expectedSize int
 			stats        *int
+			defaultHash  crypto.Hash
+			otherHashes  []crypto.Hash
 		}{
 			{
 				name:         "Bytes signature",
@@ -209,32 +214,59 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 				verifier:     spub.VerifyBytes,
 				expectedSize: harness.SignatureBytesSize,
 				stats:        &stats.sigRawSize,
+				defaultHash:  harness.DefaultHash,
+				otherHashes:  harness.OtherHashes,
 			},
 			{
-				name:     "ASN.1 signature",
-				signer:   spriv.SignToASN1,
-				verifier: spub.VerifyASN1,
-				stats:    &stats.sigAsn1Size,
+				name:        "ASN.1 signature",
+				signer:      spriv.SignToASN1,
+				verifier:    spub.VerifyASN1,
+				stats:       &stats.sigAsn1Size,
+				defaultHash: harness.DefaultHash,
+				otherHashes: harness.OtherHashes,
 			},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				msg := []byte("message")
 
-				sig, err := tc.signer(msg)
+				sigNoParams, err := tc.signer(msg)
 				require.NoError(t, err)
-				require.NotEmpty(t, sig)
+				require.NotEmpty(t, sigNoParams)
+
+				sigDefault, err := tc.signer(msg, crypto.WithSigningHash(tc.defaultHash))
+				require.NoError(t, err)
 
 				if tc.expectedSize > 0 {
-					require.Equal(t, tc.expectedSize, len(sig))
+					require.Equal(t, tc.expectedSize, len(sigNoParams))
 				}
-				*tc.stats = len(sig)
+				*tc.stats = len(sigNoParams)
 
-				valid := tc.verifier(msg, sig)
+				// signatures might be different (i.e. non-deterministic), but they should verify the same way
+				valid := tc.verifier(msg, sigNoParams)
+				require.True(t, valid)
+				valid = tc.verifier(msg, sigDefault)
 				require.True(t, valid)
 
-				valid = tc.verifier([]byte("wrong message"), sig)
+				valid = tc.verifier([]byte("wrong message"), sigNoParams)
+				require.False(t, valid)
+				valid = tc.verifier([]byte("wrong message"), sigDefault)
 				require.False(t, valid)
 			})
+			for _, hash := range tc.otherHashes {
+				t.Run(fmt.Sprintf("%s-%s", tc.name, hash.String()), func(t *testing.T) {
+					msg := []byte("message")
+
+					sig, err := tc.signer(msg)
+					require.NoError(t, err)
+					require.NotEmpty(t, sig)
+
+					valid := tc.verifier(msg, sig)
+					require.True(t, valid)
+
+					valid = tc.verifier([]byte("wrong message"), sig)
+					require.False(t, valid)
+				})
+			}
 		}
 	})
 

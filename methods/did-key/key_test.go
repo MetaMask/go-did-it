@@ -20,8 +20,7 @@ func ExampleGenerateKeyPair() {
 	fmt.Println("Private key:", base64.StdEncoding.EncodeToString(priv.ToBytes()))
 
 	// Make the associated did:key
-	dk, err := didkey.FromPrivateKey(priv)
-	handleErr(err)
+	dk := didkey.FromPrivateKey(priv)
 	fmt.Println("Did:", dk.String())
 
 	// Produce a signature

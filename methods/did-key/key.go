@@ -11,9 +11,14 @@ import (
 	"github.com/INFURA/go-did/crypto/p256"
 	"github.com/INFURA/go-did/crypto/p384"
 	"github.com/INFURA/go-did/crypto/p521"
+	"github.com/INFURA/go-did/crypto/rsa"
+	"github.com/INFURA/go-did/crypto/secp256k1"
 	"github.com/INFURA/go-did/crypto/x25519"
 	"github.com/INFURA/go-did/verifications/ed25519"
+	"github.com/INFURA/go-did/verifications/jsonwebkey"
 	"github.com/INFURA/go-did/verifications/multikey"
+	p256vm "github.com/INFURA/go-did/verifications/p256"
+	secp256k1vm "github.com/INFURA/go-did/verifications/secp256k1"
 	"github.com/INFURA/go-did/verifications/x25519"
 )
 
@@ -23,12 +28,11 @@ func init() {
 	did.RegisterMethod("key", Decode)
 }
 
-var _ did.DID = &DidKey{}
+var _ did.DID = DidKey{}
 
 type DidKey struct {
-	msi          string // method-specific identifier, i.e. "12345" in "did:key:12345"
-	signature    did.VerificationMethodSignature
-	keyAgreement did.VerificationMethodKeyAgreement
+	msi    string // method-specific identifier, i.e. "12345" in "did:key:12345"
+	pubkey crypto.PublicKey
 }
 
 func Decode(identifier string) (did.DID, error) {
@@ -44,38 +48,14 @@ func Decode(identifier string) (did.DID, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 	}
-	d, err := FromPublicKey(pub)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-	}
-	return d, nil
+	return DidKey{msi: msi, pubkey: pub}, nil
 }
 
-func FromPublicKey(pub crypto.PublicKey) (did.DID, error) {
-	switch pub := pub.(type) {
-	case ed25519.PublicKey:
-		d := DidKey{msi: pub.ToPublicKeyMultibase()}
-		d.signature = ed25519vm.NewVerificationKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
-		xpub, err := x25519.PublicKeyFromEd25519(pub)
-		if err != nil {
-			return nil, err
-		}
-		xmsi := xpub.ToPublicKeyMultibase()
-		d.keyAgreement = x25519vm.NewKeyAgreementKey2020(fmt.Sprintf("did:key:%s#%s", d.msi, xmsi), xpub, d)
-		return d, nil
-	case *p256.PublicKey, *p384.PublicKey, *p521.PublicKey:
-		d := DidKey{msi: pub.ToPublicKeyMultibase()}
-		mk := multikey.NewMultiKey(fmt.Sprintf("did:key:%s#%s", d.msi, d.msi), pub, d)
-		d.signature = mk
-		d.keyAgreement = mk
-		return d, nil
-
-	default:
-		return nil, fmt.Errorf("unsupported public key: %T", pub)
-	}
+func FromPublicKey(pub crypto.PublicKey) did.DID {
+	return DidKey{msi: pub.ToPublicKeyMultibase()}
 }
 
-func FromPrivateKey(priv crypto.PrivateKey) (did.DID, error) {
+func FromPrivateKey(priv crypto.PrivateKey) did.DID {
 	return FromPublicKey(priv.Public().(crypto.PublicKey))
 }
 
@@ -83,12 +63,92 @@ func (d DidKey) Method() string {
 	return "key"
 }
 
-func (d DidKey) Document() (did.Document, error) {
-	return document{
-		id:           d,
-		signature:    d.signature,
-		keyAgreement: d.keyAgreement,
-	}, nil
+func (d DidKey) Document(opts ...did.ResolutionOption) (did.Document, error) {
+	params := did.CollectResolutionOpts(opts)
+
+	doc := document{id: d}
+	mainVmId := fmt.Sprintf("did:key:%s#%s", d.msi, d.msi)
+
+	switch pub := d.pubkey.(type) {
+	case ed25519.PublicKey:
+		xpub, err := x25519.PublicKeyFromEd25519(pub)
+		if err != nil {
+			return nil, err
+		}
+		xmsi := xpub.ToPublicKeyMultibase()
+		xVmId := fmt.Sprintf("did:key:%s#%s", d.msi, xmsi)
+
+		switch {
+		case params.HasVerificationMethodHint(jsonwebkey.Type):
+			doc.signature = jsonwebkey.NewJsonWebKey2020(mainVmId, pub, d)
+			doc.keyAgreement = jsonwebkey.NewJsonWebKey2020(xVmId, xpub, d)
+		case params.HasVerificationMethodHint(multikey.Type):
+			doc.signature = multikey.NewMultiKey(mainVmId, pub, d)
+			doc.keyAgreement = multikey.NewMultiKey(xVmId, xpub, d)
+		default:
+			if params.HasVerificationMethodHint(ed25519vm.Type2018) {
+				doc.signature = ed25519vm.NewVerificationKey2018(mainVmId, pub, d)
+			}
+			if params.HasVerificationMethodHint(x25519vm.Type2019) {
+				doc.keyAgreement = x25519vm.NewKeyAgreementKey2019(xVmId, xpub, d)
+			}
+			if doc.signature == nil {
+				doc.signature = ed25519vm.NewVerificationKey2020(mainVmId, pub, d)
+			}
+			if doc.keyAgreement == nil {
+				doc.keyAgreement = x25519vm.NewKeyAgreementKey2020(xVmId, xpub, d)
+			}
+		}
+
+	case *p256.PublicKey:
+		switch {
+		case params.HasVerificationMethodHint(jsonwebkey.Type):
+			jwk := jsonwebkey.NewJsonWebKey2020(mainVmId, pub, d)
+			doc.signature = jwk
+			doc.keyAgreement = jwk
+		case params.HasVerificationMethodHint(p256vm.Type2021):
+			vm := p256vm.NewKey2021(mainVmId, pub, d)
+			doc.signature = vm
+			doc.keyAgreement = vm
+		default:
+			mk := multikey.NewMultiKey(mainVmId, pub, d)
+			doc.signature = mk
+			doc.keyAgreement = mk
+		}
+
+	case *secp256k1.PublicKey:
+		switch {
+		case params.HasVerificationMethodHint(jsonwebkey.Type):
+			jwk := jsonwebkey.NewJsonWebKey2020(mainVmId, pub, d)
+			doc.signature = jwk
+			doc.keyAgreement = jwk
+		case params.HasVerificationMethodHint(secp256k1vm.Type):
+			vm := secp256k1vm.NewVerificationKey2019(mainVmId, pub, d)
+			doc.signature = vm
+			doc.keyAgreement = vm
+		default:
+			mk := multikey.NewMultiKey(mainVmId, pub, d)
+			doc.signature = mk
+			doc.keyAgreement = mk
+		}
+
+	case *p384.PublicKey, *p521.PublicKey, *rsa.PublicKey:
+		switch {
+		case params.HasVerificationMethodHint(jsonwebkey.Type):
+			jwk := jsonwebkey.NewJsonWebKey2020(mainVmId, pub, d)
+			doc.signature = jwk
+			doc.keyAgreement = jwk
+		default:
+			mk := multikey.NewMultiKey(mainVmId, pub, d)
+			doc.signature = mk
+			doc.keyAgreement = mk
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported public key: %T", pub)
+	}
+
+	return doc, nil
 }
 
 func (d DidKey) String() string {
@@ -101,6 +161,9 @@ func (d DidKey) ResolutionIsExpensive() bool {
 
 func (d DidKey) Equal(d2 did.DID) bool {
 	if d2, ok := d2.(DidKey); ok {
+		return d.msi == d2.msi
+	}
+	if d2, ok := d2.(*DidKey); ok {
 		return d.msi == d2.msi
 	}
 	return false
