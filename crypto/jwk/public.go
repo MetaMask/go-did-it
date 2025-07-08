@@ -10,6 +10,7 @@ import (
 	"github.com/INFURA/go-did/crypto/p256"
 	"github.com/INFURA/go-did/crypto/p384"
 	"github.com/INFURA/go-did/crypto/p521"
+	"github.com/INFURA/go-did/crypto/rsa"
 	"github.com/INFURA/go-did/crypto/secp256k1"
 	"github.com/INFURA/go-did/crypto/x25519"
 )
@@ -69,6 +70,16 @@ func (pj PublicJwk) MarshalJSON() ([]byte, error) {
 			Crv: "P-521",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
 			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
+		})
+	case *rsa.PublicKey:
+		return json.Marshal(struct {
+			Kty string `json:"kty"`
+			N   string `json:"n"`
+			E   string `json:"e"`
+		}{
+			Kty: "RSA",
+			N:   base64.RawURLEncoding.EncodeToString(pubkey.NBytes()),
+			E:   base64.RawURLEncoding.EncodeToString(pubkey.EBytes()),
 		})
 	case *secp256k1.PublicKey:
 		return json.Marshal(struct {
@@ -134,7 +145,16 @@ func (pj *PublicJwk) UnmarshalJSON(bytes []byte) error {
 		}
 
 	case "RSA":
-		return fmt.Errorf("not implemented")
+		n, err := base64.RawURLEncoding.DecodeString(aux["n"])
+		if err != nil {
+			return fmt.Errorf("invalid n parameter with kty=RSA: %w", err)
+		}
+		e, err := base64.RawURLEncoding.DecodeString(aux["e"])
+		if err != nil {
+			return fmt.Errorf("invalid e parameter with kty=RSA: %w", err)
+		}
+		pj.Pubkey, err = rsa.PublicKeyFromNE(n, e)
+		return err
 
 	case "OKP": // Octet key pair
 		x, err := base64.RawURLEncoding.DecodeString(aux["x"])
