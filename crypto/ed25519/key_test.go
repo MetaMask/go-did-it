@@ -3,6 +3,7 @@ package ed25519
 import (
 	"testing"
 
+	"github.com/INFURA/go-did/crypto"
 	"github.com/INFURA/go-did/crypto/_testsuite"
 )
 
@@ -17,6 +18,8 @@ var harness = testsuite.TestHarness[PublicKey, PrivateKey]{
 	PrivateKeyFromPKCS8DER:          PrivateKeyFromPKCS8DER,
 	PrivateKeyFromPKCS8PEM:          PrivateKeyFromPKCS8PEM,
 	MultibaseCode:                   MultibaseCode,
+	DefaultHash:                     crypto.SHA512,
+	OtherHashes:                     nil,
 	PublicKeyBytesSize:              PublicKeyBytesSize,
 	PrivateKeyBytesSize:             PrivateKeyBytesSize,
 	SignatureBytesSize:              SignatureBytesSize,

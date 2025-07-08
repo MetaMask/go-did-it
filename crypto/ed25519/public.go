@@ -98,13 +98,23 @@ func (p PublicKey) Equal(other crypto.PublicKey) bool {
 	return false
 }
 
-func (p PublicKey) VerifyBytes(message, signature []byte) bool {
+func (p PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.SigningOption) bool {
+	params := crypto.CollectSigningOptions(opts)
+	if params.Hash != crypto.Hash(0) && params.Hash != crypto.SHA512 {
+		// ed25519 does not support custom hash functions
+		return false
+	}
 	return ed25519.Verify(p.k, message, signature)
 }
 
 // VerifyASN1 verifies a signature with ASN.1 encoding.
 // This ASN.1 encoding uses a BIT STRING, which would be correct for an X.509 certificate.
-func (p PublicKey) VerifyASN1(message, signature []byte) bool {
+func (p PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningOption) bool {
+	params := crypto.CollectSigningOptions(opts)
+	if params.Hash != crypto.Hash(0) && params.Hash != crypto.SHA512 {
+		// ed25519 does not support custom hash functions
+		return false
+	}
 	var s cryptobyte.String = signature
 	var bitString asn1.BitString
 

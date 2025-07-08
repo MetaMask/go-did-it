@@ -3,7 +3,6 @@ package p521
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/sha512"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -124,13 +123,8 @@ func (p *PublicKey) ToX509PEM() string {
 	}))
 }
 
-/*
-	Note: signatures for the crypto.PrivateKeySigning interface assumes SHA512,
-	which should be correct almost always. If there is a need to use a different
-	hash function, we can add separate functions that have that flexibility.
-*/
-
-func (p *PublicKey) VerifyBytes(message, signature []byte) bool {
+// The default signing hash is SHA-512.
+func (p *PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.SigningOption) bool {
 	if len(signature) != SignatureBytesSize {
 		return false
 	}
@@ -142,12 +136,16 @@ func (p *PublicKey) VerifyBytes(message, signature []byte) bool {
 		return false
 	}
 
-	return p.VerifyASN1(message, sigAsn1)
+	return p.VerifyASN1(message, sigAsn1, opts...)
 }
 
-func (p *PublicKey) VerifyASN1(message, signature []byte) bool {
-	// Hash the message with SHA-512
-	hash := sha512.Sum512(message)
+// The default signing hash is SHA-512.
+func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningOption) bool {
+	params := crypto.CollectSigningOptions(opts)
+
+	hasher := params.HashOrDefault(crypto.SHA512).New()
+	hasher.Write(message)
+	hash := hasher.Sum(nil)
 
 	return ecdsa.VerifyASN1(p.k, hash[:], signature)
 }

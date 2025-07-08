@@ -3,6 +3,7 @@ package p256
 import (
 	"testing"
 
+	"github.com/INFURA/go-did/crypto"
 	"github.com/INFURA/go-did/crypto/_testsuite"
 )
 
@@ -17,6 +18,8 @@ var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 	PrivateKeyFromPKCS8DER:          PrivateKeyFromPKCS8DER,
 	PrivateKeyFromPKCS8PEM:          PrivateKeyFromPKCS8PEM,
 	MultibaseCode:                   MultibaseCode,
+	DefaultHash:                     crypto.SHA256,
+	OtherHashes:                     []crypto.Hash{crypto.SHA224, crypto.SHA384, crypto.SHA512},
 	PublicKeyBytesSize:              PublicKeyBytesSize,
 	PrivateKeyBytesSize:             PrivateKeyBytesSize,
 	SignatureBytesSize:              SignatureBytesSize,

@@ -32,10 +32,10 @@ type PublicKeySigning interface {
 	// VerifyBytes checks a signature in the "raw bytes" format.
 	// This format can make some assumptions and may not be what you expect.
 	// Ideally, this format is defined by the same specification as the underlying crypto scheme.
-	VerifyBytes(message, signature []byte) bool
+	VerifyBytes(message, signature []byte, opts ...SigningOption) bool
 
 	// VerifyASN1 checks a signature in the ASN.1 format.
-	VerifyASN1(message, signature []byte) bool
+	VerifyASN1(message, signature []byte, opts ...SigningOption) bool
 }
 
 // Private Key
@@ -69,10 +69,10 @@ type PrivateKeySigning interface {
 	// SignToBytes creates a signature in the "raw bytes" format.
 	// This format can make some assumptions and may not be what you expect.
 	// Ideally, this format is defined by the same specification as the underlying crypto scheme.
-	SignToBytes(message []byte) ([]byte, error)
+	SignToBytes(message []byte, opts ...SigningOption) ([]byte, error)
 
 	// SignToASN1 creates a signature in the ASN.1 format.
-	SignToASN1(message []byte) ([]byte, error)
+	SignToASN1(message []byte, opts ...SigningOption) ([]byte, error)
 }
 
 type PrivateKeyKeyExchange interface {

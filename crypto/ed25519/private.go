@@ -68,13 +68,21 @@ func (p PrivateKey) Public() crypto.PublicKey {
 	return PublicKey{k: p.k.Public().(ed25519.PublicKey)}
 }
 
-func (p PrivateKey) SignToBytes(message []byte) ([]byte, error) {
+func (p PrivateKey) SignToBytes(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
+	params := crypto.CollectSigningOptions(opts)
+	if params.Hash != crypto.Hash(0) && params.Hash != crypto.SHA512 {
+		return nil, fmt.Errorf("ed25519 does not support custom hash functions")
+	}
 	return ed25519.Sign(p.k, message), nil
 }
 
 // SignToASN1 creates a signature with ASN.1 encoding.
 // This ASN.1 encoding uses a BIT STRING, which would be correct for an X.509 certificate.
-func (p PrivateKey) SignToASN1(message []byte) ([]byte, error) {
+func (p PrivateKey) SignToASN1(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
+	params := crypto.CollectSigningOptions(opts)
+	if params.Hash != crypto.Hash(0) && params.Hash != crypto.SHA512 {
+		return nil, fmt.Errorf("ed25519 does not support custom hash functions")
+	}
 	sig := ed25519.Sign(p.k, message)
 	var b cryptobyte.Builder
 	b.AddASN1BitString(sig)

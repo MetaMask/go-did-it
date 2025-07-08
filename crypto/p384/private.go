@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha512"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -96,15 +95,13 @@ func (p *PrivateKey) ToPKCS8PEM() string {
 	}))
 }
 
-/*
-	Note: signatures for the crypto.PrivateKeySigning interface assumes SHA384,
-	which should be correct almost always. If there is a need to use a different
-	hash function, we can add separate functions that have that flexibility.
-*/
+// The default signing hash is SHA-384.
+func (p *PrivateKey) SignToBytes(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
+	params := crypto.CollectSigningOptions(opts)
 
-func (p *PrivateKey) SignToBytes(message []byte) ([]byte, error) {
-	// Hash the message with SHA-384
-	hash := sha512.Sum384(message)
+	hasher := params.HashOrDefault(crypto.SHA384).New()
+	hasher.Write(message)
+	hash := hasher.Sum(nil)
 
 	r, s, err := ecdsa.Sign(rand.Reader, p.k, hash[:])
 	if err != nil {
@@ -118,9 +115,13 @@ func (p *PrivateKey) SignToBytes(message []byte) ([]byte, error) {
 	return sig, nil
 }
 
-func (p *PrivateKey) SignToASN1(message []byte) ([]byte, error) {
-	// Hash the message with SHA-384
-	hash := sha512.Sum384(message)
+// The default signing hash is SHA-384.
+func (p *PrivateKey) SignToASN1(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
+	params := crypto.CollectSigningOptions(opts)
+
+	hasher := params.HashOrDefault(crypto.SHA384).New()
+	hasher.Write(message)
+	hash := hasher.Sum(nil)
 
 	return ecdsa.SignASN1(rand.Reader, p.k, hash[:])
 }
