@@ -1,14 +1,16 @@
 package rsa
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/INFURA/go-did/crypto"
 	"github.com/INFURA/go-did/crypto/_testsuite"
 )
 
-var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
+var harness2048 = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 	Name:                            "rsa-2048",
 	GenerateKeyPair:                 func() (*PublicKey, *PrivateKey, error) { return GenerateKeyPair(2048) },
 	PublicKeyFromPublicKeyMultibase: PublicKeyFromPublicKeyMultibase,
@@ -17,15 +19,58 @@ var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 	PrivateKeyFromPKCS8DER:          PrivateKeyFromPKCS8DER,
 	PrivateKeyFromPKCS8PEM:          PrivateKeyFromPKCS8PEM,
 	MultibaseCode:                   MultibaseCode,
-	SignatureBytesSize:              123456,
+	DefaultHash:                     crypto.SHA256,
+	OtherHashes:                     []crypto.Hash{crypto.SHA384, crypto.SHA512},
 }
 
-func TestSuite(t *testing.T) {
-	testsuite.TestSuite(t, harness)
+var harness3072 = testsuite.TestHarness[*PublicKey, *PrivateKey]{
+	Name:                            "rsa-3072",
+	GenerateKeyPair:                 func() (*PublicKey, *PrivateKey, error) { return GenerateKeyPair(3072) },
+	PublicKeyFromPublicKeyMultibase: PublicKeyFromPublicKeyMultibase,
+	PublicKeyFromX509DER:            PublicKeyFromX509DER,
+	PublicKeyFromX509PEM:            PublicKeyFromX509PEM,
+	PrivateKeyFromPKCS8DER:          PrivateKeyFromPKCS8DER,
+	PrivateKeyFromPKCS8PEM:          PrivateKeyFromPKCS8PEM,
+	MultibaseCode:                   MultibaseCode,
+	DefaultHash:                     crypto.SHA384,
+	OtherHashes:                     []crypto.Hash{crypto.SHA512},
 }
 
-func BenchmarkSuite(b *testing.B) {
-	testsuite.BenchSuite(b, harness)
+var harness4096 = testsuite.TestHarness[*PublicKey, *PrivateKey]{
+	Name:                            "rsa-4096",
+	GenerateKeyPair:                 func() (*PublicKey, *PrivateKey, error) { return GenerateKeyPair(4096) },
+	PublicKeyFromPublicKeyMultibase: PublicKeyFromPublicKeyMultibase,
+	PublicKeyFromX509DER:            PublicKeyFromX509DER,
+	PublicKeyFromX509PEM:            PublicKeyFromX509PEM,
+	PrivateKeyFromPKCS8DER:          PrivateKeyFromPKCS8DER,
+	PrivateKeyFromPKCS8PEM:          PrivateKeyFromPKCS8PEM,
+	MultibaseCode:                   MultibaseCode,
+	DefaultHash:                     crypto.SHA512,
+	OtherHashes:                     []crypto.Hash{},
+}
+
+func TestSuite2048(t *testing.T) {
+	testsuite.TestSuite(t, harness2048)
+}
+
+func TestSuite3072(t *testing.T) {
+	testsuite.TestSuite(t, harness3072)
+}
+
+func TestSuite4096(t *testing.T) {
+	testsuite.TestSuite(t, harness4096)
+}
+
+func BenchmarkSuite2048(b *testing.B) {
+	testsuite.BenchSuite(b, harness2048)
+}
+
+func BenchmarkSuite3072(b *testing.B) {
+	testsuite.BenchSuite(b, harness3072)
+}
+
+func BenchmarkSuite4096(b *testing.B) {
+	testsuite.BenchSuite(b, harness4096)
 }
 
 func TestPublicKeyX509(t *testing.T) {
@@ -86,4 +131,34 @@ XnARctVkIcUYORcYwvuu9meDkw==
 
 	rt := priv.ToPKCS8PEM()
 	require.Equal(t, pem, rt)
+}
+
+func TestSignatureASN1(t *testing.T) {
+	// openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048
+	// openssl pkey -in private.pem -pubout -out public.pem
+	// echo -n "message" | openssl dgst -sha256 -sign private.pem -out signature.der
+	// echo -n "message" | openssl dgst -sha256 -verify public.pem -signature signature.der
+
+	pubPem := `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmtKXCTkUDcKbZGsEEUTo
+16xblCyh6zmA8pXVGgmC66QiTNdKzxdwTykXTDs9sEre9ea34h2M7dwrA1weAmBu
+grAXe0QmIXIqjFKRKdfty09yWVtKF7FGwEMlhKftWC225R+tRuLwbKG4cCSzHxcf
+JfqCYqGDM7BrF39ilQzFYw5sUiWn3ppRPWa2oEV3cw19zFnHMbEHIQIdFyCcIv5x
+GUSJ6sJVp0YvsODsZbA+Zyb2UMRfXD8fDHm9bJQCY0x/wGJLfvJmWtZLciwc145U
+BN3SezY30NviZtZBKWjXgb6gL69L94U10/8ghmA30DY7bKs4+/7R2nOw91CO4rCo
+1QIDAQAB
+-----END PUBLIC KEY-----
+`
+	pub, err := PublicKeyFromX509PEM(pubPem)
+	require.NoError(t, err)
+
+	b64sig := `BdvBkZWxIVE2mfM48H1WlOs3k9NzyS4oUxAMOZWNNTYDU6+DLbhZ7Hnt3rRKX3m6f1cX5DCsHcPC
+6sNtsR8Xp9u09GWCN/K28fF7Pcl0E87MdhAUL7jKNK5bb1XWx/GCUmoKXRZiR/gA10iB2Lmjd1MC
+HItTCig91gmFm5PO67u9yM+cqE2nGyOh13/kT5Np9MUyaE9dkjoQGum23Ta6m7v0atWsPhO5aVVI
+76vLwGhYAhQe22RxBlPRXyRInr0EnVgHQOe211o//erPZYQAm+N1kK+yjV8NbPxJX+r5sYUE19NL
+MCB+kOgWk51uJwuiuHlffGMBPxku/t+skxI7Bw==`
+	sig, err := base64.StdEncoding.DecodeString(b64sig)
+	require.NoError(t, err)
+
+	require.True(t, pub.VerifyASN1([]byte("message"), sig))
 }

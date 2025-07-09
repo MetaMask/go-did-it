@@ -7,12 +7,14 @@ import (
 	"fmt"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 
 	"github.com/INFURA/go-did/crypto"
 	helpers "github.com/INFURA/go-did/crypto/internal"
 )
 
-var _ crypto.PublicKeySigning = &PublicKey{}
+var _ crypto.PublicKeySigningBytes = &PublicKey{}
+var _ crypto.PublicKeySigningASN1 = &PublicKey{}
 
 type PublicKey struct {
 	k *secp256k1.PublicKey
@@ -166,33 +168,39 @@ func (p *PublicKey) ToX509PEM() string {
 	}))
 }
 
-/*
-	Note: signatures for the crypto.PrivateKeySigning interface assumes SHA256,
-	which should be correct almost always. If there is a need to use a different
-	hash function, we can add separate functions that have that flexibility.
-*/
-
+// The default signing hash is SHA-256.
 func (p *PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.SigningOption) bool {
-	// if len(signature) != SignatureBytesSize {
-	// 	return false
-	// }
-	//
-	// // Hash the message with SHA-256
-	// hash := sha256.Sum256(message)
-	//
-	// r := new(big.Int).SetBytes(signature[:SignatureBytesSize/2])
-	// s := new(big.Int).SetBytes(signature[SignatureBytesSize/2:])
-	//
-	// return ecdsa.Verify(p.k, hash[:], r, s)
-	panic("not implemented")
+	if len(signature) != SignatureBytesSize {
+		return false
+	}
+
+	params := crypto.CollectSigningOptions(opts)
+
+	hasher := params.HashOrDefault(crypto.SHA256).New()
+	hasher.Write(message)
+	hash := hasher.Sum(nil)
+
+	var r, s secp256k1.ModNScalar
+	r.SetByteSlice(signature[:32])
+	s.SetByteSlice(signature[32:])
+
+	return ecdsa.NewSignature(&r, &s).Verify(hash, p.k)
 }
 
+// The default signing hash is SHA-256.
 func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningOption) bool {
-	// // Hash the message with SHA-256
-	// hash := sha256.Sum256(message)
-	//
-	// return ecdsa.VerifyASN1(p.k, hash[:], signature)
-	panic("not implemented")
+	params := crypto.CollectSigningOptions(opts)
+
+	hasher := params.HashOrDefault(crypto.SHA256).New()
+	hasher.Write(message)
+	hash := hasher.Sum(nil)
+
+	sig, err := ecdsa.ParseDERSignature(signature)
+	if err != nil {
+		return false
+	}
+
+	return sig.Verify(hash, p.k)
 }
 
 func must[T any](v T, err error) T {

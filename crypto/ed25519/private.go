@@ -11,7 +11,8 @@ import (
 	"github.com/INFURA/go-did/crypto"
 )
 
-var _ crypto.PrivateKeySigning = &PrivateKey{}
+var _ crypto.PrivateKeySigningBytes = &PrivateKey{}
+var _ crypto.PrivateKeySigningASN1 = &PrivateKey{}
 var _ crypto.PrivateKeyToBytes = &PrivateKey{}
 
 type PrivateKey struct {

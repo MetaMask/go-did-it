@@ -12,7 +12,8 @@ import (
 	"github.com/INFURA/go-did/crypto"
 )
 
-var _ crypto.PrivateKeySigning = &PrivateKey{}
+var _ crypto.PrivateKeySigningBytes = &PrivateKey{}
+var _ crypto.PrivateKeySigningASN1 = &PrivateKey{}
 var _ crypto.PrivateKeyKeyExchange = &PrivateKey{}
 
 type PrivateKey struct {
@@ -179,17 +180,28 @@ func (p *PrivateKey) SignToBytes(message []byte, opts ...crypto.SigningOption) (
 	hasher.Write(message)
 	hash := hasher.Sum(nil)
 
-	// TODO
-	return ecdsa.SignCompact(p.k, hash[:], false), nil
+	sig := ecdsa.Sign(p.k, hash)
+	r := sig.R()
+	s := sig.S()
+
+	res := make([]byte, SignatureBytesSize)
+	r.PutBytesUnchecked(res[:SignatureBytesSize/2])
+	s.PutBytesUnchecked(res[SignatureBytesSize/2:])
+
+	return res, nil
 }
 
 // The default signing hash is SHA-256.
 func (p *PrivateKey) SignToASN1(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
-	// // Hash the message with SHA-256
-	// hash := sha256.Sum256(message)
-	//
-	// return ecdsa.SignASN1(rand.Reader, p.k.ToECDSA(), hash[:])
-	return nil, fmt.Errorf("not implemented")
+	params := crypto.CollectSigningOptions(opts)
+
+	hasher := params.HashOrDefault(crypto.SHA256).New()
+	hasher.Write(message)
+	hash := hasher.Sum(nil)
+
+	sig := ecdsa.Sign(p.k, hash)
+
+	return sig.Serialize(), nil
 }
 
 func (p *PrivateKey) PublicKeyIsCompatible(remote crypto.PublicKey) bool {
@@ -200,19 +212,8 @@ func (p *PrivateKey) PublicKeyIsCompatible(remote crypto.PublicKey) bool {
 }
 
 func (p *PrivateKey) KeyExchange(remote crypto.PublicKey) ([]byte, error) {
-	// if remote, ok := remote.(*PublicKey); ok {
-	// 	// First, we need to convert the ECDSA (signing only) to the equivalent ECDH keys
-	// 	ecdhPriv, err := p.k.ECDH()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	ecdhPub, err := remote.k.ECDH()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	//
-	// 	return ecdhPriv.ECDH(ecdhPub)
-	// }
-	// return nil, fmt.Errorf("incompatible public key")
-	panic("not implemented")
+	if remote, ok := remote.(*PublicKey); ok {
+		return secp256k1.GenerateSharedSecret(p.k, remote.k), nil
+	}
+	return nil, fmt.Errorf("incompatible public key")
 }

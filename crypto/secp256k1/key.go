@@ -12,7 +12,7 @@ const (
 	// PrivateKeyBytesSize is the size, in bytes, of private keys in raw bytes.
 	PrivateKeyBytesSize = secp256k1.PrivKeyBytesLen
 	// SignatureBytesSize is the size, in bytes, of signatures in raw bytes.
-	SignatureBytesSize = 123456
+	SignatureBytesSize = 64
 
 	MultibaseCode = uint64(0xe7)
 

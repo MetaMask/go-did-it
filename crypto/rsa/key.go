@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+
+	"github.com/INFURA/go-did/crypto"
 )
 
 const (
@@ -28,3 +30,14 @@ const (
 	pemPubBlockType  = "PUBLIC KEY"
 	pemPrivBlockType = "PRIVATE KEY"
 )
+
+func defaultSigHash(keyLen int) crypto.Hash {
+	switch {
+	case keyLen <= 2048:
+		return crypto.SHA256
+	case keyLen <= 3072:
+		return crypto.SHA384
+	default:
+		return crypto.SHA512
+	}
+}

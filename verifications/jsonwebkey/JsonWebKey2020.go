@@ -94,7 +94,7 @@ func (j JsonWebKey2020) JsonLdContext() string {
 }
 
 func (j JsonWebKey2020) Verify(data []byte, sig []byte) (bool, error) {
-	if pub, ok := j.pubkey.(crypto.PublicKeySigning); ok {
+	if pub, ok := j.pubkey.(crypto.PublicKeySigningBytes); ok {
 		return pub.VerifyBytes(data, sig), nil
 	}
 	return false, errors.New("not a signing public key")

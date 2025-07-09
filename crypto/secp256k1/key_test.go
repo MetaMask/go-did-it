@@ -1,6 +1,7 @@
 package secp256k1
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -79,4 +80,26 @@ Uwyag4V8qWsP8e5ZSOOXDSYMplwbsAzsko9NYw4Jy9RHYHwFQ7dV
 		// looking for panics
 		_, _ = PrivateKeyFromPKCS8PEM(data)
 	})
+}
+
+func TestSignatureASN1(t *testing.T) {
+	// openssl ecparam -genkey -name secp256k1 -noout -out private.pem
+	// openssl ec -in private.pem -pubout -out public.pem
+	// echo -n "message" | openssl dgst -sha256 -sign private.pem -out signature.der
+	// echo -n "message" | openssl dgst -sha256 -verify public.pem -signature signature.der
+
+	pubPem := `-----BEGIN PUBLIC KEY-----
+MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEszL1+ZFqUMAHjLAyzMW7xMBPZek/8cNj
+1qI7EgQooB3f8Sh7JwvXu8cosRnjjvYVvS7OliRsbvuceCQ7HBC4fA==
+-----END PUBLIC KEY-----
+`
+	pub, err := PublicKeyFromX509PEM(pubPem)
+	require.NoError(t, err)
+
+	b64sig := `MEYCIQDv5SLy768FbOafzDlrxIeeoEn7tKpYBSK6WcKaOZ6AJAIhAKXV6VAwiPq4uk9TpGyFN5JK
+8jZPrQ7hdRR5veKKDX2w`
+	sig, err := base64.StdEncoding.DecodeString(b64sig)
+	require.NoError(t, err)
+
+	require.True(t, pub.VerifyASN1([]byte("message"), sig))
 }

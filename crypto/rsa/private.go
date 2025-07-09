@@ -1,6 +1,8 @@
 package rsa
 
 import (
+	stdcrypto "crypto"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -10,7 +12,7 @@ import (
 	"github.com/INFURA/go-did/crypto"
 )
 
-var _ crypto.PrivateKeySigning = &PrivateKey{}
+var _ crypto.PrivateKeySigningASN1 = &PrivateKey{}
 
 type PrivateKey struct {
 	k *rsa.PrivateKey
@@ -148,34 +150,18 @@ func (p *PrivateKey) ToPKCS8PEM() string {
 	}))
 }
 
-func (p *PrivateKey) SignToBytes(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
+// SignToASN1 produce a PKCS#1 v1.5 signature.
+// The default signing hash is:
+// - SHA-256 for keys of length 2048 bits and under
+// - SHA-384 for keys of length 3072 bits and under
+// - SHA-512 for higher key length
 func (p *PrivateKey) SignToASN1(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
-	return nil, fmt.Errorf("not implemented")
-}
+	params := crypto.CollectSigningOptions(opts)
 
-// func (p *PrivateKey) PublicKeyIsCompatible(remote crypto.PublicKey) bool {
-// 	if _, ok := remote.(*PublicKey); ok {
-// 		return true
-// 	}
-// 	return false
-// }
-//
-// func (p *PrivateKey) KeyExchange(remote crypto.PublicKey) ([]byte, error) {
-// 	if remote, ok := remote.(*PublicKey); ok {
-// 		// First, we need to convert the ECDSA (signing only) to the equivalent ECDH keys
-// 		ecdhPriv, err := p.k.ECDH()
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		ecdhPub, err := remote.k.ECDH()
-// 		if err != nil {
-// 			return nil, err
-// 		}
-//
-// 		return ecdhPriv.ECDH(ecdhPub)
-// 	}
-// 	return nil, fmt.Errorf("incompatible public key")
-// }
+	hashCode := params.HashOrDefault(defaultSigHash(p.k.N.BitLen()))
+	hasher := hashCode.New()
+	hasher.Write(message)
+	hash := hasher.Sum(nil)
+
+	return rsa.SignPKCS1v15(rand.Reader, p.k, stdcrypto.Hash(hashCode), hash)
+}

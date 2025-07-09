@@ -1,6 +1,7 @@
 package rsa
 
 import (
+	stdcrypto "crypto"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -11,7 +12,7 @@ import (
 	helpers "github.com/INFURA/go-did/crypto/internal"
 )
 
-var _ crypto.PublicKeySigning = &PublicKey{}
+var _ crypto.PublicKeySigningASN1 = &PublicKey{}
 
 type PublicKey struct {
 	k *rsa.PublicKey
@@ -125,10 +126,19 @@ func (p *PublicKey) ToX509PEM() string {
 	}))
 }
 
-func (p *PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.SigningOption) bool {
-	return false
-}
-
+// VerifyASN1 verifies a PKCS#1 v1.5 signature.
+// The default signing hash is:
+// - SHA-256 for keys of length 2048 bits and under
+// - SHA-384 for keys of length 3072 bits and under
+// - SHA-512 for higher key length
 func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningOption) bool {
-	return false
+	params := crypto.CollectSigningOptions(opts)
+
+	hashCode := params.HashOrDefault(defaultSigHash(p.k.N.BitLen()))
+	hasher := hashCode.New()
+	hasher.Write(message)
+	hash := hasher.Sum(nil)
+
+	err := rsa.VerifyPKCS1v15(p.k, stdcrypto.Hash(hashCode), hash, signature)
+	return err == nil
 }
