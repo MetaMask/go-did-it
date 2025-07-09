@@ -52,7 +52,7 @@ func Decode(identifier string) (did.DID, error) {
 }
 
 func FromPublicKey(pub crypto.PublicKey) did.DID {
-	return DidKey{msi: pub.ToPublicKeyMultibase()}
+	return DidKey{msi: pub.ToPublicKeyMultibase(), pubkey: pub}
 }
 
 func FromPrivateKey(priv crypto.PrivateKey) did.DID {

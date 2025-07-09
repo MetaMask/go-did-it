@@ -55,6 +55,16 @@ func TestMustParseDIDKey(t *testing.T) {
 	})
 }
 
+func TestFromPublicKey(t *testing.T) {
+	pub, _, err := ed25519.GenerateKeyPair()
+	require.NoError(t, err)
+	dk := didkey.FromPublicKey(pub)
+	require.Equal(t, "did:key:"+pub.ToPublicKeyMultibase(), dk.String())
+	doc, err := dk.Document()
+	require.NoError(t, err)
+	require.NotEmpty(t, doc)
+}
+
 func TestEquivalence(t *testing.T) {
 	did0A, err := did.Parse("did:key:z6Mkod5Jr3yd5SC7UDueqK4dAAw5xYJYjksy722tA9Boxc4z")
 	require.NoError(t, err)
