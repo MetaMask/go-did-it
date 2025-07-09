@@ -53,7 +53,7 @@ func TestRoundTrip(t *testing.T) {
 
 			roundtrip, err := json.Marshal(doc)
 			require.NoError(t, err)
-			require.JSONEq(t, tc.strDoc, string(roundtrip))
+			requireDocEqual(t, tc.strDoc, string(roundtrip))
 		})
 	}
 }
@@ -197,3 +197,31 @@ const jsonWebKeyDoc = `
   ]
 }
 `
+
+// requireDocEqual compare two DID JSON document but ignore the ordering inside arrays of VerificationMethods
+func requireDocEqual(t *testing.T, expected, actual string) {
+	propsExpected := map[string]json.RawMessage{}
+	require.NoError(t, json.Unmarshal([]byte(expected), &propsExpected))
+	propsActual := map[string]json.RawMessage{}
+	require.NoError(t, json.Unmarshal([]byte(actual), &propsActual))
+
+	require.Equal(t, len(propsExpected), len(propsActual))
+
+	for k, v := range propsExpected {
+		switch k {
+		case "authentication",
+			"assertionMethod",
+			"capabilityDelegation",
+			"capabilityInvocation",
+			"verificationMethod":
+			var arrayExpected, arrayActual any
+			require.NoError(t, json.Unmarshal(propsExpected[k], &arrayExpected))
+			require.NoError(t, json.Unmarshal(v, &arrayActual))
+			require.ElementsMatch(t, arrayExpected, arrayActual, "--> on property \"%s\"", k)
+			delete(propsExpected, k)
+			delete(propsActual, k)
+		default:
+			require.JSONEq(t, string(v), string(propsActual[k]), "--> on property \"%s\"", k)
+		}
+	}
+}
