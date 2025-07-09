@@ -43,7 +43,11 @@ func PrivateKeyFromPKCS8DER(bytes []byte) (PrivateKey, error) {
 	if err != nil {
 		return PrivateKey{}, err
 	}
-	return PrivateKey{k: priv.(ed25519.PrivateKey)}, nil
+	edPriv, ok := priv.(ed25519.PrivateKey)
+	if !ok {
+		return PrivateKey{}, fmt.Errorf("invalid private key type")
+	}
+	return PrivateKey{k: edPriv}, nil
 }
 
 // PrivateKeyFromPKCS8PEM decodes an PKCS#8 PEM (string) encoded private key.
