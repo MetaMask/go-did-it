@@ -74,7 +74,11 @@ func PublicKeyFromX509DER(bytes []byte) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PublicKey{k: pub.(*rsa.PublicKey)}, nil
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("invalid public key")
+	}
+	return &PublicKey{k: rsaPub}, nil
 }
 
 // PublicKeyFromX509PEM decodes an X.509 PEM (string) encoded public key.

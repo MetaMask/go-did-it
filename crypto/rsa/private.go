@@ -54,7 +54,10 @@ func PrivateKeyFromPKCS8DER(bytes []byte) (*PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	rsaPriv := priv.(*rsa.PrivateKey)
+	rsaPriv, ok := priv.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("invalid private key type")
+	}
 	return &PrivateKey{k: rsaPriv}, nil
 }
 
