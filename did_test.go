@@ -9,7 +9,7 @@ import (
 
 	"github.com/ucan-wg/go-did-it"
 	"github.com/ucan-wg/go-did-it/crypto/x25519"
-	_ "github.com/ucan-wg/go-did-it/methods/did-key"
+	_ "github.com/ucan-wg/go-did-it/verifiers/did-key"
 )
 
 func Example_signature() {
@@ -21,7 +21,7 @@ func Example_signature() {
 	// 2) Resolve to the DID Document
 	doc, _ := d.Document()
 
-	// 3) Use the appropriate verification method (ex: verify a signature for authentication purpose)
+	// 3) Use the appropriate set of verification methods (ex: verify a signature for authentication purpose)
 	sig, _ := base64.StdEncoding.DecodeString("nhpkr5a7juUM2eDpDRSJVdEE++0SYqaZXHtuvyafVFUx8zsOdDSrij+vHmd/ARwUOmi/ysmSD+b3K9WTBtmmBQ==")
 	if ok, method := did.TryAllVerify(doc.Authentication(), []byte("message"), sig); ok {
 		fmt.Println("Signature is valid, verified with method:", method.Type(), method.ID())

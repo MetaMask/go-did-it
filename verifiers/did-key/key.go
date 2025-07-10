@@ -14,12 +14,12 @@ import (
 	"github.com/ucan-wg/go-did-it/crypto/rsa"
 	"github.com/ucan-wg/go-did-it/crypto/secp256k1"
 	"github.com/ucan-wg/go-did-it/crypto/x25519"
-	"github.com/ucan-wg/go-did-it/verifications/ed25519"
-	"github.com/ucan-wg/go-did-it/verifications/jsonwebkey"
-	"github.com/ucan-wg/go-did-it/verifications/multikey"
-	p256vm "github.com/ucan-wg/go-did-it/verifications/p256"
-	secp256k1vm "github.com/ucan-wg/go-did-it/verifications/secp256k1"
-	"github.com/ucan-wg/go-did-it/verifications/x25519"
+	"github.com/ucan-wg/go-did-it/verifiers/_methods/ed25519"
+	"github.com/ucan-wg/go-did-it/verifiers/_methods/jsonwebkey"
+	"github.com/ucan-wg/go-did-it/verifiers/_methods/multikey"
+	"github.com/ucan-wg/go-did-it/verifiers/_methods/p256"
+	"github.com/ucan-wg/go-did-it/verifiers/_methods/secp256k1"
+	"github.com/ucan-wg/go-did-it/verifiers/_methods/x25519"
 )
 
 // Specification: https://w3c-ccg.github.io/did-method-key/

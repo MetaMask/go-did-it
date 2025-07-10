@@ -32,3 +32,126 @@ Built with ❤️ by [Consensys](https://consensys.io/).
 ## Concepts
 
 ![`go-did-it` concepts](.github/concepts.png)
+
+## Installation
+
+```bash
+go get github.com/ucan-wg/go-did-it
+```
+
+## Usage
+
+### Signature verification
+
+On the verifier (~server) side, you can parse and resolve DIDs and perform signature verification:
+
+```go
+package main
+
+import (
+	"encoding/base64"
+	"fmt"
+
+	"github.com/ucan-wg/go-did-it"
+	
+	// 0) Import the methods you want to support
+	_ "github.com/ucan-wg/go-did-it/verifiers/did-key"
+)
+
+func main() {
+	// 1) Parse the DID string into a DID object
+	d, _ := did.Parse("did:key:z6MknwcywUtTy2ADJQ8FH1GcSySKPyKDmyzT4rPEE84XREse")
+
+	// 2) Resolve to the DID Document
+	doc, _ := d.Document()
+
+	// 3) Use the appropriate set of verification methods (ex: verify a signature for authentication purpose)
+	sig, _ := base64.StdEncoding.DecodeString("nhpkr5a7juUM2eDpDRSJVdEE++0SYqaZXHtuvyafVFUx8zsOdDSrij+vHmd/ARwUOmi/ysmSD+b3K9WTBtmmBQ==")
+	if ok, method := did.TryAllVerify(doc.Authentication(), []byte("message"), sig); ok {
+		fmt.Println("Signature is valid, verified with method:", method.Type(), method.ID())
+	} else {
+		fmt.Println("Signature is invalid")
+	}
+
+	// Output: Signature is valid, verified with method: Ed25519VerificationKey2020 did:key:z6MknwcywUtTy2ADJQ8FH1GcSySKPyKDmyzT4rPEE84XREse#z6MknwcywUtTy2ADJQ8FH1GcSySKPyKDmyzT4rPEE84XREse
+}
+```
+
+### Key agreement
+
+You can also compute a shared secret to bootstrap an encrypted communication protocol.
+
+> **⚠️ Security Warning**: The shared secret returned by key agreement should NOT be used directly as an encryption key. It must be processed through a Key Derivation Function (KDF) such as HKDF before being used in cryptographic protocols. Using the raw shared secret directly can lead to security vulnerabilities.
+
+```go
+package main
+
+import (
+	"encoding/base64"
+	"fmt"
+
+	"github.com/ucan-wg/go-did-it"
+	"github.com/ucan-wg/go-did-it/crypto/x25519"
+
+	// 0) Import the methods you want to support
+	_ "github.com/ucan-wg/go-did-it/verifiers/did-key"
+)
+
+func main() {
+	// 1) We have a private key for Alice
+	privAliceBytes, _ := base64.StdEncoding.DecodeString("fNOf3xWjFZYGYWixorM5+JR+u/2Udnc9Zw5+9rSvjqo=")
+	privAlice, _ := x25519.PrivateKeyFromBytes(privAliceBytes)
+
+	// 2) We resolve the DID Document for Bob
+	dBob, _ := did.Parse("did:key:z6MkgRNXpJRbEE6FoXhT8KWHwJo4KyzFo1FdSEFpRLh5vuXZ")
+	docBob, _ := dBob.Document()
+
+	// 3) We perform the key agreement
+	key, method, _ := did.FindMatchingKeyAgreement(docBob.KeyAgreement(), privAlice)
+
+	fmt.Println("Shared key:", base64.StdEncoding.EncodeToString(key))
+	fmt.Println("Verification method used:", method.Type(), method.ID())
+
+	// Output: Shared key: 7G1qwS/gn5W1hxBtObHc3F0jA7m2vuXkLJJ32yBuHVQ=
+	// Verification method used: X25519KeyAgreementKey2020 did:key:z6MkgRNXpJRbEE6FoXhT8KWHwJo4KyzFo1FdSEFpRLh5vuXZ#z6LSjeQx2VkXz8yirhrYJv8uicu9BBaeYU3Q1D9sFBovhmPF
+}
+```
+
+## Features
+
+### Supported DID Methods
+
+| Method    | Status | Description                              |
+|-----------|--------|------------------------------------------|
+| `did:key` | ✅      | Self-contained DIDs based on public keys |
+
+### Supported Verification Method Types
+
+| Type                                | Use Case                 |
+|-------------------------------------|--------------------------|
+| `EcdsaSecp256k1VerificationKey2019` | secp256k1 signatures     |
+| `Ed25519VerificationKey2018`        | Ed25519 signatures       |
+| `Ed25519VerificationKey2020`        | Ed25519 signatures       |
+| `JsonWebKey2020`                    | All supported algorithms |
+| `Multikey`                          | All supported algorithms |
+| `P256Key2021`                       | P-256 signatures         |
+| `X25519KeyAgreementKey2020`         | X25519 key agreement     |
+
+### Supported Cryptographic Algorithms
+
+#### Signing Keys
+| Algorithm       | Signature Format  | Public Key Formats                  | Private Key Formats       |
+|-----------------|-------------------|-------------------------------------|---------------------------|
+| Ed25519         | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
+| ECDSA P-256     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
+| ECDSA P-384     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
+| ECDSA P-521     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
+| ECDSA secp256k1 | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
+| RSA             | PKCS#1 v1.5 ASN.1 | X.509 DER/PEM, Multibase            | PKCS#8 DER/PEM            |
+
+
+#### Key Agreement (Encryption)
+| Algorithm | Public Key Formats                  | Private Key Formats       |
+|-----------|-------------------------------------|---------------------------|
+| X25519    | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
+
