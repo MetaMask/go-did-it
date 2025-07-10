@@ -1,4 +1,4 @@
-module github.com/INFURA/go-did
+module github.com/ucan-wg/go-did-it
 
 go 1.23.0
 

@@ -7,8 +7,8 @@ import (
 	"encoding/pem"
 	"fmt"
 
-	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/ed25519"
+	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/ucan-wg/go-did-it/crypto/ed25519"
 )
 
 var _ crypto.PrivateKeyKeyExchange = (*PrivateKey)(nil)

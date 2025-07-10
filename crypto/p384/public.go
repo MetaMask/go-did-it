@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/INFURA/go-did/crypto"
-	helpers "github.com/INFURA/go-did/crypto/internal"
+	"github.com/ucan-wg/go-did-it/crypto"
+	helpers "github.com/ucan-wg/go-did-it/crypto/internal"
 )
 
 var _ crypto.PublicKeySigningBytes = &PublicKey{}

@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/INFURA/go-did"
-	"github.com/INFURA/go-did/crypto/ed25519"
-	_ "github.com/INFURA/go-did/methods/did-key"
-	"github.com/INFURA/go-did/verifications/ed25519"
+	"github.com/ucan-wg/go-did-it"
+	"github.com/ucan-wg/go-did-it/crypto/ed25519"
+	_ "github.com/ucan-wg/go-did-it/methods/did-key"
+	"github.com/ucan-wg/go-did-it/verifications/ed25519"
 )
 
 func TestJsonRoundTrip2020(t *testing.T) {

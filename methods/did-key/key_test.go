@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/INFURA/go-did"
-	"github.com/INFURA/go-did/crypto/ed25519"
-	didkey "github.com/INFURA/go-did/methods/did-key"
+	"github.com/ucan-wg/go-did-it"
+	"github.com/ucan-wg/go-did-it/crypto/ed25519"
+	didkey "github.com/ucan-wg/go-did-it/methods/did-key"
 )
 
 func ExampleGenerateKeyPair() {

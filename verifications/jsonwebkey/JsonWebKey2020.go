@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/INFURA/go-did"
-	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/jwk"
+	"github.com/ucan-wg/go-did-it"
+	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/ucan-wg/go-did-it/crypto/jwk"
 )
 
 // Specification:

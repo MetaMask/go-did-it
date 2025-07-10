@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/INFURA/go-did"
-	"github.com/INFURA/go-did/crypto"
-	allkeys "github.com/INFURA/go-did/crypto/_allkeys"
+	"github.com/ucan-wg/go-did-it"
+	"github.com/ucan-wg/go-did-it/crypto"
+	allkeys "github.com/ucan-wg/go-did-it/crypto/_allkeys"
 )
 
 // Specification: https://www.w3.org/TR/cid-1.0/#Multikey

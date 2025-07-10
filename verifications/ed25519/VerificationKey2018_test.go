@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	ed25519vm "github.com/INFURA/go-did/verifications/ed25519"
+	ed25519vm "github.com/ucan-wg/go-did-it/verifications/ed25519"
 )
 
 func TestJsonRoundTrip2018(t *testing.T) {

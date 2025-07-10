@@ -7,9 +7,9 @@ import (
 
 	"github.com/mr-tron/base58"
 
-	"github.com/INFURA/go-did"
-	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/x25519"
+	"github.com/ucan-wg/go-did-it"
+	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/ucan-wg/go-did-it/crypto/x25519"
 )
 
 // Specification: https://github.com/digitalbazaar/x25519-key-agreement-key-2019

@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/ed25519"
-	helpers "github.com/INFURA/go-did/crypto/internal"
+	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/ucan-wg/go-did-it/crypto/ed25519"
+	helpers "github.com/ucan-wg/go-did-it/crypto/internal"
 )
 
 var _ crypto.PublicKey = (*PublicKey)(nil)
