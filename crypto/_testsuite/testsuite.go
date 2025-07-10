@@ -265,11 +265,11 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 				t.Run(fmt.Sprintf("%s-%s", tc.name, hash.String()), func(t *testing.T) {
 					msg := []byte("message")
 
-					sig, err := tc.signer(msg)
+					sig, err := tc.signer(msg, crypto.WithSigningHash(hash))
 					require.NoError(t, err)
 					require.NotEmpty(t, sig)
 
-					valid := tc.verifier(msg, sig)
+					valid := tc.verifier(msg, sig, crypto.WithSigningHash(hash))
 					require.True(t, valid)
 
 					valid = tc.verifier([]byte("wrong message"), sig)
