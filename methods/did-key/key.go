@@ -122,7 +122,7 @@ func (d DidKey) Document(opts ...did.ResolutionOption) (did.Document, error) {
 			jwk := jsonwebkey.NewJsonWebKey2020(mainVmId, pub, d)
 			doc.signature = jwk
 			doc.keyAgreement = jwk
-		case params.HasVerificationMethodHint(secp256k1vm.Type):
+		case params.HasVerificationMethodHint(secp256k1vm.Type2019):
 			vm := secp256k1vm.NewVerificationKey2019(mainVmId, pub, d)
 			doc.signature = vm
 			doc.keyAgreement = vm

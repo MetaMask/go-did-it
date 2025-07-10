@@ -12,7 +12,7 @@ import (
 	_ "github.com/INFURA/go-did/methods/did-key"
 )
 
-func ExampleSignature() {
+func Example_signature() {
 	// errors need to be handled
 
 	// 1) Parse the DID string into a DID object
@@ -32,7 +32,7 @@ func ExampleSignature() {
 	// Output: Signature is valid, verified with method: Ed25519VerificationKey2020 did:key:z6MknwcywUtTy2ADJQ8FH1GcSySKPyKDmyzT4rPEE84XREse#z6MknwcywUtTy2ADJQ8FH1GcSySKPyKDmyzT4rPEE84XREse
 }
 
-func ExampleKeyAgreement() {
+func Example_keyAgreement() {
 	// errors need to be handled
 
 	// 1) We have a private key for Alice

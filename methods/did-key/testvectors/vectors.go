@@ -183,7 +183,7 @@ func LoadTestVectors(filename string) ([]Vector, error) {
 			}
 
 			switch vmType {
-			case secp256k1vm.Type:
+			case secp256k1vm.Type2019:
 				vect.Pub, err = secp256k1.PublicKeyFromBytes(pubBytes)
 				if err != nil {
 					return nil, err

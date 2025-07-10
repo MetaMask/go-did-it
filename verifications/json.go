@@ -31,7 +31,7 @@ func UnmarshalJSON(data []byte) (did.VerificationMethod, error) {
 		res = &multikey.MultiKey{}
 	case p256vm.Type2021:
 		res = &p256vm.Key2021{}
-	case secp256k1vm.Type:
+	case secp256k1vm.Type2019:
 		res = &secp256k1vm.VerificationKey2019{}
 	case x25519vm.Type2019:
 		res = &x25519vm.KeyAgreementKey2019{}

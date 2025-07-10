@@ -16,7 +16,7 @@ import (
 
 const (
 	JsonLdContext = "https://w3id.org/security/suites/secp256k1-2019/v1"
-	Type          = "EcdsaSecp256k1VerificationKey2019"
+	Type2019      = "EcdsaSecp256k1VerificationKey2019"
 )
 
 var _ did.VerificationMethodSignature = &VerificationKey2019{}
@@ -90,7 +90,7 @@ func (vm VerificationKey2019) ID() string {
 }
 
 func (vm VerificationKey2019) Type() string {
-	return Type
+	return Type2019
 }
 
 func (vm VerificationKey2019) Controller() string {
