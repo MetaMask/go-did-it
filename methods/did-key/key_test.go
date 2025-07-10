@@ -20,8 +20,7 @@ func ExampleGenerateKeyPair() {
 	fmt.Println("Private key:", base64.StdEncoding.EncodeToString(priv.ToBytes()))
 
 	// Make the associated did:key
-	dk, err := didkey.FromPrivateKey(priv)
-	handleErr(err)
+	dk := didkey.FromPrivateKey(priv)
 	fmt.Println("Did:", dk.String())
 
 	// Produce a signature
@@ -54,6 +53,16 @@ func TestMustParseDIDKey(t *testing.T) {
 	require.Panics(t, func() {
 		did.MustParse(str)
 	})
+}
+
+func TestFromPublicKey(t *testing.T) {
+	pub, _, err := ed25519.GenerateKeyPair()
+	require.NoError(t, err)
+	dk := didkey.FromPublicKey(pub)
+	require.Equal(t, "did:key:"+pub.ToPublicKeyMultibase(), dk.String())
+	doc, err := dk.Document()
+	require.NoError(t, err)
+	require.NotEmpty(t, doc)
 }
 
 func TestEquivalence(t *testing.T) {

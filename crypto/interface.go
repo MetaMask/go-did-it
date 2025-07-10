@@ -1,13 +1,10 @@
 package crypto
 
+// Public Key
+
 type PublicKey interface {
 	// Equal returns true if other is the same PublicKey
 	Equal(other PublicKey) bool
-
-	// ToBytes serializes the PublicKey into "raw bytes", without metadata or structure.
-	// This format can make some assumptions and may not be what you expect.
-	// Ideally, this format is defined by the same specification as the underlying crypto scheme.
-	ToBytes() []byte
 
 	// ToPublicKeyMultibase format the PublicKey into a string compatible with a PublicKeyMultibase field
 	// in a DID Document.
@@ -20,17 +17,39 @@ type PublicKey interface {
 	ToX509PEM() string
 }
 
+type PublicKeyToBytes interface {
+	PublicKey
+
+	// ToBytes serializes the PublicKey into "raw bytes", without metadata or structure.
+	// This format can make some assumptions and may not be what you expect.
+	// Ideally, this format is defined by the same specification as the underlying crypto scheme.
+	ToBytes() []byte
+}
+
+type PublicKeySigningBytes interface {
+	PublicKey
+
+	// VerifyBytes checks a signature in the "raw bytes" format.
+	// This format can make some assumptions and may not be what you expect.
+	// Ideally, this format is defined by the same specification as the underlying crypto scheme.
+	VerifyBytes(message, signature []byte, opts ...SigningOption) bool
+}
+
+type PublicKeySigningASN1 interface {
+	PublicKey
+
+	// VerifyASN1 checks a signature in the ASN.1 format.
+	VerifyASN1(message, signature []byte, opts ...SigningOption) bool
+}
+
+// Private Key
+
 type PrivateKey interface {
 	// Equal returns true if other is the same PrivateKey
 	Equal(other PrivateKey) bool
 
 	// Public returns the matching PublicKey.
 	Public() PublicKey
-
-	// ToBytes serializes the PrivateKey into "raw bytes", without metadata or structure.
-	// This format can make some assumptions and may not be what you expect.
-	// Ideally, this format is defined by the same specification as the underlying crypto scheme.
-	ToBytes() []byte
 
 	// ToPKCS8DER serializes the PrivateKey into the PKCS#8 DER (binary) format.
 	ToPKCS8DER() []byte
@@ -39,31 +58,32 @@ type PrivateKey interface {
 	ToPKCS8PEM() string
 }
 
-type SigningPublicKey interface {
-	PublicKey
+type PrivateKeyToBytes interface {
+	PrivateKey
 
-	// VerifyBytes checks a signature in the "raw bytes" format.
+	// ToBytes serializes the PrivateKey into "raw bytes", without metadata or structure.
 	// This format can make some assumptions and may not be what you expect.
 	// Ideally, this format is defined by the same specification as the underlying crypto scheme.
-	VerifyBytes(message, signature []byte) bool
-
-	// VerifyASN1 checks a signature in the ASN.1 format.
-	VerifyASN1(message, signature []byte) bool
+	ToBytes() []byte
 }
 
-type SigningPrivateKey interface {
+type PrivateKeySigningBytes interface {
 	PrivateKey
 
 	// SignToBytes creates a signature in the "raw bytes" format.
 	// This format can make some assumptions and may not be what you expect.
 	// Ideally, this format is defined by the same specification as the underlying crypto scheme.
-	SignToBytes(message []byte) ([]byte, error)
-
-	// SignToASN1 creates a signature in the ASN.1 format.
-	SignToASN1(message []byte) ([]byte, error)
+	SignToBytes(message []byte, opts ...SigningOption) ([]byte, error)
 }
 
-type KeyExchangePrivateKey interface {
+type PrivateKeySigningASN1 interface {
+	PrivateKey
+
+	// SignToASN1 creates a signature in the ASN.1 format.
+	SignToASN1(message []byte, opts ...SigningOption) ([]byte, error)
+}
+
+type PrivateKeyKeyExchange interface {
 	PrivateKey
 
 	// PublicKeyIsCompatible checks that the given PublicKey is compatible to perform key exchange.

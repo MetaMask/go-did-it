@@ -11,7 +11,9 @@ import (
 	"github.com/INFURA/go-did/crypto"
 )
 
-var _ crypto.SigningPrivateKey = &PrivateKey{}
+var _ crypto.PrivateKeySigningBytes = &PrivateKey{}
+var _ crypto.PrivateKeySigningASN1 = &PrivateKey{}
+var _ crypto.PrivateKeyToBytes = &PrivateKey{}
 
 type PrivateKey struct {
 	k ed25519.PrivateKey
@@ -28,13 +30,24 @@ func PrivateKeyFromBytes(b []byte) (PrivateKey, error) {
 	return PrivateKey{k: append([]byte{}, b...)}, nil
 }
 
+func PrivateKeyFromSeed(seed []byte) (PrivateKey, error) {
+	if len(seed) != ed25519.SeedSize {
+		return PrivateKey{}, fmt.Errorf("invalid ed25519 seed size")
+	}
+	return PrivateKey{k: ed25519.NewKeyFromSeed(seed)}, nil
+}
+
 // PrivateKeyFromPKCS8DER decodes a PKCS#8 DER (binary) encoded private key.
 func PrivateKeyFromPKCS8DER(bytes []byte) (PrivateKey, error) {
 	priv, err := x509.ParsePKCS8PrivateKey(bytes)
 	if err != nil {
 		return PrivateKey{}, err
 	}
-	return PrivateKey{k: priv.(ed25519.PrivateKey)}, nil
+	edPriv, ok := priv.(ed25519.PrivateKey)
+	if !ok {
+		return PrivateKey{}, fmt.Errorf("invalid private key type")
+	}
+	return PrivateKey{k: edPriv}, nil
 }
 
 // PrivateKeyFromPKCS8PEM decodes an PKCS#8 PEM (string) encoded private key.
@@ -60,13 +73,21 @@ func (p PrivateKey) Public() crypto.PublicKey {
 	return PublicKey{k: p.k.Public().(ed25519.PublicKey)}
 }
 
-func (p PrivateKey) SignToBytes(message []byte) ([]byte, error) {
+func (p PrivateKey) SignToBytes(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
+	params := crypto.CollectSigningOptions(opts)
+	if params.Hash != crypto.Hash(0) && params.Hash != crypto.SHA512 {
+		return nil, fmt.Errorf("ed25519 does not support custom hash functions")
+	}
 	return ed25519.Sign(p.k, message), nil
 }
 
 // SignToASN1 creates a signature with ASN.1 encoding.
 // This ASN.1 encoding uses a BIT STRING, which would be correct for an X.509 certificate.
-func (p PrivateKey) SignToASN1(message []byte) ([]byte, error) {
+func (p PrivateKey) SignToASN1(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
+	params := crypto.CollectSigningOptions(opts)
+	if params.Hash != crypto.Hash(0) && params.Hash != crypto.SHA512 {
+		return nil, fmt.Errorf("ed25519 does not support custom hash functions")
+	}
 	sig := ed25519.Sign(p.k, message)
 	var b cryptobyte.Builder
 	b.AddASN1BitString(sig)

@@ -12,8 +12,8 @@ import (
 // Specification: https://w3c.github.io/cg-reports/credentials/CG-FINAL-di-eddsa-2020-20220724/
 
 const (
-	JsonLdContext = "https://w3id.org/security/suites/ed25519-2020/v1"
-	Type          = "Ed25519VerificationKey2020"
+	JsonLdContext2020 = "https://w3id.org/security/suites/ed25519-2020/v1"
+	Type2020          = "Ed25519VerificationKey2020"
 )
 
 var _ did.VerificationMethodSignature = &VerificationKey2020{}
@@ -80,7 +80,7 @@ func (v VerificationKey2020) ID() string {
 }
 
 func (v VerificationKey2020) Type() string {
-	return Type
+	return Type2020
 }
 
 func (v VerificationKey2020) Controller() string {
@@ -88,7 +88,7 @@ func (v VerificationKey2020) Controller() string {
 }
 
 func (v VerificationKey2020) JsonLdContext() string {
-	return JsonLdContext
+	return JsonLdContext2020
 }
 
 func (v VerificationKey2020) Verify(data []byte, sig []byte) (bool, error) {

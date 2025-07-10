@@ -14,7 +14,7 @@ type DID interface {
 
 	// Document resolves the DID into a DID Document usable for e.g. signature check.
 	// This can be simply expanding the DID into a Document, or involve external resolution.
-	Document() (Document, error)
+	Document(opts ...ResolutionOption) (Document, error)
 
 	// String returns the string representation of the DID.
 	String() string
@@ -111,8 +111,8 @@ type VerificationMethodKeyAgreement interface {
 	VerificationMethod
 
 	// PrivateKeyIsCompatible checks that the given PrivateKey is compatible with this method.
-	PrivateKeyIsCompatible(local crypto.KeyExchangePrivateKey) bool
+	PrivateKeyIsCompatible(local crypto.PrivateKeyKeyExchange) bool
 
 	// KeyExchange computes the shared key using the given PrivateKey.
-	KeyExchange(local crypto.KeyExchangePrivateKey) ([]byte, error)
+	KeyExchange(local crypto.PrivateKeyKeyExchange) ([]byte, error)
 }

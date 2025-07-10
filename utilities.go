@@ -21,7 +21,7 @@ func TryAllVerify(methods []VerificationMethodSignature, data []byte, sig []byte
 // FindMatchingKeyAgreement tries to find a matching key agreement method for the given private key type.
 // It returns the shared key as well as the selected method.
 // If no matching method is found, it returns an error.
-func FindMatchingKeyAgreement(methods []VerificationMethodKeyAgreement, priv crypto.KeyExchangePrivateKey) ([]byte, VerificationMethodKeyAgreement, error) {
+func FindMatchingKeyAgreement(methods []VerificationMethodKeyAgreement, priv crypto.PrivateKeyKeyExchange) ([]byte, VerificationMethodKeyAgreement, error) {
 	for _, method := range methods {
 		if method.PrivateKeyIsCompatible(priv) {
 			key, err := method.KeyExchange(priv)

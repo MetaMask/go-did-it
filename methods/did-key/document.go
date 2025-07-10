@@ -20,6 +20,11 @@ func (d document) MarshalJSON() ([]byte, error) {
 	// Maybe it doesn't matter, but the spec contradicts itself.
 	// See https://github.com/w3c-ccg/did-key-spec/issues/71
 
+	vms := []did.VerificationMethod{d.signature}
+	if d.signature != did.VerificationMethod(d.keyAgreement) {
+		vms = append(vms, d.keyAgreement)
+	}
+
 	return json.Marshal(struct {
 		Context              []string                 `json:"@context"`
 		ID                   string                   `json:"id"`
@@ -28,17 +33,17 @@ func (d document) MarshalJSON() ([]byte, error) {
 		VerificationMethod   []did.VerificationMethod `json:"verificationMethod,omitempty"`
 		Authentication       []string                 `json:"authentication,omitempty"`
 		AssertionMethod      []string                 `json:"assertionMethod,omitempty"`
-		KeyAgreement         []did.VerificationMethod `json:"keyAgreement,omitempty"`
+		KeyAgreement         []string                 `json:"keyAgreement,omitempty"`
 		CapabilityInvocation []string                 `json:"capabilityInvocation,omitempty"`
 		CapabilityDelegation []string                 `json:"capabilityDelegation,omitempty"`
 	}{
 		Context:              d.Context(),
 		ID:                   d.id.String(),
 		AlsoKnownAs:          nil,
-		VerificationMethod:   []did.VerificationMethod{d.signature},
+		VerificationMethod:   vms,
 		Authentication:       []string{d.signature.ID()},
 		AssertionMethod:      []string{d.signature.ID()},
-		KeyAgreement:         []did.VerificationMethod{d.keyAgreement},
+		KeyAgreement:         []string{d.keyAgreement.ID()},
 		CapabilityInvocation: []string{d.signature.ID()},
 		CapabilityDelegation: []string{d.signature.ID()},
 	})
@@ -66,6 +71,11 @@ func (d document) AlsoKnownAs() []*url.URL {
 }
 
 func (d document) VerificationMethods() map[string]did.VerificationMethod {
+	if d.signature == did.VerificationMethod(d.keyAgreement) {
+		return map[string]did.VerificationMethod{
+			d.signature.ID(): d.signature,
+		}
+	}
 	return map[string]did.VerificationMethod{
 		d.signature.ID():    d.signature,
 		d.keyAgreement.ID(): d.keyAgreement,

@@ -13,7 +13,7 @@ import (
 	"github.com/INFURA/go-did/verifications/ed25519"
 )
 
-func TestJsonRoundTrip(t *testing.T) {
+func TestJsonRoundTrip2020(t *testing.T) {
 	data := `{
 		"id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
 		"type": "Ed25519VerificationKey2020",
@@ -30,7 +30,7 @@ func TestJsonRoundTrip(t *testing.T) {
 	require.JSONEq(t, data, string(bytes))
 }
 
-func TestSignature(t *testing.T) {
+func TestSignature2020(t *testing.T) {
 	// test vector from https://datatracker.ietf.org/doc/html/rfc8032#section-7.1
 
 	pkHex := "fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025"

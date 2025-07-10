@@ -9,7 +9,7 @@ import (
 	x25519vm "github.com/INFURA/go-did/verifications/x25519"
 )
 
-func TestJsonRoundTrip(t *testing.T) {
+func TestJsonRoundTrip2020(t *testing.T) {
 	data := `{
       "id": "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6LShs9GGnqk85isEBzzshkuVWrVKsRp24GnDuHk8QWkARMW",
       "type": "X25519KeyAgreementKey2020",
