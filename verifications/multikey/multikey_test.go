@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/INFURA/go-did/methods/did-key"
-	"github.com/INFURA/go-did/verifications/multikey"
+	_ "github.com/ucan-wg/go-did-it/methods/did-key"
+	"github.com/ucan-wg/go-did-it/verifications/multikey"
 )
 
 func TestJsonRoundTrip(t *testing.T) {

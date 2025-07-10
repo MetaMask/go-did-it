@@ -3,8 +3,8 @@ package p521
 import (
 	"testing"
 
-	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/_testsuite"
+	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/ucan-wg/go-did-it/crypto/_testsuite"
 )
 
 var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{

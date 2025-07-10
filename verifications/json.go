@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/INFURA/go-did"
-	"github.com/INFURA/go-did/verifications/ed25519"
-	"github.com/INFURA/go-did/verifications/jsonwebkey"
-	"github.com/INFURA/go-did/verifications/multikey"
-	p256vm "github.com/INFURA/go-did/verifications/p256"
-	secp256k1vm "github.com/INFURA/go-did/verifications/secp256k1"
-	"github.com/INFURA/go-did/verifications/x25519"
+	"github.com/ucan-wg/go-did-it"
+	"github.com/ucan-wg/go-did-it/verifications/ed25519"
+	"github.com/ucan-wg/go-did-it/verifications/jsonwebkey"
+	"github.com/ucan-wg/go-did-it/verifications/multikey"
+	p256vm "github.com/ucan-wg/go-did-it/verifications/p256"
+	secp256k1vm "github.com/ucan-wg/go-did-it/verifications/secp256k1"
+	"github.com/ucan-wg/go-did-it/verifications/x25519"
 )
 
 func UnmarshalJSON(data []byte) (did.VerificationMethod, error) {

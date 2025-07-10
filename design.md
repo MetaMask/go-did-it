@@ -6,7 +6,7 @@ General:
 - coding style should be clean, straightforward and documented, in a similar fashion as go-ucan.
 - keep the dependencies minimal, favor the standard go libraries
 - code should be decently tested and profiled
-- specifications and test vectors used MUST be referenced in a comment
+- specifications and test vectors origins used MUST be referenced in a comment
 - if something differs from a specification, it should be documented and explained
 - consider how an average user will read and understand your code, rather than how you read it 
 
@@ -17,16 +17,3 @@ DIDs:
 Crypto:
 - a user of the library shouldn't have to know or care about the underlying crypto to use it "server side" (signature verification, key agreement). Thus, it should be abstracted behind the VerificationMethod interfaces.
 - for each, we should expose some generally useful functions to handle private keys (generation, marshalling...)
-
-## Minimal target features
-
-Methods:
-- did:key
-- did:pkh
-
-Verification Methods:
-- ed25519
-- x25519
-- secp256k1
-- p256
-- p384

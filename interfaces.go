@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/url"
 
-	"github.com/INFURA/go-did/crypto"
+	"github.com/ucan-wg/go-did-it/crypto"
 )
 
 // DID is a decoded (i.e. from a string) Decentralized Identifier.

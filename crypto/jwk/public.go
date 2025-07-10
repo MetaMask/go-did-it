@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/ed25519"
-	"github.com/INFURA/go-did/crypto/p256"
-	"github.com/INFURA/go-did/crypto/p384"
-	"github.com/INFURA/go-did/crypto/p521"
-	"github.com/INFURA/go-did/crypto/rsa"
-	"github.com/INFURA/go-did/crypto/secp256k1"
-	"github.com/INFURA/go-did/crypto/x25519"
+	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/ucan-wg/go-did-it/crypto/ed25519"
+	"github.com/ucan-wg/go-did-it/crypto/p256"
+	"github.com/ucan-wg/go-did-it/crypto/p384"
+	"github.com/ucan-wg/go-did-it/crypto/p521"
+	"github.com/ucan-wg/go-did-it/crypto/rsa"
+	"github.com/ucan-wg/go-did-it/crypto/secp256k1"
+	"github.com/ucan-wg/go-did-it/crypto/x25519"
 )
 
 // Specification:

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/INFURA/go-did"
-	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/x25519"
+	"github.com/ucan-wg/go-did-it"
+	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/ucan-wg/go-did-it/crypto/x25519"
 )
 
 // Specification: https://w3c-ccg.github.io/did-method-key/#ed25519-x25519

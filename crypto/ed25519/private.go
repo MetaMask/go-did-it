@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/crypto/cryptobyte"
 
-	"github.com/INFURA/go-did/crypto"
+	"github.com/ucan-wg/go-did-it/crypto"
 )
 
 var _ crypto.PrivateKeySigningBytes = &PrivateKey{}

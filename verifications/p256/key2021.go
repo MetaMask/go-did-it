@@ -7,9 +7,9 @@ import (
 
 	"github.com/mr-tron/base58"
 
-	"github.com/INFURA/go-did"
-	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/p256"
+	"github.com/ucan-wg/go-did-it"
+	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/ucan-wg/go-did-it/crypto/p256"
 )
 
 // Specification: missing

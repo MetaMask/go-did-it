@@ -10,7 +10,7 @@ import (
 	"github.com/multiformats/go-varint"
 	"github.com/stretchr/testify/require"
 
-	"github.com/INFURA/go-did/crypto"
+	"github.com/ucan-wg/go-did-it/crypto"
 )
 
 type TestHarness[PubT crypto.PublicKey, PrivT crypto.PrivateKey] struct {

@@ -6,10 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/INFURA/go-did/methods/did-key"
-	"github.com/INFURA/go-did/verifications/ed25519"
-	"github.com/INFURA/go-did/verifications/jsonwebkey"
-	"github.com/INFURA/go-did/verifications/x25519"
+	_ "github.com/ucan-wg/go-did-it/methods/did-key"
+	"github.com/ucan-wg/go-did-it/verifications/ed25519"
+	"github.com/ucan-wg/go-did-it/verifications/jsonwebkey"
+	"github.com/ucan-wg/go-did-it/verifications/x25519"
 )
 
 func TestRoundTrip(t *testing.T) {

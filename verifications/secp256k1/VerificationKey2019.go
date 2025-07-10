@@ -7,9 +7,9 @@ import (
 
 	"github.com/mr-tron/base58"
 
-	"github.com/INFURA/go-did"
-	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/secp256k1"
+	"github.com/ucan-wg/go-did-it"
+	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/ucan-wg/go-did-it/crypto/secp256k1"
 )
 
 // Specification: https://w3c-ccg.github.io/lds-ecdsa-secp256k1-2019/

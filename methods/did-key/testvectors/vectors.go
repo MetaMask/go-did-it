@@ -8,15 +8,15 @@ import (
 
 	"github.com/mr-tron/base58"
 
-	"github.com/INFURA/go-did/crypto"
-	"github.com/INFURA/go-did/crypto/ed25519"
-	"github.com/INFURA/go-did/crypto/jwk"
-	"github.com/INFURA/go-did/crypto/p256"
-	"github.com/INFURA/go-did/crypto/secp256k1"
-	ed25519vm "github.com/INFURA/go-did/verifications/ed25519"
-	"github.com/INFURA/go-did/verifications/jsonwebkey"
-	p256vm "github.com/INFURA/go-did/verifications/p256"
-	secp256k1vm "github.com/INFURA/go-did/verifications/secp256k1"
+	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/ucan-wg/go-did-it/crypto/ed25519"
+	"github.com/ucan-wg/go-did-it/crypto/jwk"
+	"github.com/ucan-wg/go-did-it/crypto/p256"
+	"github.com/ucan-wg/go-did-it/crypto/secp256k1"
+	ed25519vm "github.com/ucan-wg/go-did-it/verifications/ed25519"
+	"github.com/ucan-wg/go-did-it/verifications/jsonwebkey"
+	p256vm "github.com/ucan-wg/go-did-it/verifications/p256"
+	secp256k1vm "github.com/ucan-wg/go-did-it/verifications/secp256k1"
 )
 
 // Origin: https://github.com/w3c-ccg/did-key-spec/tree/main/test-vectors

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/url"
 
-	"github.com/INFURA/go-did"
+	"github.com/ucan-wg/go-did-it"
 )
 
 var _ did.Document = &document{}
