@@ -33,12 +33,6 @@ func PrivateKeyFromNEDPQ(n, e, d, p, q []byte) (*PrivateKey, error) {
 		Primes:    []*big.Int{pBInt, qBInt},
 	}
 
-	// // while go doesn't care, we ensure to have the JWK canonical order of primes,
-	// // so that the JWK code becomes simpler
-	// if subtle.ConstantTimeCompare(p, q) > 0 {
-	// 	priv.Primes[0], priv.Primes[1] = priv.Primes[1], priv.Primes[0]
-	// }
-
 	err = priv.Validate()
 	if err != nil {
 		return nil, err
