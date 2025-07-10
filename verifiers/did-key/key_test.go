@@ -9,7 +9,7 @@ import (
 
 	"github.com/ucan-wg/go-did-it"
 	"github.com/ucan-wg/go-did-it/crypto/ed25519"
-	didkey "github.com/ucan-wg/go-did-it/methods/did-key"
+	didkey "github.com/ucan-wg/go-did-it/verifiers/did-key"
 )
 
 func ExampleGenerateKeyPair() {

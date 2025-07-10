@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ucan-wg/go-did-it"
-	"github.com/ucan-wg/go-did-it/methods/did-key/testvectors"
+	"github.com/ucan-wg/go-did-it/verifiers/did-key/testvectors"
 )
 
 func TestDocument(t *testing.T) {
