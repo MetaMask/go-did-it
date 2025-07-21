@@ -78,10 +78,17 @@ func (d DidPlc) Document(opts ...did.ResolutionOption) (did.Document, error) {
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "go-did-it")
 
 	res, err := params.HttpClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrResolutionFailure, err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%w: HTTP %d", did.ErrResolutionFailure, res.StatusCode)
 	}
 
 	var aux struct {
@@ -95,8 +102,9 @@ func (d DidPlc) Document(opts ...did.ResolutionOption) (did.Document, error) {
 		} `json:"services"`
 	}
 
-	// limit at 1MB
-	err = json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&aux)
+	// limit at 1MB to avoid abuse
+	limiter := io.LimitReader(res.Body, 1<<20)
+	err = json.NewDecoder(limiter).Decode(&aux)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrResolutionFailure, err)
 	}
