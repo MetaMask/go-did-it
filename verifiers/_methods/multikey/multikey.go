@@ -13,7 +13,8 @@ import (
 // Specification: https://www.w3.org/TR/cid-1.0/#Multikey
 
 const (
-	JsonLdContext = "https://www.w3.org/ns/cid/v1"
+	// This is apparently the right context despite the spec above saying otherwise.
+	JsonLdContext = "https://w3id.org/security/multikey/v1"
 	Type          = "Multikey"
 )
 

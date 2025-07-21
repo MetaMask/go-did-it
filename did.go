@@ -7,6 +7,10 @@ import (
 	"sync"
 )
 
+// Specifications:
+// - https://www.w3.org/TR/did-1.0/
+// - https://www.w3.org/TR/did-1.1/
+
 const JsonLdContext = "https://www.w3.org/ns/did/v1"
 
 // Decoder is a function decoding a DID string representation ("did:example:foo") into a DID.

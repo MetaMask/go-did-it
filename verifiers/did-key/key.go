@@ -66,7 +66,7 @@ func (d DidKey) Method() string {
 func (d DidKey) Document(opts ...did.ResolutionOption) (did.Document, error) {
 	params := did.CollectResolutionOpts(opts)
 
-	doc := document{id: d}
+	doc := document{id: d.String()}
 	mainVmId := fmt.Sprintf("did:key:%s#%s", d.msi, d.msi)
 
 	switch pub := d.pubkey.(type) {
