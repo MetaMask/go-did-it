@@ -16,4 +16,7 @@ var (
 var (
 	// ErrNotFound indicates that the DID resolver was unable to find the DID document for the given DID.
 	ErrNotFound = fmt.Errorf("did not found")
+
+	// ErrResolutionFailure indicates that the DID resolver failed to resolve the DID, in a way that is not ErrNotFound
+	ErrResolutionFailure = fmt.Errorf("resolution failure")
 )

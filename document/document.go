@@ -26,6 +26,7 @@ type Document struct {
 	keyAgreement         []did.VerificationMethodKeyAgreement
 	capabilityInvocation []did.VerificationMethodSignature
 	capabilityDelegation []did.VerificationMethodSignature
+	services             did.Services
 }
 
 type aux struct {
@@ -39,6 +40,7 @@ type aux struct {
 	KeyAgreement         []json.RawMessage `json:"keyAgreement,omitempty"`
 	CapabilityInvocation []json.RawMessage `json:"capabilityInvocation,omitempty"`
 	CapabilityDelegation []json.RawMessage `json:"capabilityDelegation,omitempty"`
+	Services             did.Services      `json:"service,omitempty"`
 }
 
 // FromJsonReader decodes an arbitrary Json DID Document into a usable did.Document.
@@ -67,8 +69,9 @@ func FromJsonBytes(data []byte) (*Document, error) {
 func fromAux(aux *aux) (*Document, error) {
 	var err error
 	res := Document{
-		context: aux.Context,
-		id:      aux.Id,
+		context:  aux.Context,
+		id:       aux.Id,
+		services: aux.Services,
 	}
 
 	// id
@@ -191,7 +194,7 @@ func resolveVerificationMethods[T did.VerificationMethod](doc *Document, msgs []
 func (d Document) MarshalJSON() ([]byte, error) {
 	var err error
 
-	data := aux{Context: d.context, Id: d.id}
+	data := aux{Context: d.context, Id: d.id, Services: d.services}
 
 	// alsoKnownAs
 	data.AlsoKnownAs = make([]string, len(d.alsoKnownAs))
@@ -308,4 +311,8 @@ func (d Document) CapabilityInvocation() []did.VerificationMethodSignature {
 
 func (d Document) CapabilityDelegation() []did.VerificationMethodSignature {
 	return d.capabilityDelegation
+}
+
+func (d Document) Services() did.Services {
+	return d.services
 }

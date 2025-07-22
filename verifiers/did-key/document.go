@@ -10,7 +10,7 @@ import (
 var _ did.Document = &document{}
 
 type document struct {
-	id           did.DID
+	id           string
 	signature    did.VerificationMethodSignature
 	keyAgreement did.VerificationMethodKeyAgreement
 }
@@ -38,7 +38,7 @@ func (d document) MarshalJSON() ([]byte, error) {
 		CapabilityDelegation []string                 `json:"capabilityDelegation,omitempty"`
 	}{
 		Context:              d.Context(),
-		ID:                   d.id.String(),
+		ID:                   d.id,
 		AlsoKnownAs:          nil,
 		VerificationMethod:   vms,
 		Authentication:       []string{d.signature.ID()},
@@ -58,7 +58,7 @@ func (d document) Context() []string {
 }
 
 func (d document) ID() string {
-	return d.id.String()
+	return d.id
 }
 
 func (d document) Controllers() []string {
@@ -100,6 +100,10 @@ func (d document) CapabilityInvocation() []did.VerificationMethodSignature {
 
 func (d document) CapabilityDelegation() []did.VerificationMethodSignature {
 	return []did.VerificationMethodSignature{d.signature}
+}
+
+func (d document) Services() did.Services {
+	return nil
 }
 
 func stringSet(values ...string) []string {

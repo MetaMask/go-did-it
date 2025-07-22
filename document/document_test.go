@@ -44,6 +44,15 @@ func TestRoundTrip(t *testing.T) {
 				require.Equal(t, jsonwebkey.Type, doc.verificationMethods["did:example:123#NjQ6Y_ZMj6IUK_XkgCDwtKHlNTUTVjEYOWZtxhp1n-E"].Type())
 			},
 		},
+		{
+			name:   "plc",
+			strDoc: plcDoc,
+			assertion: func(t *testing.T, doc *Document) {
+				require.Equal(t, "did:plc:ewvi7nxzyoun6zhxrhs64oiz", doc.ID())
+				require.Len(t, doc.VerificationMethods(), 1)
+				require.Len(t, doc.Services(), 1)
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			doc, err := FromJsonBytes([]byte(tc.strDoc))
@@ -197,6 +206,32 @@ const jsonWebKeyDoc = `
   ]
 }
 `
+
+const plcDoc = `{
+  "@context":[
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/multikey/v1"
+  ],
+  "id":"did:plc:ewvi7nxzyoun6zhxrhs64oiz",
+  "alsoKnownAs":[
+    "at://atproto.com"
+  ],
+  "verificationMethod":[
+    {
+      "id":"did:plc:ewvi7nxzyoun6zhxrhs64oiz#atproto",
+      "type":"Multikey",
+      "controller":"did:plc:ewvi7nxzyoun6zhxrhs64oiz",
+      "publicKeyMultibase":"zQ3shunBKsXixLxKtC5qeSG9E4J5RkGN57im31pcTzbNQnm5w"
+    }
+  ],
+  "service":[
+    {
+      "id":"#atproto_pds",
+      "type":"AtprotoPersonalDataServer",
+      "serviceEndpoint":"https://enoki.us-east.host.bsky.network"
+    }
+  ]
+}`
 
 // requireDocEqual compare two DID JSON document but ignore the ordering inside arrays of VerificationMethods
 func requireDocEqual(t *testing.T, expected, actual string) {

@@ -42,7 +42,8 @@ type Document interface {
 	// Controllers is the set of DID that is authorized to make changes to the Document. It's often the same as ID.
 	Controllers() []string
 
-	// AlsoKnownAs returns an optional set of URL describing ???TODO
+	// AlsoKnownAs returns an optional set of URL describing different identifier for the DID subject,
+	// for different purpose or different time.
 	AlsoKnownAs() []*url.URL
 
 	// VerificationMethods returns all the VerificationMethod known in the document.
@@ -70,8 +71,10 @@ type Document interface {
 	// capability to another party, such as delegating the authority to access a specific HTTP API to a subordinate.
 	CapabilityDelegation() []VerificationMethodSignature
 
-	// TODO: Service
-	// https://www.w3.org/TR/did-extensions-properties/#service-types
+	// Services are means of communicating or interacting with the DID subject or associated entities
+	// via one or more endpoints. Examples include discovery services, agent services, social networking
+	// services, file storage services, and verifiable credential repository services.
+	Services() Services
 }
 
 // VerificationMethod is a common interface for a cryptographic signature verification method.
