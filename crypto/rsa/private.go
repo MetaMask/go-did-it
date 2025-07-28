@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
 var _ crypto.PrivateKeySigningASN1 = &PrivateKey{}

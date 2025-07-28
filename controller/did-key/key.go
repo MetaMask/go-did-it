@@ -1,9 +1,9 @@
 package didkeyctl
 
 import (
-	"github.com/ucan-wg/go-did-it"
-	"github.com/ucan-wg/go-did-it/crypto"
-	didkey "github.com/ucan-wg/go-did-it/verifiers/did-key"
+	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto"
+	didkey "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
 
 func FromPublicKey(pub crypto.PublicKey) did.DID {

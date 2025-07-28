@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/url"
 
-	"github.com/ucan-wg/go-did-it"
+	"github.com/MetaMask/go-did-it"
 )
 
 var _ did.Document = &document{}

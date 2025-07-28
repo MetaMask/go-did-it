@@ -5,7 +5,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 
-	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
 const (

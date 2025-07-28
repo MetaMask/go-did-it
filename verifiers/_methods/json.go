@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ucan-wg/go-did-it"
-	"github.com/ucan-wg/go-did-it/verifiers/_methods/ed25519"
-	"github.com/ucan-wg/go-did-it/verifiers/_methods/jsonwebkey"
-	"github.com/ucan-wg/go-did-it/verifiers/_methods/multikey"
-	p256vm "github.com/ucan-wg/go-did-it/verifiers/_methods/p256"
-	secp256k1vm "github.com/ucan-wg/go-did-it/verifiers/_methods/secp256k1"
-	"github.com/ucan-wg/go-did-it/verifiers/_methods/x25519"
+	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
+	"github.com/MetaMask/go-did-it/verifiers/_methods/jsonwebkey"
+	"github.com/MetaMask/go-did-it/verifiers/_methods/multikey"
+	p256vm "github.com/MetaMask/go-did-it/verifiers/_methods/p256"
+	secp256k1vm "github.com/MetaMask/go-did-it/verifiers/_methods/secp256k1"
+	"github.com/MetaMask/go-did-it/verifiers/_methods/x25519"
 )
 
 func UnmarshalJSON(data []byte) (did.VerificationMethod, error) {

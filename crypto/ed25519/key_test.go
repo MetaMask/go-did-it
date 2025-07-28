@@ -3,8 +3,8 @@ package ed25519
 import (
 	"testing"
 
-	"github.com/ucan-wg/go-did-it/crypto"
-	"github.com/ucan-wg/go-did-it/crypto/_testsuite"
+	"github.com/MetaMask/go-did-it/crypto"
+	"github.com/MetaMask/go-did-it/crypto/_testsuite"
 )
 
 var harness = testsuite.TestHarness[PublicKey, PrivateKey]{

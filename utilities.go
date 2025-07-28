@@ -3,7 +3,7 @@ package did
 import (
 	"fmt"
 
-	"github.com/ucan-wg/go-did-it/crypto"
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
 // TryAllVerify tries to verify the signature with all the methods in the slice.

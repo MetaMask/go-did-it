@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ucan-wg/go-did-it"
-	"github.com/ucan-wg/go-did-it/crypto/ed25519"
+	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto/ed25519"
 )
 
 // Specification: https://w3c.github.io/cg-reports/credentials/CG-FINAL-di-eddsa-2020-20220724/
