@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/url"
 
-	"github.com/ucan-wg/go-did-it"
-	verifications "github.com/ucan-wg/go-did-it/verifiers/_methods"
+	"github.com/MetaMask/go-did-it"
+	verifications "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 var _ did.Document = &Document{}

@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ucan-wg/go-did-it/crypto"
-	"github.com/ucan-wg/go-did-it/crypto/ed25519"
-	"github.com/ucan-wg/go-did-it/crypto/p256"
-	"github.com/ucan-wg/go-did-it/crypto/p384"
-	"github.com/ucan-wg/go-did-it/crypto/p521"
-	"github.com/ucan-wg/go-did-it/crypto/rsa"
-	"github.com/ucan-wg/go-did-it/crypto/secp256k1"
-	"github.com/ucan-wg/go-did-it/crypto/x25519"
+	"github.com/MetaMask/go-did-it/crypto"
+	"github.com/MetaMask/go-did-it/crypto/ed25519"
+	"github.com/MetaMask/go-did-it/crypto/p256"
+	"github.com/MetaMask/go-did-it/crypto/p384"
+	"github.com/MetaMask/go-did-it/crypto/p521"
+	"github.com/MetaMask/go-did-it/crypto/rsa"
+	"github.com/MetaMask/go-did-it/crypto/secp256k1"
+	"github.com/MetaMask/go-did-it/crypto/x25519"
 )
 
 type PrivateJwk struct {

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/ucan-wg/go-did-it"
-	"github.com/ucan-wg/go-did-it/crypto"
-	"github.com/ucan-wg/go-did-it/crypto/jwk"
+	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto"
+	"github.com/MetaMask/go-did-it/crypto/jwk"
 )
 
 // Specification:

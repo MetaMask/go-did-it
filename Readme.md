@@ -2,19 +2,19 @@
   <h1 align="center">go-did-it</h1>
 
   <p>
-    <a href="https://github.com/ucan-wg/go-did-it/tags">
-        <img alt="GitHub Tag" src="https://img.shields.io/github/v/tag/ucan-wg/go-did-it">
+    <a href="https://github.com/MetaMask/go-did-it/tags">
+        <img alt="GitHub Tag" src="https://img.shields.io/github/v/tag/MetaMask/go-did-it">
     </a>
-    <a href="https://github.com/ucan-wg/go-did-it/actions?query=">
-      <img src="https://github.com/ucan-wg/go-did-it/actions/workflows/gotest.yml/badge.svg" alt="Build Status">
+    <a href="https://github.com/MetaMask/go-did-it/actions?query=">
+      <img src="https://github.com/MetaMask/go-did-it/actions/workflows/gotest.yml/badge.svg" alt="Build Status">
     </a>
-    <a href="https://ucan-wg.github.io/go-did-it/dev/bench/">
+    <a href="https://MetaMask.github.io/go-did-it/dev/bench/">
         <img alt="Go benchmarks" src="https://img.shields.io/badge/Benchmarks-go-blue">
     </a>
-    <a href="https://github.com/ucan-wg/go-did-it/blob/v1/LICENSE.md">
+    <a href="https://github.com/MetaMask/go-did-it/blob/v1/LICENSE.md">
         <img alt="Apache 2.0 + MIT License" src="https://img.shields.io/badge/License-Apache--2.0+MIT-green">
     </a>
-    <a href="https://pkg.go.dev/github.com/ucan-wg/go-did-it">
+    <a href="https://pkg.go.dev/github.com/MetaMask/go-did-it">
       <img src="https://img.shields.io/badge/Docs-godoc-blue" alt="Docs">
     </a>
   </p>
@@ -36,7 +36,7 @@ Built with ❤️ by [Consensys](https://consensys.io/).
 ## Installation
 
 ```bash
-go get github.com/ucan-wg/go-did-it
+go get github.com/MetaMask/go-did-it
 ```
 
 ## Usage
@@ -52,10 +52,10 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/ucan-wg/go-did-it"
+	"github.com/MetaMask/go-did-it"
 	
 	// 0) Import the methods you want to support
-	_ "github.com/ucan-wg/go-did-it/verifiers/did-key"
+	_ "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
 
 func main() {
@@ -90,11 +90,11 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/ucan-wg/go-did-it"
-	"github.com/ucan-wg/go-did-it/crypto/x25519"
+	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto/x25519"
 
 	// 0) Import the methods you want to support
-	_ "github.com/ucan-wg/go-did-it/verifiers/did-key"
+	_ "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
 
 func main() {
@@ -141,14 +141,15 @@ func main() {
 ### Supported Cryptographic Algorithms
 
 #### Signing Keys
-| Algorithm       | Signature Format  | Public Key Formats                  | Private Key Formats       |
-|-----------------|-------------------|-------------------------------------|---------------------------|
-| Ed25519         | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
-| ECDSA P-256     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
-| ECDSA P-384     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
-| ECDSA P-521     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
-| ECDSA secp256k1 | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
-| RSA             | PKCS#1 v1.5 ASN.1 | X.509 DER/PEM, Multibase            | PKCS#8 DER/PEM            |
+| Algorithm       | Signature Format  | Public Key Formats                  | Private Key Formats       | Key Agreement  |
+|-----------------|-------------------|-------------------------------------|---------------------------|----------------|
+| Ed25519         | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅ (via X25519) |
+| ECDSA P-256     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
+| ECDSA P-384     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
+| ECDSA P-521     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
+| ECDSA secp256k1 | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
+| RSA             | PKCS#1 v1.5 ASN.1 | X.509 DER/PEM, Multibase            | PKCS#8 DER/PEM            | ❌              |
+| X25519          | ❌                 | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
 
 
 #### Key Agreement (Encryption)

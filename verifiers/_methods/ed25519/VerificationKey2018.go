@@ -7,8 +7,8 @@ import (
 
 	"github.com/mr-tron/base58"
 
-	"github.com/ucan-wg/go-did-it"
-	"github.com/ucan-wg/go-did-it/crypto/ed25519"
+	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto/ed25519"
 )
 
 // Specification: https://w3c-ccg.github.io/lds-ed25519-2018/

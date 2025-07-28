@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/ucan-wg/go-did-it/verifiers/did-key"
+	_ "github.com/MetaMask/go-did-it/verifiers/did-key"
 
-	"github.com/ucan-wg/go-did-it/verifiers/_methods/multikey"
+	"github.com/MetaMask/go-did-it/verifiers/_methods/multikey"
 )
 
 func TestJsonRoundTrip(t *testing.T) {

@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ucan-wg/go-did-it"
-	"github.com/ucan-wg/go-did-it/crypto/ed25519"
-	ed25519vm "github.com/ucan-wg/go-did-it/verifiers/_methods/ed25519"
-	_ "github.com/ucan-wg/go-did-it/verifiers/did-key"
+	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto/ed25519"
+	ed25519vm "github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
+	_ "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
 
 func TestJsonRoundTrip2020(t *testing.T) {

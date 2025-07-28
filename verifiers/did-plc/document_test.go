@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ucan-wg/go-did-it"
+	"github.com/MetaMask/go-did-it"
 )
 
 func TestDocument(t *testing.T) {
