@@ -140,7 +140,6 @@ func main() {
 
 ### Supported Cryptographic Algorithms
 
-#### Signing Keys
 | Algorithm       | Signature Format  | Public Key Formats                  | Private Key Formats       | Key Agreement  |
 |-----------------|-------------------|-------------------------------------|---------------------------|----------------|
 | Ed25519         | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅ (via X25519) |
@@ -150,10 +149,3 @@ func main() {
 | ECDSA secp256k1 | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
 | RSA             | PKCS#1 v1.5 ASN.1 | X.509 DER/PEM, Multibase            | PKCS#8 DER/PEM            | ❌              |
 | X25519          | ❌                 | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
-
-
-#### Key Agreement (Encryption)
-| Algorithm | Public Key Formats                  | Private Key Formats       |
-|-----------|-------------------------------------|---------------------------|
-| X25519    | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM |
-
