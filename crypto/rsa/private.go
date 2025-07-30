@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ucan-wg/go-varsig"
+
 	"github.com/MetaMask/go-did-it/crypto"
 )
 
@@ -67,8 +69,8 @@ func PrivateKeyFromPKCS8PEM(str string) (*PrivateKey, error) {
 	return PrivateKeyFromPKCS8DER(block.Bytes)
 }
 
-func (p *PrivateKey) BitLen() int {
-	return p.k.N.BitLen()
+func (p *PrivateKey) KeyLength() uint64 {
+	return uint64((p.k.N.BitLen() + 7) / 8) // Round up to the nearest byte
 }
 
 func (p *PrivateKey) DBytes() []byte {
@@ -145,6 +147,16 @@ func (p *PrivateKey) ToPKCS8PEM() string {
 		Type:  pemPrivBlockType,
 		Bytes: der,
 	}))
+}
+
+// The default signing hash is:
+// - SHA-256 for keys of length 2048 bits and under
+// - SHA-384 for keys of length 3072 bits and under
+// - SHA-512 for higher key length
+func (p *PrivateKey) Varsig(opts ...crypto.SigningOption) varsig.Varsig {
+	params := crypto.CollectSigningOptions(opts)
+	hashCode := params.HashOrDefault(defaultSigHash(p.k.N.BitLen()))
+	return varsig.NewRSAVarsig(hashCode.ToVarsigHash(), uint64(p.KeyLength()), params.PayloadEncoding())
 }
 
 // SignToASN1 produce a PKCS#1 v1.5 signature.

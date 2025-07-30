@@ -9,6 +9,7 @@ import (
 	mbase "github.com/multiformats/go-multibase"
 	"github.com/multiformats/go-varint"
 	"github.com/stretchr/testify/require"
+	"github.com/ucan-wg/go-varsig"
 
 	"github.com/MetaMask/go-did-it/crypto"
 )
@@ -194,6 +195,7 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 			name         string
 			signer       func(msg []byte, opts ...crypto.SigningOption) ([]byte, error)
 			verifier     func(msg []byte, sig []byte, opts ...crypto.SigningOption) bool
+			varsig       func(opts ...crypto.SigningOption) varsig.Varsig
 			expectedSize int
 			stats        *int
 			defaultHash  crypto.Hash
@@ -210,6 +212,7 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 					name:         "Bytes signature",
 					signer:       spriv.SignToBytes,
 					verifier:     spub.VerifyBytes,
+					varsig:       spriv.Varsig,
 					expectedSize: harness.SignatureBytesSize,
 					stats:        &stats.sigRawSize,
 					defaultHash:  harness.DefaultHash,
@@ -227,6 +230,7 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 					name:        "ASN.1 signature",
 					signer:      spriv.SignToASN1,
 					verifier:    spub.VerifyASN1,
+					varsig:      spriv.Varsig,
 					stats:       &stats.sigAsn1Size,
 					defaultHash: harness.DefaultHash,
 					otherHashes: harness.OtherHashes,
@@ -245,6 +249,9 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 				sigDefault, err := tc.signer(msg, crypto.WithSigningHash(tc.defaultHash))
 				require.NoError(t, err)
 
+				vsig := tc.varsig()
+				require.Equal(t, harness.DefaultHash.ToVarsigHash(), vsig.Hash())
+
 				if tc.expectedSize > 0 {
 					require.Equal(t, tc.expectedSize, len(sigNoParams))
 				}
@@ -253,12 +260,20 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 				// signatures might be different (i.e. non-deterministic), but they should verify the same way
 				valid := tc.verifier(msg, sigNoParams)
 				require.True(t, valid)
+				valid = tc.verifier(msg, sigNoParams, crypto.WithVarsig(vsig))
+				require.True(t, valid)
 				valid = tc.verifier(msg, sigDefault)
+				require.True(t, valid)
+				valid = tc.verifier(msg, sigDefault, crypto.WithVarsig(vsig))
 				require.True(t, valid)
 
 				valid = tc.verifier([]byte("wrong message"), sigNoParams)
 				require.False(t, valid)
+				valid = tc.verifier([]byte("wrong message"), sigNoParams, crypto.WithVarsig(vsig))
+				require.False(t, valid)
 				valid = tc.verifier([]byte("wrong message"), sigDefault)
+				require.False(t, valid)
+				valid = tc.verifier([]byte("wrong message"), sigDefault, crypto.WithVarsig(vsig))
 				require.False(t, valid)
 			})
 			for _, hash := range tc.otherHashes {
@@ -269,10 +284,17 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 					require.NoError(t, err)
 					require.NotEmpty(t, sig)
 
+					vsig := tc.varsig(crypto.WithSigningHash(hash))
+					require.Equal(t, hash.ToVarsigHash(), vsig.Hash())
+
 					valid := tc.verifier(msg, sig, crypto.WithSigningHash(hash))
+					require.True(t, valid)
+					valid = tc.verifier(msg, sig, crypto.WithVarsig(vsig))
 					require.True(t, valid)
 
 					valid = tc.verifier([]byte("wrong message"), sig)
+					require.False(t, valid)
+					valid = tc.verifier([]byte("wrong message"), sig, crypto.WithVarsig(vsig))
 					require.False(t, valid)
 				})
 			}
@@ -500,6 +522,29 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 
 			for i := 0; i < b.N; i++ {
 				spub.VerifyBytes([]byte("message"), sig)
+			}
+		})
+
+		b.Run("Verify from varsig signature", func(b *testing.B) {
+			if !pubImplements[PubT, crypto.PublicKeySigningBytes]() {
+				b.Skip("Signature to bytes is not implemented")
+			}
+
+			pub, priv, err := harness.GenerateKeyPair()
+			require.NoError(b, err)
+
+			spub := (crypto.PublicKey(pub)).(crypto.PublicKeySigningBytes)
+			spriv := (crypto.PrivateKey(priv)).(crypto.PrivateKeySigningBytes)
+
+			sig, err := spriv.SignToBytes([]byte("message"))
+			require.NoError(b, err)
+			vsig := spriv.Varsig()
+
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				spub.VerifyBytes([]byte("message"), sig, crypto.WithVarsig(vsig))
 			}
 		})
 

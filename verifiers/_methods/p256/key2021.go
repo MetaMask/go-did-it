@@ -101,8 +101,12 @@ func (m Key2021) JsonLdContext() string {
 	return JsonLdContext2021
 }
 
-func (m Key2021) Verify(data []byte, sig []byte) (bool, error) {
-	return m.pubkey.VerifyBytes(data, sig), nil
+func (m Key2021) VerifyBytes(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error) {
+	return m.pubkey.VerifyBytes(data, sig, opts...), nil
+}
+
+func (m Key2021) VerifyASN1(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error) {
+	return m.pubkey.VerifyASN1(data, sig, opts...), nil
 }
 
 func (m Key2021) PrivateKeyIsCompatible(local crypto.PrivateKeyKeyExchange) bool {

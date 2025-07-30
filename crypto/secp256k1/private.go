@@ -8,6 +8,7 @@ import (
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
+	"github.com/ucan-wg/go-varsig"
 
 	"github.com/MetaMask/go-did-it/crypto"
 )
@@ -170,6 +171,12 @@ func (p *PrivateKey) ToPKCS8PEM() string {
 		Type:  pemPrivBlockType,
 		Bytes: der,
 	}))
+}
+
+// The default signing hash is SHA-256.
+func (p *PrivateKey) Varsig(opts ...crypto.SigningOption) varsig.Varsig {
+	params := crypto.CollectSigningOptions(opts)
+	return varsig.NewECDSAVarsig(varsig.CurveSecp256k1, params.HashOrDefault(crypto.SHA256).ToVarsigHash(), params.PayloadEncoding())
 }
 
 // The default signing hash is SHA-256.

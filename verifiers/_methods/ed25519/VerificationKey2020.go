@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
 )
 
@@ -91,6 +92,10 @@ func (v VerificationKey2020) JsonLdContext() string {
 	return JsonLdContext2020
 }
 
-func (v VerificationKey2020) Verify(data []byte, sig []byte) (bool, error) {
-	return v.pubkey.VerifyBytes(data, sig), nil
+func (v VerificationKey2020) VerifyBytes(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error) {
+	return v.pubkey.VerifyBytes(data, sig, opts...), nil
+}
+
+func (v VerificationKey2020) VerifyASN1(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error) {
+	return v.pubkey.VerifyASN1(data, sig, opts...), nil
 }

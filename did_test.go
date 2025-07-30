@@ -23,7 +23,7 @@ func Example_signature() {
 
 	// 3) Use the appropriate set of verification methods (ex: verify a signature for authentication purpose)
 	sig, _ := base64.StdEncoding.DecodeString("nhpkr5a7juUM2eDpDRSJVdEE++0SYqaZXHtuvyafVFUx8zsOdDSrij+vHmd/ARwUOmi/ysmSD+b3K9WTBtmmBQ==")
-	if ok, method := did.TryAllVerify(doc.Authentication(), []byte("message"), sig); ok {
+	if ok, method := did.TryAllVerifyBytes(doc.Authentication(), []byte("message"), sig); ok {
 		fmt.Println("Signature is valid, verified with method:", method.Type(), method.ID())
 	} else {
 		fmt.Println("Signature is invalid")

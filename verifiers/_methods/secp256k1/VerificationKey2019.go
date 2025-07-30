@@ -101,8 +101,12 @@ func (vm VerificationKey2019) JsonLdContext() string {
 	return JsonLdContext
 }
 
-func (vm VerificationKey2019) Verify(data []byte, sig []byte) (bool, error) {
-	return vm.pubkey.VerifyBytes(data, sig), nil
+func (vm VerificationKey2019) VerifyBytes(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error) {
+	return vm.pubkey.VerifyBytes(data, sig, opts...), nil
+}
+
+func (vm VerificationKey2019) VerifyASN1(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error) {
+	return vm.pubkey.VerifyASN1(data, sig, opts...), nil
 }
 
 func (vm VerificationKey2019) PrivateKeyIsCompatible(local crypto.PrivateKeyKeyExchange) bool {

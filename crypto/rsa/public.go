@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ucan-wg/go-varsig"
+
 	"github.com/MetaMask/go-did-it/crypto"
 	helpers "github.com/MetaMask/go-did-it/crypto/internal"
 )
@@ -93,8 +95,8 @@ func PublicKeyFromX509PEM(str string) (*PublicKey, error) {
 	return PublicKeyFromX509DER(block.Bytes)
 }
 
-func (p *PublicKey) BitLen() int {
-	return p.k.N.BitLen()
+func (p *PublicKey) KeyLength() uint64 {
+	return uint64((p.k.N.BitLen() + 7) / 8) // Round up to the nearest byte
 }
 
 func (p *PublicKey) NBytes() []byte {
@@ -137,6 +139,10 @@ func (p *PublicKey) ToX509PEM() string {
 // - SHA-512 for higher key length
 func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningOption) bool {
 	params := crypto.CollectSigningOptions(opts)
+
+	if !params.VarsigMatch(varsig.AlgorithmRSA, 0, p.KeyLength()) {
+		return false
+	}
 
 	hashCode := params.HashOrDefault(defaultSigHash(p.k.N.BitLen()))
 	hasher := hashCode.New()

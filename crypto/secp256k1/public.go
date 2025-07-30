@@ -8,6 +8,7 @@ import (
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
+	"github.com/ucan-wg/go-varsig"
 
 	"github.com/MetaMask/go-did-it/crypto"
 	helpers "github.com/MetaMask/go-did-it/crypto/internal"
@@ -176,6 +177,10 @@ func (p *PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.Signin
 
 	params := crypto.CollectSigningOptions(opts)
 
+	if !params.VarsigMatch(varsig.AlgorithmECDSA, uint64(varsig.CurveSecp256k1), 0) {
+		return false
+	}
+
 	hasher := params.HashOrDefault(crypto.SHA256).New()
 	hasher.Write(message)
 	hash := hasher.Sum(nil)
@@ -190,6 +195,10 @@ func (p *PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.Signin
 // The default signing hash is SHA-256.
 func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningOption) bool {
 	params := crypto.CollectSigningOptions(opts)
+
+	if !params.VarsigMatch(varsig.AlgorithmECDSA, uint64(varsig.CurveSecp256k1), 0) {
+		return false
+	}
 
 	hasher := params.HashOrDefault(crypto.SHA256).New()
 	hasher.Write(message)

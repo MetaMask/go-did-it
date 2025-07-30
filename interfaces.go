@@ -104,8 +104,11 @@ type VerificationMethod interface {
 type VerificationMethodSignature interface {
 	VerificationMethod
 
-	// Verify checks that 'sig' is a valid signature of 'data'.
-	Verify(data []byte, sig []byte) (bool, error)
+	// VerifyBytes checks that 'sig' is a valid "raw bytes" signature of 'data'.
+	VerifyBytes(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error)
+
+	// VerifyASN1 checks that 'sig' is a valid ASN.1 signature of 'data'.
+	VerifyASN1(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error)
 }
 
 // VerificationMethodKeyAgreement is a VerificationMethod implementing a shared key agreement.
