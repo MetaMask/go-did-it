@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"fmt"
 
+	"github.com/ucan-wg/go-varsig"
 	"golang.org/x/crypto/cryptobyte"
 
 	"github.com/MetaMask/go-did-it/crypto"
@@ -101,10 +102,16 @@ func (p PublicKey) Equal(other crypto.PublicKey) bool {
 
 func (p PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.SigningOption) bool {
 	params := crypto.CollectSigningOptions(opts)
-	if params.Hash != crypto.Hash(0) && params.Hash != crypto.SHA512 {
+
+	if !params.VarsigMatch(varsig.AlgorithmEdDSA, uint64(varsig.CurveEd25519), 0) {
+		return false
+	}
+
+	if params.HashOrDefault(crypto.SHA512) != crypto.SHA512 {
 		// ed25519 does not support custom hash functions
 		return false
 	}
+
 	return ed25519.Verify(p.k, message, signature)
 }
 
@@ -112,10 +119,16 @@ func (p PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.Signing
 // This ASN.1 encoding uses a BIT STRING, which would be correct for an X.509 certificate.
 func (p PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningOption) bool {
 	params := crypto.CollectSigningOptions(opts)
-	if params.Hash != crypto.Hash(0) && params.Hash != crypto.SHA512 {
+
+	if !params.VarsigMatch(varsig.AlgorithmEdDSA, uint64(varsig.CurveEd25519), 0) {
+		return false
+	}
+
+	if params.HashOrDefault(crypto.SHA512) != crypto.SHA512 {
 		// ed25519 does not support custom hash functions
 		return false
 	}
+
 	var s cryptobyte.String = signature
 	var bitString asn1.BitString
 

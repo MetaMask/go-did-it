@@ -93,9 +93,16 @@ func (j JsonWebKey2020) JsonLdContext() string {
 	return JsonLdContext
 }
 
-func (j JsonWebKey2020) Verify(data []byte, sig []byte) (bool, error) {
+func (j JsonWebKey2020) VerifyBytes(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error) {
 	if pub, ok := j.pubkey.(crypto.PublicKeySigningBytes); ok {
-		return pub.VerifyBytes(data, sig), nil
+		return pub.VerifyBytes(data, sig, opts...), nil
+	}
+	return false, errors.New("not a signing public key")
+}
+
+func (j JsonWebKey2020) VerifyASN1(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error) {
+	if pub, ok := j.pubkey.(crypto.PublicKeySigningASN1); ok {
+		return pub.VerifyASN1(data, sig, opts...), nil
 	}
 	return false, errors.New("not a signing public key")
 }

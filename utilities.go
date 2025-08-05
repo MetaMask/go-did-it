@@ -6,12 +6,24 @@ import (
 	"github.com/MetaMask/go-did-it/crypto"
 )
 
-// TryAllVerify tries to verify the signature with all the methods in the slice.
+// TryAllVerifyBytes tries to verify the signature as bytes with all the methods in the slice.
 // It returns true if the signature is verified, and the method that verified it.
 // If no method verifies the signature, it returns false and nil.
-func TryAllVerify(methods []VerificationMethodSignature, data []byte, sig []byte) (bool, VerificationMethodSignature) {
+func TryAllVerifyBytes(methods []VerificationMethodSignature, data []byte, sig []byte, opts ...crypto.SigningOption) (bool, VerificationMethodSignature) {
 	for _, method := range methods {
-		if valid, err := method.Verify(data, sig); err == nil && valid {
+		if valid, err := method.VerifyBytes(data, sig, opts...); err == nil && valid {
+			return true, method
+		}
+	}
+	return false, nil
+}
+
+// TryAllVerifyASN1 tries to verify the signature as ASN.1 with all the methods in the slice.
+// It returns true if the signature is verified, and the method that verified it.
+// If no method verifies the signature, it returns false and nil.
+func TryAllVerifyASN1(methods []VerificationMethodSignature, data []byte, sig []byte, opts ...crypto.SigningOption) (bool, VerificationMethodSignature) {
+	for _, method := range methods {
+		if valid, err := method.VerifyASN1(data, sig, opts...); err == nil && valid {
 			return true, method
 		}
 	}

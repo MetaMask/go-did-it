@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 
+	"github.com/ucan-wg/go-varsig"
 	"golang.org/x/crypto/cryptobyte"
 
 	"github.com/MetaMask/go-did-it/crypto"
@@ -21,7 +22,7 @@ type PrivateKey struct {
 
 // PrivateKeyFromBytes converts a serialized private key to a PrivateKey.
 // This compact serialization format is the raw key material, without metadata or structure.
-// It errors if the slice is not the right size.
+// It returns an error if the slice is not the right size.
 func PrivateKeyFromBytes(b []byte) (PrivateKey, error) {
 	if len(b) != PrivateKeyBytesSize {
 		return PrivateKey{}, fmt.Errorf("invalid ed25519 private key size")
@@ -73,11 +74,19 @@ func (p PrivateKey) Public() crypto.PublicKey {
 	return PublicKey{k: p.k.Public().(ed25519.PublicKey)}
 }
 
+func (p PrivateKey) Varsig(opts ...crypto.SigningOption) varsig.Varsig {
+	params := crypto.CollectSigningOptions(opts)
+	return varsig.NewEdDSAVarsig(varsig.CurveEd25519, params.HashOrDefault(crypto.SHA512).ToVarsigHash(), params.PayloadEncoding())
+}
+
 func (p PrivateKey) SignToBytes(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
 	params := crypto.CollectSigningOptions(opts)
-	if params.Hash != crypto.Hash(0) && params.Hash != crypto.SHA512 {
+
+	hash := params.HashOrDefault(crypto.SHA512)
+	if hash != crypto.SHA512 {
 		return nil, fmt.Errorf("ed25519 does not support custom hash functions")
 	}
+
 	return ed25519.Sign(p.k, message), nil
 }
 
@@ -85,9 +94,12 @@ func (p PrivateKey) SignToBytes(message []byte, opts ...crypto.SigningOption) ([
 // This ASN.1 encoding uses a BIT STRING, which would be correct for an X.509 certificate.
 func (p PrivateKey) SignToASN1(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
 	params := crypto.CollectSigningOptions(opts)
-	if params.Hash != crypto.Hash(0) && params.Hash != crypto.SHA512 {
+
+	hash := params.HashOrDefault(crypto.SHA512)
+	if hash != crypto.SHA512 {
 		return nil, fmt.Errorf("ed25519 does not support custom hash functions")
 	}
+
 	sig := ed25519.Sign(p.k, message)
 	var b cryptobyte.Builder
 	b.AddASN1BitString(sig)

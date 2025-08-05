@@ -32,7 +32,7 @@ func ExampleGenerateKeyPair() {
 	// Resolve the DID and verify a signature
 	doc, err := dk.Document()
 	handleErr(err)
-	ok, _ := did.TryAllVerify(doc.Authentication(), msg, sig)
+	ok, _ := did.TryAllVerifyBytes(doc.Authentication(), msg, sig)
 	fmt.Println("Signature verified:", ok)
 }
 

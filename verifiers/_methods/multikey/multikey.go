@@ -96,9 +96,16 @@ func (m MultiKey) JsonLdContext() string {
 	return JsonLdContext
 }
 
-func (m MultiKey) Verify(data []byte, sig []byte) (bool, error) {
+func (m MultiKey) VerifyBytes(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error) {
 	if pub, ok := m.pubkey.(crypto.PublicKeySigningBytes); ok {
-		return pub.VerifyBytes(data, sig), nil
+		return pub.VerifyBytes(data, sig, opts...), nil
+	}
+	return false, errors.New("not a signing public key")
+}
+
+func (m MultiKey) VerifyASN1(data []byte, sig []byte, opts ...crypto.SigningOption) (bool, error) {
+	if pub, ok := m.pubkey.(crypto.PublicKeySigningASN1); ok {
+		return pub.VerifyASN1(data, sig, opts...), nil
 	}
 	return false, errors.New("not a signing public key")
 }

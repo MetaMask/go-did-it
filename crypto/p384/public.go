@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ucan-wg/go-varsig"
+
 	"github.com/MetaMask/go-did-it/crypto"
 	helpers "github.com/MetaMask/go-did-it/crypto/internal"
 )
@@ -147,6 +149,10 @@ func (p *PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.Signin
 // The default signing hash is SHA-384.
 func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningOption) bool {
 	params := crypto.CollectSigningOptions(opts)
+
+	if !params.VarsigMatch(varsig.AlgorithmECDSA, uint64(varsig.CurveP384), 0) {
+		return false
+	}
 
 	hasher := params.HashOrDefault(crypto.SHA384).New()
 	hasher.Write(message)

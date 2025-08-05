@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ucan-wg/go-varsig"
+
 	"github.com/MetaMask/go-did-it/crypto"
 )
 
@@ -97,6 +99,12 @@ func (p *PrivateKey) ToPKCS8PEM() string {
 		Type:  pemPrivBlockType,
 		Bytes: der,
 	}))
+}
+
+// The default signing hash is SHA-384.
+func (p *PrivateKey) Varsig(opts ...crypto.SigningOption) varsig.Varsig {
+	params := crypto.CollectSigningOptions(opts)
+	return varsig.NewECDSAVarsig(varsig.CurveP384, params.HashOrDefault(crypto.SHA384).ToVarsigHash(), params.PayloadEncoding())
 }
 
 // The default signing hash is SHA-384.
