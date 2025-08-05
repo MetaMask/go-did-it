@@ -124,6 +124,7 @@ func main() {
 | Method    | Controller | Verifier | Description                                        |
 |-----------|------------|----------|----------------------------------------------------|
 | `did:key` | ✅          | ✅        | Self-contained DIDs based on public keys           |
+| `did:web` | ❌          | ✅        | DID document resolved with HTTP                    |
 | `did:plc` | ❌          | ✅        | Bluesky's DID with rotation and a public directory |
 
 ### Supported Verification Method Types
