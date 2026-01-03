@@ -1,3 +1,17 @@
+// This crypto package is a thin ergonomic layer on top of the normal golang crypto packages or `x/crypto`.
+//
+// It aims to solve the following problems with the standard crypto packages:
+// - different algorithms have different APIs and ergonomics, which makes it hard to use them interchangeably
+// - occasionally, it's quite hard to figure out how to do simple tasks (like encoding/decoding keys)
+// - it's still necessary to make some educated choices (e.g. which hash function to use for signatures)
+// - sometimes features are left out (e.g. ed25519 to X25519 for key exchange, secp256k1...)
+// - some hash functions are not available in the standard library with no easy way to extend it (e.g. KECCAK-256)
+//
+// To do so, this package provides and implements a set of shared interfaces for all algorithms. As not all algorithms
+// support all features (e.g. RSA keys don't support key exchange), some interfaces are optionally implemented.
+//
+// An additional benefit of shared interfaces is that a shared test suite can be written to test all algorithms, which this
+// package does.
 package crypto
 
 type PublicKey interface {
