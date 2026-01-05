@@ -19,6 +19,7 @@ import (
 // - https://www.rfc-editor.org/rfc/rfc7517#section-4 (JWK)
 // - https://www.iana.org/assignments/jose/jose.xhtml#web-key-types (key parameters)
 
+// PublicJwk is a JWK holding a public key
 type PublicJwk struct {
 	Pubkey crypto.PublicKey
 }

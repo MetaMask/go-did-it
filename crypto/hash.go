@@ -12,6 +12,7 @@ import (
 // As the standard crypto library prohibits from registering additional hash algorithm (like keccak),
 // below is essentially an extension of that mechanism to allow it.
 
+// Hash is similar to crypto.Hash but can be extended with more values.
 type Hash uint
 
 const (
@@ -50,6 +51,7 @@ func (h Hash) HashFunc() Hash {
 	return h
 }
 
+// String returns the name of the hash function.
 func (h Hash) String() string {
 	if h < maxStdHash {
 		return stdcrypto.Hash(h).String()
@@ -75,6 +77,7 @@ func (h Hash) New() hash.Hash {
 	panic("requested hash function #" + strconv.Itoa(int(h)) + " is unavailable")
 }
 
+// ToVarsigHash returns the corresponding varsig.Hash value.
 func (h Hash) ToVarsigHash() varsig.Hash {
 	if h == MD5SHA1 {
 		panic("no multihash/multicodec value exists for MD5+SHA1")
@@ -85,6 +88,7 @@ func (h Hash) ToVarsigHash() varsig.Hash {
 	panic("requested hash #" + strconv.Itoa(int(h)) + " is unavailable")
 }
 
+// FromVarsigHash converts a varsig.Hash value to the corresponding Hash value.
 func FromVarsigHash(h varsig.Hash) Hash {
 	switch h {
 	case varsig.HashMd4:
