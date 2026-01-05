@@ -15,6 +15,7 @@ import (
 	"github.com/MetaMask/go-did-it/crypto/x25519"
 )
 
+// PrivateJwk is a JWK holding a private key
 type PrivateJwk struct {
 	Privkey crypto.PrivateKey
 }

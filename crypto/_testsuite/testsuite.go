@@ -14,6 +14,7 @@ import (
 	"github.com/MetaMask/go-did-it/crypto"
 )
 
+// TestHarness describes a keypair implementation for the test/bench suites to operate on.
 type TestHarness[PubT crypto.PublicKey, PrivT crypto.PrivateKey] struct {
 	Name string
 
@@ -38,6 +39,7 @@ type TestHarness[PubT crypto.PublicKey, PrivT crypto.PrivateKey] struct {
 	SignatureBytesSize  int
 }
 
+// TestSuite runs a set of tests against a keypair implementation.
 func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, harness TestHarness[PubT, PrivT]) {
 	stats := struct {
 		bytesPubSize  int
@@ -337,6 +339,7 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 	})
 }
 
+// BenchSuite runs a set of benchmarks on a keypair implementation.
 func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, harness TestHarness[PubT, PrivT]) {
 	b.Run("GenerateKeyPair", func(b *testing.B) {
 		b.ReportAllocs()

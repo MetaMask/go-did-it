@@ -4,6 +4,7 @@ import (
 	"github.com/ucan-wg/go-varsig"
 )
 
+// SigningOpts contains the resulting signature configuration.
 type SigningOpts struct {
 	hash            Hash
 	payloadEncoding varsig.PayloadEncoding
@@ -14,6 +15,7 @@ type SigningOpts struct {
 	keyLen uint64
 }
 
+// CollectSigningOptions collects the signing options into a SigningOpts.
 func CollectSigningOptions(opts []SigningOption) SigningOpts {
 	res := SigningOpts{}
 	for _, opt := range opts {
@@ -22,6 +24,7 @@ func CollectSigningOptions(opts []SigningOption) SigningOpts {
 	return res
 }
 
+// HashOrDefault returns the hash algorithm to be used for signatures, or the default if not specified.
 func (opts SigningOpts) HashOrDefault(_default Hash) Hash {
 	if opts.hash == 0 {
 		return _default
@@ -29,6 +32,7 @@ func (opts SigningOpts) HashOrDefault(_default Hash) Hash {
 	return opts.hash
 }
 
+// PayloadEncoding returns the encoding used on the message before signing it.
 func (opts SigningOpts) PayloadEncoding() varsig.PayloadEncoding {
 	if opts.payloadEncoding == 0 {
 		return varsig.PayloadEncodingVerbatim
@@ -36,6 +40,7 @@ func (opts SigningOpts) PayloadEncoding() varsig.PayloadEncoding {
 	return opts.payloadEncoding
 }
 
+// VarsigMatch returns true if the given varsig parameters match the signing options.
 func (opts SigningOpts) VarsigMatch(algo varsig.Algorithm, curve uint64, keyLength uint64) bool {
 	// This is relatively ugly, but we get cyclic import otherwise
 	switch opts.algo {
