@@ -110,6 +110,18 @@ func TestPrivateJwkRoundtrip(t *testing.T) {
 				"d": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU"
 			  }`,
 		},
+		{
+			name: "p256-with-use",
+			in: `{
+				"kid": "key-2",
+				"use": "sig",
+				"kty": "EC",
+				"crv": "P-256",
+				"x": "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns",
+				"y": "efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM",
+				"d": "gPh-VvVS8MbvKQ9LSVVmfnxnKjHn4Tqj0bmbpehRlpc"
+			  }`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var priv PrivateJwk

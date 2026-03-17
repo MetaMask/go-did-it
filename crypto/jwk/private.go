@@ -19,6 +19,7 @@ import (
 type PrivateJwk struct {
 	Privkey crypto.PrivateKey
 	Kid     string // optional
+	Use     string // optional; "sig" or "enc" per RFC 7517 §4.2
 }
 
 func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
@@ -27,12 +28,14 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		pubkey := privkey.Public().(ed25519.PublicKey)
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
+			Use string `json:"use,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
 			D   string `json:"d"`
 		}{
 			Kid: pj.Kid,
+			Use: pj.Use,
 			Kty: "OKP",
 			Crv: "Ed25519",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
@@ -42,6 +45,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		pubkey := privkey.Public().(*p256.PublicKey)
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
+			Use string `json:"use,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
@@ -49,6 +53,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 			D   string `json:"d"`
 		}{
 			Kid: pj.Kid,
+			Use: pj.Use,
 			Kty: "EC",
 			Crv: "P-256",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -59,6 +64,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		pubkey := privkey.Public().(*p384.PublicKey)
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
+			Use string `json:"use,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
@@ -66,6 +72,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 			D   string `json:"d"`
 		}{
 			Kid: pj.Kid,
+			Use: pj.Use,
 			Kty: "EC",
 			Crv: "P-384",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -76,6 +83,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		pubkey := privkey.Public().(*p521.PublicKey)
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
+			Use string `json:"use,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
@@ -83,6 +91,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 			D   string `json:"d"`
 		}{
 			Kid: pj.Kid,
+			Use: pj.Use,
 			Kty: "EC",
 			Crv: "P-521",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -93,6 +102,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		pubkey := privkey.Public().(*rsa.PublicKey)
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
+			Use string `json:"use,omitempty"`
 			Kty string `json:"kty"`
 			N   string `json:"n"`
 			E   string `json:"e"`
@@ -104,6 +114,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 			Qi  string `json:"qi"`
 		}{
 			Kid: pj.Kid,
+			Use: pj.Use,
 			Kty: "RSA",
 			N:   base64.RawURLEncoding.EncodeToString(pubkey.NBytes()),
 			E:   base64.RawURLEncoding.EncodeToString(pubkey.EBytes()),
@@ -118,6 +129,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		pubkey := privkey.Public().(*secp256k1.PublicKey)
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
+			Use string `json:"use,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
@@ -125,6 +137,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 			D   string `json:"d"`
 		}{
 			Kid: pj.Kid,
+			Use: pj.Use,
 			Kty: "EC",
 			Crv: "secp256k1",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -135,12 +148,14 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		pubkey := privkey.Public().(*x25519.PublicKey)
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
+			Use string `json:"use,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
 			D   string `json:"d"`
 		}{
 			Kid: pj.Kid,
+			Use: pj.Use,
 			Kty: "OKP",
 			Crv: "X25519",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
@@ -160,6 +175,7 @@ func (pj *PrivateJwk) UnmarshalJSON(bytes []byte) error {
 	}
 
 	pj.Kid = aux["kid"]
+	pj.Use = aux["use"]
 
 	switch aux["kty"] {
 	case "EC": // Elliptic curve
