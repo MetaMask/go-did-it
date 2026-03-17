@@ -100,6 +100,16 @@ func TestPrivateJwkRoundtrip(t *testing.T) {
 				"d": "aEAAB3VBFPCQtgF3N__wRiXhMOgeiRGstpPC3gnJ1Eo"
 			  }`,
 		},
+		{
+			name: "ed25519-with-kid",
+			in: `{
+				"kid": "key-1",
+				"kty": "OKP",
+				"crv": "Ed25519",
+				"x": "_eT7oDCtAC98L31MMx9J0T-w7HR-zuvsY08f9MvKne8",
+				"d": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU"
+			  }`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var priv PrivateJwk

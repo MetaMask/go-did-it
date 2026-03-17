@@ -18,6 +18,7 @@ import (
 // PrivateJwk is a JWK holding a private key
 type PrivateJwk struct {
 	Privkey crypto.PrivateKey
+	Kid     string // optional
 }
 
 func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
@@ -25,11 +26,13 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 	case ed25519.PrivateKey:
 		pubkey := privkey.Public().(ed25519.PublicKey)
 		return json.Marshal(struct {
+			Kid string `json:"kid,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
 			D   string `json:"d"`
 		}{
+			Kid: pj.Kid,
 			Kty: "OKP",
 			Crv: "Ed25519",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
@@ -38,12 +41,14 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 	case *p256.PrivateKey:
 		pubkey := privkey.Public().(*p256.PublicKey)
 		return json.Marshal(struct {
+			Kid string `json:"kid,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
 			Y   string `json:"y"`
 			D   string `json:"d"`
 		}{
+			Kid: pj.Kid,
 			Kty: "EC",
 			Crv: "P-256",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -53,12 +58,14 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 	case *p384.PrivateKey:
 		pubkey := privkey.Public().(*p384.PublicKey)
 		return json.Marshal(struct {
+			Kid string `json:"kid,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
 			Y   string `json:"y"`
 			D   string `json:"d"`
 		}{
+			Kid: pj.Kid,
 			Kty: "EC",
 			Crv: "P-384",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -68,12 +75,14 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 	case *p521.PrivateKey:
 		pubkey := privkey.Public().(*p521.PublicKey)
 		return json.Marshal(struct {
+			Kid string `json:"kid,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
 			Y   string `json:"y"`
 			D   string `json:"d"`
 		}{
+			Kid: pj.Kid,
 			Kty: "EC",
 			Crv: "P-521",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -83,6 +92,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 	case *rsa.PrivateKey:
 		pubkey := privkey.Public().(*rsa.PublicKey)
 		return json.Marshal(struct {
+			Kid string `json:"kid,omitempty"`
 			Kty string `json:"kty"`
 			N   string `json:"n"`
 			E   string `json:"e"`
@@ -93,6 +103,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 			Dq  string `json:"dq"`
 			Qi  string `json:"qi"`
 		}{
+			Kid: pj.Kid,
 			Kty: "RSA",
 			N:   base64.RawURLEncoding.EncodeToString(pubkey.NBytes()),
 			E:   base64.RawURLEncoding.EncodeToString(pubkey.EBytes()),
@@ -106,12 +117,14 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 	case *secp256k1.PrivateKey:
 		pubkey := privkey.Public().(*secp256k1.PublicKey)
 		return json.Marshal(struct {
+			Kid string `json:"kid,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
 			Y   string `json:"y"`
 			D   string `json:"d"`
 		}{
+			Kid: pj.Kid,
 			Kty: "EC",
 			Crv: "secp256k1",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -121,11 +134,13 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 	case *x25519.PrivateKey:
 		pubkey := privkey.Public().(*x25519.PublicKey)
 		return json.Marshal(struct {
+			Kid string `json:"kid,omitempty"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
 			D   string `json:"d"`
 		}{
+			Kid: pj.Kid,
 			Kty: "OKP",
 			Crv: "X25519",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
@@ -143,6 +158,8 @@ func (pj *PrivateJwk) UnmarshalJSON(bytes []byte) error {
 	if err != nil {
 		return err
 	}
+
+	pj.Kid = aux["kid"]
 
 	switch aux["kty"] {
 	case "EC": // Elliptic curve

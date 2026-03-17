@@ -74,6 +74,15 @@ func TestPublicJwkRoundtrip(t *testing.T) {
 				"x": "467ap28wHJGEXJAb4mLrokqq8A-txA_KmoQTcj31XzU"
 			  }`,
 		},
+		{
+			name: "ed25519-with-kid",
+			in: `{
+				"kid": "key-1",
+				"kty": "OKP",
+				"crv": "Ed25519",
+				"x": "_eT7oDCtAC98L31MMx9J0T-w7HR-zuvsY08f9MvKne8"
+			  }`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var pub PublicJwk
