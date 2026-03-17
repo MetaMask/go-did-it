@@ -74,6 +74,26 @@ func TestPublicJwkRoundtrip(t *testing.T) {
 				"x": "467ap28wHJGEXJAb4mLrokqq8A-txA_KmoQTcj31XzU"
 			  }`,
 		},
+		{
+			name: "ed25519-with-kid",
+			in: `{
+				"kid": "key-1",
+				"kty": "OKP",
+				"crv": "Ed25519",
+				"x": "_eT7oDCtAC98L31MMx9J0T-w7HR-zuvsY08f9MvKne8"
+			  }`,
+		},
+		{
+			name: "p256-with-use",
+			in: `{
+				"kid": "key-2",
+				"use": "sig",
+				"kty": "EC",
+				"crv": "P-256",
+				"x": "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns",
+				"y": "efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM"
+			  }`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var pub PublicJwk
