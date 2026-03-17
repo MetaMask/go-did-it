@@ -1,4 +1,4 @@
-package did_web
+package didweb
 
 import (
 	"fmt"
