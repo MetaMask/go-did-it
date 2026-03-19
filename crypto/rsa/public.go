@@ -152,3 +152,8 @@ func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.Signing
 	err := rsa.VerifyPKCS1v15(p.k, stdcrypto.Hash(hashCode), hash, signature)
 	return err == nil
 }
+
+// Unwrap returns the underlying crypto/rsa public key.
+func (p *PublicKey) Unwrap() *rsa.PublicKey {
+	return p.k
+}

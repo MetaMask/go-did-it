@@ -132,3 +132,8 @@ func (p PrivateKey) ToPKCS8PEM() string {
 func (p PrivateKey) Seed() []byte {
 	return p.k.Seed()
 }
+
+// Unwrap returns the underlying crypto/ed25519 private key.
+func (p PrivateKey) Unwrap() ed25519.PrivateKey {
+	return p.k
+}

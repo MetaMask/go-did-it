@@ -174,3 +174,8 @@ func (p *PrivateKey) SignToASN1(message []byte, opts ...crypto.SigningOption) ([
 
 	return rsa.SignPKCS1v15(rand.Reader, p.k, stdcrypto.Hash(hashCode), hash)
 }
+
+// Unwrap returns the underlying crypto/rsa private key.
+func (p *PrivateKey) Unwrap() *rsa.PrivateKey {
+	return p.k
+}

@@ -141,3 +141,8 @@ func (p PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningO
 
 	return ed25519.Verify(p.k, message, bitString.Bytes)
 }
+
+// Unwrap returns the underlying crypto/ed25519 public key.
+func (p PublicKey) Unwrap() ed25519.PublicKey {
+	return p.k
+}

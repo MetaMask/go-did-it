@@ -160,3 +160,8 @@ func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.Signing
 
 	return ecdsa.VerifyASN1(p.k, hash[:], signature)
 }
+
+// Unwrap returns the underlying crypto/ecdsa public key.
+func (p *PublicKey) Unwrap() *ecdsa.PublicKey {
+	return p.k
+}

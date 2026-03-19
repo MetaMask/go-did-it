@@ -153,3 +153,8 @@ func reverseBytes(b []byte) []byte {
 	}
 	return r
 }
+
+// Unwrap returns the underlying crypto/ecdh public key.
+func (p *PublicKey) Unwrap() *ecdh.PublicKey {
+	return p.k
+}
