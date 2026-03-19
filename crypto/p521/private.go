@@ -161,3 +161,8 @@ func (p *PrivateKey) KeyExchange(remote crypto.PublicKey) ([]byte, error) {
 	}
 	return nil, fmt.Errorf("incompatible public key")
 }
+
+// Unwrap returns the underlying crypto/ecdsa private key.
+func (p *PrivateKey) Unwrap() *ecdsa.PrivateKey {
+	return p.k
+}

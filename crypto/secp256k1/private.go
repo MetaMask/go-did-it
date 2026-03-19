@@ -224,3 +224,8 @@ func (p *PrivateKey) KeyExchange(remote crypto.PublicKey) ([]byte, error) {
 	}
 	return nil, fmt.Errorf("incompatible public key")
 }
+
+// Unwrap returns the underlying dcrd/dcrec/secp256k1/v4 private key.
+func (p *PrivateKey) Unwrap() *secp256k1.PrivateKey {
+	return p.k
+}

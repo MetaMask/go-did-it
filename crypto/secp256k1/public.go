@@ -212,6 +212,11 @@ func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.Signing
 	return sig.Verify(hash, p.k)
 }
 
+// Unwrap returns the underlying dcrd/dcrec/secp256k1/v4 public key.
+func (p *PublicKey) Unwrap() *secp256k1.PublicKey {
+	return p.k
+}
+
 func must[T any](v T, err error) T {
 	if err != nil {
 		panic(err)
