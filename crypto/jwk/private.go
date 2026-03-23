@@ -29,6 +29,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
 			Use string `json:"use,omitempty"`
+			Alg string `json:"alg"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
@@ -36,6 +37,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		}{
 			Kid: pj.Kid,
 			Use: pj.Use,
+			Alg: validAlgs[keyTypeEd25519][0],
 			Kty: "OKP",
 			Crv: "Ed25519",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
@@ -46,6 +48,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
 			Use string `json:"use,omitempty"`
+			Alg string `json:"alg"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
@@ -54,6 +57,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		}{
 			Kid: pj.Kid,
 			Use: pj.Use,
+			Alg: validAlgs[keyTypeP256][0],
 			Kty: "EC",
 			Crv: "P-256",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -65,6 +69,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
 			Use string `json:"use,omitempty"`
+			Alg string `json:"alg"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
@@ -73,6 +78,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		}{
 			Kid: pj.Kid,
 			Use: pj.Use,
+			Alg: validAlgs[keyTypeP384][0],
 			Kty: "EC",
 			Crv: "P-384",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -84,6 +90,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
 			Use string `json:"use,omitempty"`
+			Alg string `json:"alg"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
@@ -92,6 +99,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		}{
 			Kid: pj.Kid,
 			Use: pj.Use,
+			Alg: validAlgs[keyTypeP521][0],
 			Kty: "EC",
 			Crv: "P-521",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -103,6 +111,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
 			Use string `json:"use,omitempty"`
+			Alg string `json:"alg"`
 			Kty string `json:"kty"`
 			N   string `json:"n"`
 			E   string `json:"e"`
@@ -115,6 +124,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		}{
 			Kid: pj.Kid,
 			Use: pj.Use,
+			Alg: validAlgs[rsaKeyType(int(pubkey.KeyLength())*8)][0],
 			Kty: "RSA",
 			N:   base64.RawURLEncoding.EncodeToString(pubkey.NBytes()),
 			E:   base64.RawURLEncoding.EncodeToString(pubkey.EBytes()),
@@ -130,6 +140,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
 			Use string `json:"use,omitempty"`
+			Alg string `json:"alg"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
@@ -138,6 +149,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		}{
 			Kid: pj.Kid,
 			Use: pj.Use,
+			Alg: validAlgs[keyTypeSecp256k1][0],
 			Kty: "EC",
 			Crv: "secp256k1",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
@@ -149,6 +161,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		return json.Marshal(struct {
 			Kid string `json:"kid,omitempty"`
 			Use string `json:"use,omitempty"`
+			Alg string `json:"alg"`
 			Kty string `json:"kty"`
 			Crv string `json:"crv"`
 			X   string `json:"x"`
@@ -156,6 +169,7 @@ func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
 		}{
 			Kid: pj.Kid,
 			Use: pj.Use,
+			Alg: validAlgs[keyTypeX25519][0],
 			Kty: "OKP",
 			Crv: "X25519",
 			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
@@ -186,17 +200,25 @@ func (pj *PrivateJwk) UnmarshalJSON(bytes []byte) error {
 		}
 		switch aux["crv"] {
 		case "P-256":
-			pj.Privkey, err = p256.PrivateKeyFromBytes(d)
-			return err
+			if pj.Privkey, err = p256.PrivateKeyFromBytes(d); err != nil {
+				return err
+			}
+			return checkAlg(aux["alg"], keyTypeP256)
 		case "P-384":
-			pj.Privkey, err = p384.PrivateKeyFromBytes(d)
-			return err
+			if pj.Privkey, err = p384.PrivateKeyFromBytes(d); err != nil {
+				return err
+			}
+			return checkAlg(aux["alg"], keyTypeP384)
 		case "P-521":
-			pj.Privkey, err = p521.PrivateKeyFromBytes(d)
-			return err
+			if pj.Privkey, err = p521.PrivateKeyFromBytes(d); err != nil {
+				return err
+			}
+			return checkAlg(aux["alg"], keyTypeP521)
 		case "secp256k1":
-			pj.Privkey, err = secp256k1.PrivateKeyFromBytes(d)
-			return err
+			if pj.Privkey, err = secp256k1.PrivateKeyFromBytes(d); err != nil {
+				return err
+			}
+			return checkAlg(aux["alg"], keyTypeSecp256k1)
 
 		default:
 			return fmt.Errorf("unsupported Curve %s", aux["crv"])
@@ -224,8 +246,10 @@ func (pj *PrivateJwk) UnmarshalJSON(bytes []byte) error {
 		if err != nil {
 			return fmt.Errorf("invalid q parameter with kty=RSA: %w", err)
 		}
-		pj.Privkey, err = rsa.PrivateKeyFromNEDPQ(n, e, d, p, q)
-		return err
+		if pj.Privkey, err = rsa.PrivateKeyFromNEDPQ(n, e, d, p, q); err != nil {
+			return err
+		}
+		return checkAlg(aux["alg"], rsaKeyType(int(pj.Privkey.(*rsa.PrivateKey).Public().(*rsa.PublicKey).KeyLength())*8))
 
 	case "OKP": // Octet key pair
 		d, err := base64.RawURLEncoding.DecodeString(aux["d"])
@@ -234,11 +258,15 @@ func (pj *PrivateJwk) UnmarshalJSON(bytes []byte) error {
 		}
 		switch aux["crv"] {
 		case "Ed25519":
-			pj.Privkey, err = ed25519.PrivateKeyFromSeed(d)
-			return err
+			if pj.Privkey, err = ed25519.PrivateKeyFromSeed(d); err != nil {
+				return err
+			}
+			return checkAlg(aux["alg"], keyTypeEd25519)
 		case "X25519":
-			pj.Privkey, err = x25519.PrivateKeyFromBytes(d)
-			return err
+			if pj.Privkey, err = x25519.PrivateKeyFromBytes(d); err != nil {
+				return err
+			}
+			return checkAlg(aux["alg"], keyTypeX25519)
 
 		default:
 			return fmt.Errorf("unsupported Curve %s", aux["crv"])

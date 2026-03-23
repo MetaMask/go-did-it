@@ -13,12 +13,14 @@ func TestPublicJwksRoundtrip(t *testing.T) {
 			{
 				"kid": "key-1",
 				"kty": "OKP",
+				"alg": "EdDSA",
 				"crv": "Ed25519",
 				"x": "_eT7oDCtAC98L31MMx9J0T-w7HR-zuvsY08f9MvKne8"
 			},
 			{
 				"kid": "key-2",
 				"kty": "EC",
+				"alg": "ES256",
 				"crv": "P-256",
 				"x": "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns",
 				"y": "efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM"
@@ -44,6 +46,7 @@ func TestPrivateJwksRoundtrip(t *testing.T) {
 			{
 				"kid": "key-1",
 				"kty": "OKP",
+				"alg": "EdDSA",
 				"crv": "Ed25519",
 				"x": "_eT7oDCtAC98L31MMx9J0T-w7HR-zuvsY08f9MvKne8",
 				"d": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU"
@@ -51,6 +54,7 @@ func TestPrivateJwksRoundtrip(t *testing.T) {
 			{
 				"kid": "key-2",
 				"kty": "EC",
+				"alg": "ES256",
 				"crv": "P-256",
 				"x": "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns",
 				"y": "efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM",
