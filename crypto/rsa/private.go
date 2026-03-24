@@ -15,6 +15,8 @@ import (
 )
 
 var _ crypto.PrivateKeySigningASN1 = &PrivateKey{}
+var _ crypto.PrivateKeyPKCS8 = &PrivateKey{}
+var _ crypto.PrivateKeyVarsig = &PrivateKey{}
 
 type PrivateKey struct {
 	k *rsa.PrivateKey

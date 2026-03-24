@@ -56,7 +56,7 @@ func FromPublicKey(pub crypto.PublicKey) did.DID {
 }
 
 func FromPrivateKey(priv crypto.PrivateKey) did.DID {
-	return FromPublicKey(priv.Public().(crypto.PublicKey))
+	return FromPublicKey(priv.Public())
 }
 
 func (d DidKey) Method() string {

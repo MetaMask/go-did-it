@@ -11,7 +11,8 @@ import (
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
 )
 
-var _ crypto.PrivateKeyKeyExchange = (*PrivateKey)(nil)
+var _ crypto.PrivateKeyKeyExchange = &PrivateKey{}
+var _ crypto.PrivateKeyPKCS8 = &PrivateKey{}
 
 type PrivateKey struct {
 	k *ecdh.PrivateKey
