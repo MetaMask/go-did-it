@@ -18,9 +18,13 @@ type PublicKey interface {
 	// Equal returns true if other is the same PublicKey
 	Equal(other PublicKey) bool
 
-	// ToPublicKeyMultibase format the PublicKey into a string compatible with a PublicKeyMultibase field
+	// ToPublicKeyMultibase formats the PublicKey into a string compatible with a PublicKeyMultibase field
 	// in a DID Document.
 	ToPublicKeyMultibase() string
+}
+
+type PublicKeyX509 interface {
+	PublicKey
 
 	// ToX509DER serializes the PublicKey into the X.509 DER (binary) format.
 	ToX509DER() []byte

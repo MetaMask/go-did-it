@@ -12,7 +12,8 @@ import (
 	helpers "github.com/MetaMask/go-did-it/crypto/internal"
 )
 
-var _ crypto.PublicKey = (*PublicKey)(nil)
+var _ crypto.PublicKey = &PublicKey{}
+var _ crypto.PublicKeyX509 = &PublicKey{}
 
 type PublicKey struct {
 	k *ecdh.PublicKey

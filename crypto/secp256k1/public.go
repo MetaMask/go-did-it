@@ -16,6 +16,7 @@ import (
 
 var _ crypto.PublicKeySigningBytes = &PublicKey{}
 var _ crypto.PublicKeySigningASN1 = &PublicKey{}
+var _ crypto.PublicKeyX509 = &PublicKey{}
 
 type PublicKey struct {
 	k *secp256k1.PublicKey

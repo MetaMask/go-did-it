@@ -15,6 +15,7 @@ import (
 )
 
 var _ crypto.PublicKeySigningASN1 = &PublicKey{}
+var _ crypto.PublicKeyX509 = &PublicKey{}
 
 type PublicKey struct {
 	k *rsa.PublicKey

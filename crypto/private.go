@@ -8,6 +8,10 @@ type PrivateKey interface {
 
 	// Public returns the matching PublicKey.
 	Public() PublicKey
+}
+
+type PrivateKeyPKCS8 interface {
+	PrivateKey
 
 	// ToPKCS8DER serializes the PrivateKey into the PKCS#8 DER (binary) format.
 	ToPKCS8DER() []byte
@@ -25,11 +29,15 @@ type PrivateKeyToBytes interface {
 	ToBytes() []byte
 }
 
-type PrivateKeySigningBytes interface {
+type PrivateKeyVarsig interface {
 	PrivateKey
 
 	// Varsig returns the varsig.Varsig corresponding to the given parameters and private key.
 	Varsig(opts ...SigningOption) varsig.Varsig
+}
+
+type PrivateKeySigningBytes interface {
+	PrivateKey
 
 	// SignToBytes creates a signature in the "raw bytes" format.
 	// This format can make some assumptions and may not be what you expect.
@@ -39,9 +47,6 @@ type PrivateKeySigningBytes interface {
 
 type PrivateKeySigningASN1 interface {
 	PrivateKey
-
-	// Varsig returns the varsig.Varsig corresponding to the given parameters and private key.
-	Varsig(opts ...SigningOption) varsig.Varsig
 
 	// SignToASN1 creates a signature in the ASN.1 format.
 	SignToASN1(message []byte, opts ...SigningOption) ([]byte, error)
