@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"testing"
 
+	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it/crypto"
@@ -80,6 +81,24 @@ Uwyag4V8qWsP8e5ZSOOXDSYMplwbsAzsko9NYw4Jy9RHYHwFQ7dV
 		// looking for panics
 		_, _ = PrivateKeyFromPKCS8PEM(data)
 	})
+}
+
+func TestPublicKeyFromCompactRecovery(t *testing.T) {
+	pub, priv, err := GenerateKeyPair()
+	require.NoError(t, err)
+
+	message := []byte("test message")
+	hasher := crypto.SHA256.New()
+	hasher.Write(message)
+	hash := hasher.Sum(nil)
+
+	// SignCompact produces a 65-byte compact signature with the recovery flag prepended.
+	compactSig := ecdsa.SignCompact(priv.Unwrap(), hash, true)
+	require.Len(t, compactSig, 65)
+
+	recovered, err := PublicKeyFromCompactRecovery(hash, compactSig)
+	require.NoError(t, err)
+	require.True(t, pub.Equal(recovered))
 }
 
 func TestSignatureASN1(t *testing.T) {
