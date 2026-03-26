@@ -45,14 +45,19 @@ func PublicKeyFromXY(x, y []byte) (*PublicKey, error) {
 	return &PublicKey{k: secp256k1.NewPublicKey(&xf, &yf)}, nil
 }
 
-// PublicKeyFromCompactRecovery recovers the secp256k1 public key from a compact signature
-// and the hash of the signed message. The signature must be 65 bytes:
-// [recovery_flag (1 byte) | R (32 bytes) | S (32 bytes)].
+// PublicKeyFromRecovery recovers the secp256k1 public key from a compact signature
+// and the hash of the signed message.
+// The signature must be 65 bytes: [recovery_flag (1 byte) | R (32 bytes) | S (32 bytes)].
+// The hash must be 32 bytes long and be the one used for that signature.
 // Returns an error if recovery fails or the signature is malformed.
-func PublicKeyFromCompactRecovery(hash, signature []byte) (*PublicKey, error) {
+func PublicKeyFromRecovery(signature []byte, hash []byte) (*PublicKey, error) {
 	if len(signature) != 65 {
 		return nil, fmt.Errorf("secp256k1: invalid compact signature length: expected 65 bytes, got %d", len(signature))
 	}
+	if len(hash) != 32 {
+		return nil, fmt.Errorf("secp256k1: invalid hash length: expected 32 bytes, got %d", len(hash))
+	}
+
 	pub, _, err := ecdsa.RecoverCompact(signature, hash)
 	if err != nil {
 		return nil, fmt.Errorf("secp256k1: failed to recover public key: %w", err)

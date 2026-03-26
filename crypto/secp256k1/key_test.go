@@ -96,7 +96,7 @@ func TestPublicKeyFromCompactRecovery(t *testing.T) {
 	compactSig := ecdsa.SignCompact(priv.Unwrap(), hash, true)
 	require.Len(t, compactSig, 65)
 
-	recovered, err := PublicKeyFromCompactRecovery(hash, compactSig)
+	recovered, err := PublicKeyFromRecovery(compactSig, hash)
 	require.NoError(t, err)
 	require.True(t, pub.Equal(recovered))
 }
