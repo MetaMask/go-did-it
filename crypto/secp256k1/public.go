@@ -58,6 +58,11 @@ func PublicKeyFromRecovery(signature []byte, hash []byte) (*PublicKey, error) {
 		return nil, fmt.Errorf("secp256k1: invalid hash length: expected 32 bytes, got %d", len(hash))
 	}
 
+	// We ignore the "compressed" flag in the signature, which means that ToBytes() will unconditionally
+	// serialize as compressed (33 bytes) instead of uncompressed (65 bytes).
+	// We consider this to be not relevant anymore as the compressed format is now in use everywhere.
+	// Which may or may not be correct.
+
 	pub, _, err := ecdsa.RecoverCompact(signature, hash)
 	if err != nil {
 		return nil, fmt.Errorf("secp256k1: failed to recover public key: %w", err)
