@@ -181,6 +181,9 @@ func (p *PrivateKey) Varsig(opts ...crypto.SigningOption) varsig.Varsig {
 	return varsig.NewECDSAVarsig(varsig.CurveSecp256k1, params.HashOrDefault(crypto.SHA256).ToVarsigHash(), params.PayloadEncoding())
 }
 
+// SignToBytes produces a 64-byte [R (32 bytes) | S (32 bytes)] signature.
+// This kind of signature is what is used in general ECDSA protocols, where the
+// public key is known and shipped around.
 // The default signing hash is SHA-256.
 func (p *PrivateKey) SignToBytes(message []byte, opts ...crypto.SigningOption) ([]byte, error) {
 	params := crypto.CollectSigningOptions(opts)
@@ -198,6 +201,28 @@ func (p *PrivateKey) SignToBytes(message []byte, opts ...crypto.SigningOption) (
 	s.PutBytesUnchecked(res[SignatureBytesSize/2:])
 
 	return res, nil
+}
+
+// SignToCompact signs the message and returns a 65-byte compact signature with the recovery
+// flag prepended: [recovery_flag (1 byte) | R (32 bytes) | S (32 bytes)].
+// This kind of signature is commonly used for Ethereum, where the public key is not known.
+// It is instead recovered from the signature and the message. This reduces the size of the
+// data that is shipped around.
+// This format is compatible with PublicKeyFromRecovery.
+// The default signing hash is SHA-256.
+func (p *PrivateKey) SignToCompact(message []byte, opts ...crypto.SigningOption) []byte {
+	params := crypto.CollectSigningOptions(opts)
+
+	hasher := params.HashOrDefault(crypto.SHA256).New()
+	hasher.Write(message)
+	hash := hasher.Sum(nil)
+
+	// When signing, isCompressedKey only implies for the recipient of the signature,
+	// after recovering the public key, to serialize it as compressed (33 bytes) or uncompressed (65 bytes).
+	// We consider this to be not relevant anymore as the compressed format is now in use everywhere.
+	// Which may or may not be correct.
+
+	return ecdsa.SignCompact(p.k, hash, true)
 }
 
 // The default signing hash is SHA-256.
