@@ -88,6 +88,6 @@ fmt.Println("Signature with varsig is valid:", pubAlice.VerifyBytes(msg, sig, cr
 | ECDSA P-256     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
 | ECDSA P-384     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
 | ECDSA P-521     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
-| ECDSA secp256k1 | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
+| ECDSA secp256k1 | Raw bytes, ASN.1, Compact recovery | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
 | RSA             | PKCS#1 v1.5 ASN.1 | X.509 DER/PEM, Multibase            | PKCS#8 DER/PEM            | ❌              |
 | X25519          | ❌                 | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |

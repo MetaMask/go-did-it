@@ -129,24 +129,25 @@ func main() {
 
 ### Supported Verification Method Types
 
-| Type                                | Use Case                 |
-|-------------------------------------|--------------------------|
-| `EcdsaSecp256k1VerificationKey2019` | secp256k1 signatures     |
-| `Ed25519VerificationKey2018`        | Ed25519 signatures       |
-| `Ed25519VerificationKey2020`        | Ed25519 signatures       |
-| `JsonWebKey2020`                    | All supported algorithms |
-| `Multikey`                          | All supported algorithms |
-| `P256Key2021`                       | P-256 signatures         |
-| `X25519KeyAgreementKey2020`         | X25519 key agreement     |
+| Type                                | Use Case                                 |
+|-------------------------------------|------------------------------------------|
+| `EcdsaSecp256k1VerificationKey2019` | secp256k1 signatures                     |
+| `EcdsaSecp256k1RecoveryMethod2020`  | secp256k1 recovery signatures (Ethereum) |
+| `Ed25519VerificationKey2018`        | Ed25519 signatures                       |
+| `Ed25519VerificationKey2020`        | Ed25519 signatures                       |
+| `JsonWebKey2020`                    | All supported algorithms                 |
+| `Multikey`                          | All supported algorithms                 |
+| `P256Key2021`                       | P-256 signatures                         |
+| `X25519KeyAgreementKey2020`         | X25519 key agreement                     |
 
 ### Supported Cryptographic Algorithms
 
-| Algorithm       | Signature Format  | Public Key Formats                  | Private Key Formats       | Key Agreement  |
-|-----------------|-------------------|-------------------------------------|---------------------------|----------------|
-| Ed25519         | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅ (via X25519) |
-| ECDSA P-256     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
-| ECDSA P-384     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
-| ECDSA P-521     | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
-| ECDSA secp256k1 | Raw bytes, ASN.1  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
-| RSA             | PKCS#1 v1.5 ASN.1 | X.509 DER/PEM, Multibase            | PKCS#8 DER/PEM            | ❌              |
-| X25519          | ❌                 | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
+| Algorithm       | Signature Format                   | Public Key Formats                  | Private Key Formats       | Key Agreement  |
+|-----------------|------------------------------------|-------------------------------------|---------------------------|----------------|
+| Ed25519         | Raw bytes, ASN.1                   | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅ (via X25519) |
+| ECDSA P-256     | Raw bytes, ASN.1                   | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
+| ECDSA P-384     | Raw bytes, ASN.1                   | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
+| ECDSA P-521     | Raw bytes, ASN.1                   | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
+| ECDSA secp256k1 | Raw bytes, ASN.1, Compact recovery | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |
+| RSA             | PKCS#1 v1.5 ASN.1                  | X.509 DER/PEM, Multibase            | PKCS#8 DER/PEM            | ❌              |
+| X25519          | ❌                                  | Raw bytes, X.509 DER/PEM, Multibase | Raw bytes, PKCS#8 DER/PEM | ✅              |

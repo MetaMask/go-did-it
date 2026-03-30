@@ -173,7 +173,7 @@ func (d DidPlc) Document(opts ...did.ResolutionOption) (did.Document, error) {
 			switch {
 			case params.HasVerificationMethodHint(jsonwebkey.Type):
 				doc.signatures = append(doc.signatures, jsonwebkey.NewJsonWebKey2020(vmId, pub, d))
-			case params.HasVerificationMethodHint(secp256k1vm.Type2019):
+			case params.HasVerificationMethodHint(secp256k1vm.TypeVerification2019):
 				doc.signatures = append(doc.signatures, secp256k1vm.NewVerificationKey2019(vmId, pub, d))
 			default:
 				doc.signatures = append(doc.signatures, multikey.NewMultiKey(vmId, pub, d))

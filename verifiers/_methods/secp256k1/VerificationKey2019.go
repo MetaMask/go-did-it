@@ -15,8 +15,8 @@ import (
 // Specification: https://w3c-ccg.github.io/lds-ecdsa-secp256k1-2019/
 
 const (
-	JsonLdContext = "https://w3id.org/security/suites/secp256k1-2019/v1"
-	Type2019      = "EcdsaSecp256k1VerificationKey2019"
+	JsonLdContext        = "https://w3id.org/security/suites/secp256k1-2019/v1"
+	TypeVerification2019 = "EcdsaSecp256k1VerificationKey2019"
 )
 
 var _ did.VerificationMethodSignature = &VerificationKey2019{}
@@ -90,7 +90,7 @@ func (vm VerificationKey2019) ID() string {
 }
 
 func (vm VerificationKey2019) Type() string {
-	return Type2019
+	return TypeVerification2019
 }
 
 func (vm VerificationKey2019) Controller() string {
