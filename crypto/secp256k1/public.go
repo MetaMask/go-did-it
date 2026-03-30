@@ -212,8 +212,12 @@ func (p *PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.Signin
 	hash := hasher.Sum(nil)
 
 	var r, s secp256k1.ModNScalar
-	r.SetByteSlice(signature[:32])
-	s.SetByteSlice(signature[32:])
+	if r.SetByteSlice(signature[:32]) {
+		return false // r >= curve order n
+	}
+	if s.SetByteSlice(signature[32:]) {
+		return false // s >= curve order n
+	}
 
 	return ecdsa.NewSignature(&r, &s).Verify(hash, p.k)
 }
