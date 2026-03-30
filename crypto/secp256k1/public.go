@@ -35,14 +35,20 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 
 // PublicKeyFromXY converts x and y coordinates into a PublicKey.
 func PublicKeyFromXY(x, y []byte) (*PublicKey, error) {
-	var xf, yf secp256k1.FieldVal
-	if xf.SetByteSlice(x) {
-		return nil, fmt.Errorf("invalid secp255k1 public key")
+	// Build the 65-byte uncompressed encoding (0x04 || x || y) and let ParsePubKey
+	// validate both coordinate range and curve membership (y² = x³ + 7 mod p).
+	if len(x) > coordinateSize || len(y) > coordinateSize {
+		return nil, fmt.Errorf("invalid secp256k1 public key: coordinates too large")
 	}
-	if yf.SetByteSlice(y) {
-		return nil, fmt.Errorf("invalid secp255k1 public key")
+	var uncompressed [65]byte
+	uncompressed[0] = 0x04
+	copy(uncompressed[1+coordinateSize-len(x):], x)
+	copy(uncompressed[1+coordinateSize+coordinateSize-len(y):], y)
+	pub, err := secp256k1.ParsePubKey(uncompressed[:])
+	if err != nil {
+		return nil, fmt.Errorf("invalid secp256k1 public key: %w", err)
 	}
-	return &PublicKey{k: secp256k1.NewPublicKey(&xf, &yf)}, nil
+	return &PublicKey{k: pub}, nil
 }
 
 // PublicKeyFromRecovery recovers the secp256k1 public key from a compact signature
