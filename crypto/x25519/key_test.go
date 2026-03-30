@@ -69,3 +69,69 @@ func TestEd25519ToX25519(t *testing.T) {
 		}
 	})
 }
+
+func TestPublicKeyFromEd25519EdgeCases(t *testing.T) {
+	// Ed25519 public keys are encoded as 32 little-endian bytes where bits 0-254
+	// carry the y coordinate and bit 255 is the sign of x (cleared before conversion).
+	//
+	// p = 2^255 - 19 in little-endian:
+	//   big-endian:    7F FF ... FF ED
+	//   little-endian: ED FF ... FF 7F
+	//
+	// All cases below must be rejected by PublicKeyFromEd25519.
+	cases := []struct {
+		name string
+		// 32-byte little-endian encoding of y (sign bit may be set; it is cleared
+		// inside PublicKeyFromEd25519 before use).
+		yLE [32]byte
+	}{
+		{
+			// y = 1 → denominator (1 - y) = 0, Birational map undefined.
+			name: "y=1 denominator zero",
+			yLE:  [32]byte{0x01},
+		},
+		{
+			// y = p-1 ≡ -1 (mod p) → numerator (1 + y) ≡ 0 (mod p), u = 0 (low-order point).
+			// This was the dead guard: previously compared against Go integer -1,
+			// which SetBytes can never produce.
+			name: "y=p-1 low-order point",
+			yLE: [32]byte{
+				0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
+			},
+		},
+		{
+			// y = p → non-canonical encoding; (1 - y) = 1 - p = -(p-1),
+			// which is coprime to p, so this wouldn't panic, but the encoding is invalid.
+			name: "y=p non-canonical",
+			yLE: [32]byte{
+				0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
+			},
+		},
+		{
+			// y = p+1 ≡ 1 (mod p) → non-canonical encoding of y=1.
+			// (1 - y) = -p, a multiple of p; ModInverse returns nil → panic without the y>=p guard.
+			name: "y=p+1 non-canonical alias of y=1",
+			yLE: [32]byte{
+				0xee, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pub, err := ed25519.PublicKeyFromBytes(tc.yLE[:])
+			require.NoError(t, err)
+			_, err = PublicKeyFromEd25519(pub)
+			require.Error(t, err)
+		})
+	}
+}

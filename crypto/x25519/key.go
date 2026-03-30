@@ -3,6 +3,7 @@ package x25519
 import (
 	"crypto/ecdh"
 	"crypto/rand"
+	"math/big"
 )
 
 const (
@@ -27,3 +28,22 @@ const (
 	pemPubBlockType  = "PUBLIC KEY"
 	pemPrivBlockType = "PRIVATE KEY"
 )
+
+// curve25519P is the field prime 2^255 - 19.
+//
+// Equivalent to:
+// two := big.NewInt(2)
+// exp := big.NewInt(255)
+// p := new(big.Int).Exp(two, exp, nil)
+// p.Sub(p, big.NewInt(19))
+var curve25519P = new(big.Int).SetBytes([]byte{
+	0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xed,
+})
+
+// curve25519PMinusOne is p - 1, the largest canonical field element.
+var curve25519PMinusOne = new(big.Int).Sub(curve25519P, big.NewInt(1))
+
+var one = big.NewInt(1)

@@ -48,33 +48,30 @@ func PublicKeyFromEd25519(pub ed25519.PublicKey) (*PublicKey, error) {
 	// ed25519 are little-endian, but big.Int expects big-endian
 	// See https://www.rfc-editor.org/rfc/rfc8032
 	y := new(big.Int).SetBytes(reverseBytes(pubBytes))
-	one := big.NewInt(1)
-	negOne := big.NewInt(-1)
 
-	if y.Cmp(one) == 0 || y.Cmp(negOne) == 0 {
+	// Non-canonical: y must be in [0, p-1]. A value like y = p+1 ≡ 1 (mod p)
+	// makes (1-y) = -p, a multiple of p, so ModInverse returns nil and the
+	// subsequent Mul panics.
+	if y.Cmp(curve25519P) >= 0 {
 		return nil, fmt.Errorf("x25519 undefined for this public key")
 	}
 
-	// p = 2^255-19
-	//
-	// Equivalent to:
-	// two := big.NewInt(2)
-	// exp := big.NewInt(255)
-	// p := new(big.Int).Exp(two, exp, nil)
-	// p.Sub(p, big.NewInt(19))
-	//
-	p := new(big.Int).SetBytes([]byte{
-		0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xed,
-	})
+	// y ≡ 1  (mod p) → denominator (1 - y) ≡ 0, division undefined
+	// y ≡ p-1 (mod p) → numerator (1 + y) ≡ 0, u = 0 (low-order point)
+	if y.Cmp(one) == 0 || y.Cmp(curve25519PMinusOne) == 0 {
+		return nil, fmt.Errorf("x25519 undefined for this public key")
+	}
 
 	onePlusY := new(big.Int).Add(one, y)
 	oneMinusY := new(big.Int).Sub(one, y)
-	oneMinusYInv := new(big.Int).ModInverse(oneMinusY, p)
+	oneMinusYInv := new(big.Int).ModInverse(oneMinusY, curve25519P)
+	if oneMinusYInv == nil {
+		// Should be unreachable after the canonical and special-value checks above,
+		// but guard against it to avoid a nil-pointer panic in Mul.
+		return nil, fmt.Errorf("x25519 undefined for this public key")
+	}
 	u := new(big.Int).Mul(onePlusY, oneMinusYInv)
-	u.Mod(u, p)
+	u.Mod(u, curve25519P)
 
 	// make sure we get 32 bytes, pad if necessary
 	uBytes := u.Bytes()
