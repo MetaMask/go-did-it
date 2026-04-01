@@ -1,12 +1,15 @@
 package x25519
 
 import (
+	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it/crypto/_testsuite"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
+	"github.com/MetaMask/go-did-it/crypto/x25519/testvectors"
 )
 
 var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
@@ -31,6 +34,41 @@ func TestSuite(t *testing.T) {
 
 func BenchmarkSuite(b *testing.B) {
 	testsuite.BenchSuite(b, harness)
+}
+
+func TestWycheproofKeyExchange(t *testing.T) {
+	all, err := testvectors.Load()
+	require.NoError(t, err)
+
+	for _, v := range all {
+		t.Run(fmt.Sprintf("%d-%s", v.TcId, v.Comment), func(t *testing.T) {
+			pubBytes, err := hex.DecodeString(v.Public)
+			require.NoError(t, err)
+			privBytes, err := hex.DecodeString(v.Private)
+			require.NoError(t, err)
+
+			pub, err := PublicKeyFromBytes(pubBytes)
+			require.NoError(t, err)
+			priv, err := PrivateKeyFromBytes(privBytes)
+			require.NoError(t, err)
+
+			shared, err := priv.KeyExchange(pub)
+
+			switch v.Result {
+			case "valid":
+				require.NoError(t, err, "tcId=%d: valid ECDH must succeed", v.TcId)
+				want, _ := hex.DecodeString(v.Shared)
+				require.Equal(t, want, shared, "tcId=%d: shared secret mismatch", v.TcId)
+			case "acceptable":
+				// Low-order points, twist points, etc. — may succeed or fail.
+				// If it succeeded, the output must match.
+				if err == nil {
+					want, _ := hex.DecodeString(v.Shared)
+					require.Equal(t, want, shared, "tcId=%d: shared secret mismatch", v.TcId)
+				}
+			}
+		})
+	}
 }
 
 func TestEd25519ToX25519(t *testing.T) {
