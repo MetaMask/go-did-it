@@ -55,7 +55,11 @@ func PublicKeyFromX509DER(bytes []byte) (PublicKey, error) {
 	if err != nil {
 		return PublicKey{}, err
 	}
-	return PublicKey{k: pub.(ed25519.PublicKey)}, nil
+	ed25519Pub, ok := pub.(ed25519.PublicKey)
+	if !ok {
+		return PublicKey{}, fmt.Errorf("invalid ed25519 public key type")
+	}
+	return PublicKey{k: ed25519Pub}, nil
 }
 
 // PublicKeyFromX509PEM decodes an X.509 PEM (string) encoded public key.
