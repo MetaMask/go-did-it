@@ -59,6 +59,9 @@ func PublicKeyFromX509DER(bytes []byte) (PublicKey, error) {
 	if !ok {
 		return PublicKey{}, fmt.Errorf("invalid ed25519 public key type")
 	}
+	if len(ed25519Pub) != PublicKeyBytesSize {
+		return PublicKey{}, fmt.Errorf("invalid ed25519 public key size")
+	}
 	return PublicKey{k: ed25519Pub}, nil
 }
 

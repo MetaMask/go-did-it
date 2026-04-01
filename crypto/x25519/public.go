@@ -108,6 +108,13 @@ func PublicKeyFromX509DER(bytes []byte) (*PublicKey, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid x25519 public key type")
 	}
+	if ecdhPub.Curve() != ecdh.X25519() {
+		return nil, fmt.Errorf("invalid x25519 curve")
+	}
+	keyBytes := ecdhPub.Bytes()
+	if len(keyBytes) != PublicKeyBytesSize {
+		return nil, fmt.Errorf("invalid x25519 public key size")
+	}
 	return &PublicKey{k: ecdhPub}, nil
 }
 
