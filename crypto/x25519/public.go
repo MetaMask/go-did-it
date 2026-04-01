@@ -101,7 +101,18 @@ func PublicKeyFromX509DER(bytes []byte) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PublicKey{k: pub.(*ecdh.PublicKey)}, nil
+	ecdhPub, ok := pub.(*ecdh.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("invalid x25519 public key type")
+	}
+	if ecdhPub.Curve() != ecdh.X25519() {
+		return nil, fmt.Errorf("invalid x25519 curve")
+	}
+	keyBytes := ecdhPub.Bytes()
+	if len(keyBytes) != PublicKeyBytesSize {
+		return nil, fmt.Errorf("invalid x25519 public key size")
+	}
+	return &PublicKey{k: ecdhPub}, nil
 }
 
 // PublicKeyFromX509PEM decodes an X.509 PEM (string) encoded public key.
