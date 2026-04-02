@@ -140,6 +140,26 @@ func TestPublicKeyFromCompactRecovery(t *testing.T) {
 	require.True(t, pub.Equal(recovered))
 }
 
+func TestPublicKeyFromBytesEncodings(t *testing.T) {
+	pub, _, err := GenerateKeyPair()
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		name     string
+		encoding []byte
+	}{
+		{"compressed (ToBytes)", pub.ToBytes()},
+		{"compressed (CompressedBytes)", pub.CompressedBytes()},
+		{"uncompressed (UncompressedBytes)", pub.UncompressedBytes()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := PublicKeyFromBytes(tc.encoding)
+			require.NoError(t, err)
+			require.True(t, pub.Equal(got))
+		})
+	}
+}
+
 func TestSignatureASN1(t *testing.T) {
 	// openssl ecparam -genkey -name secp256k1 -noout -out private.pem
 	// openssl ec -in private.pem -pubout -out public.pem
