@@ -57,8 +57,8 @@ func PublicKeyFromXY(x, y []byte) (*PublicKey, error) {
 // The hash must be 32 bytes long and be the one used for that signature.
 // Returns an error if recovery fails or the signature is malformed.
 func PublicKeyFromRecovery(signature []byte, hash []byte) (*PublicKey, error) {
-	if len(signature) != 65 {
-		return nil, fmt.Errorf("secp256k1: invalid compact signature length: expected 65 bytes, got %d", len(signature))
+	if len(signature) != SignatureCompactBytesSize {
+		return nil, fmt.Errorf("secp256k1: invalid compact signature length: expected %d bytes, got %d", SignatureCompactBytesSize, len(signature))
 	}
 	if len(hash) != 32 {
 		return nil, fmt.Errorf("secp256k1: invalid hash length: expected 32 bytes, got %d", len(hash))
