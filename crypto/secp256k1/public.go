@@ -149,6 +149,20 @@ func (p *PublicKey) YBytes() []byte {
 	return buf[:]
 }
 
+// CompressedBytes returns the SEC1 compressed public key: 0x02 or 0x03 || X(32) (33 bytes).
+// Use this when interoperating with Bitcoin/Lightning or any format that requires explicit
+// compressed encoding. If you need just the default serialization, use ToBytes().
+func (p *PublicKey) CompressedBytes() []byte {
+	return p.k.SerializeCompressed()
+}
+
+// UncompressedBytes returns the SEC1 uncompressed public key: 0x04 || X(32) || Y(32) (65 bytes).
+// Use this when interoperating with TLS/X.509, ECDH, or any library that speaks SEC1.
+// If you need just the raw coordinates, use XBytes() and YBytes().
+func (p *PublicKey) UncompressedBytes() []byte {
+	return p.k.SerializeUncompressed()
+}
+
 func (p *PublicKey) Equal(other crypto.PublicKey) bool {
 	if other, ok := other.(*PublicKey); ok {
 		return p.k.IsEqual(other.k)
@@ -156,8 +170,8 @@ func (p *PublicKey) Equal(other crypto.PublicKey) bool {
 	return false
 }
 
+// ToBytes returns the compressed public key. Same as CompressedBytes().
 func (p *PublicKey) ToBytes() []byte {
-	// 33-byte compressed format
 	return p.k.SerializeCompressed()
 }
 
