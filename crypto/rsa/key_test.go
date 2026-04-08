@@ -21,6 +21,7 @@ var harness2048 = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 	MultibaseCode:                   MultibaseCode,
 	DefaultHash:                     crypto.SHA256,
 	OtherHashes:                     []crypto.Hash{crypto.SHA384, crypto.SHA512},
+	SupportsPreHashed:               false,
 }
 
 var harness3072 = testsuite.TestHarness[*PublicKey, *PrivateKey]{
@@ -34,6 +35,7 @@ var harness3072 = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 	MultibaseCode:                   MultibaseCode,
 	DefaultHash:                     crypto.SHA384,
 	OtherHashes:                     []crypto.Hash{crypto.SHA512},
+	SupportsPreHashed:               false,
 }
 
 var harness4096 = testsuite.TestHarness[*PublicKey, *PrivateKey]{
@@ -47,6 +49,7 @@ var harness4096 = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 	MultibaseCode:                   MultibaseCode,
 	DefaultHash:                     crypto.SHA512,
 	OtherHashes:                     []crypto.Hash{},
+	SupportsPreHashed:               false,
 }
 
 func TestSuite2048(t *testing.T) {

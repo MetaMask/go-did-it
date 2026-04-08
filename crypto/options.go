@@ -67,6 +67,16 @@ func WithSigningHash(hash Hash) SigningOption {
 	}
 }
 
+// WithSigningPreHashed specify that the signing message was pre-hashed.
+// When using this option, the caller is responsible for providing a pre-computed digest
+// suitable for the key type.
+// This is the same as WithSigningHash(PREHASHED).
+func WithSigningPreHashed() SigningOption {
+	return func(opts *SigningOpts) {
+		opts.hash = PREHASHED
+	}
+}
+
 // WithPayloadEncoding specify the encoding that was used on the message before signing it.
 // This will be included in the resulting varsig.
 func WithPayloadEncoding(encoding varsig.PayloadEncoding) SigningOption {

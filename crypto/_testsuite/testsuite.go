@@ -31,8 +31,9 @@ type TestHarness[PubT crypto.PublicKey, PrivT crypto.PrivateKey] struct {
 
 	MultibaseCode uint64
 
-	DefaultHash crypto.Hash
-	OtherHashes []crypto.Hash
+	DefaultHash       crypto.Hash
+	OtherHashes       []crypto.Hash
+	SupportsPreHashed bool
 
 	PublicKeyBytesSize  int
 	PrivateKeyBytesSize int
@@ -330,6 +331,37 @@ func TestSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, har
 					require.False(t, valid)
 				})
 			}
+
+			t.Run(tc.name+"-Prehashed", func(t *testing.T) {
+				msg := []byte("message")
+
+				if harness.SupportsPreHashed {
+					// Pre-hash the message with the default hash, then sign and verify the digest directly.
+					h := tc.defaultHash.New()
+					h.Write(msg)
+					digest := h.Sum(nil)
+
+					sig, err := tc.signer(digest, crypto.WithSigningPreHashed())
+					require.NoError(t, err)
+					require.NotEmpty(t, sig)
+
+					valid := tc.verifier(digest, sig, crypto.WithSigningPreHashed())
+					require.True(t, valid)
+
+					// Wrong digest must not verify.
+					wrong := make([]byte, len(digest))
+					valid = tc.verifier(wrong, sig, crypto.WithSigningPreHashed())
+					require.False(t, valid)
+				} else {
+					// Key type does not support PREHASHED: sign must return an error,
+					// verify must return false.
+					_, err := tc.signer(msg, crypto.WithSigningPreHashed())
+					require.Error(t, err)
+
+					valid := tc.verifier(msg, []byte("fake"), crypto.WithSigningPreHashed())
+					require.False(t, valid)
+				}
+			})
 		}
 	})
 

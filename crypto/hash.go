@@ -7,6 +7,8 @@ import (
 
 	"github.com/ucan-wg/go-varsig"
 	"golang.org/x/crypto/sha3"
+
+	helpers "github.com/MetaMask/go-did-it/crypto/internal"
 )
 
 // As the standard crypto library prohibits from registering additional hash algorithm (like keccak),
@@ -40,6 +42,11 @@ const (
 	maxStdHash
 
 	// Extensions
+
+	// PREHASHED signals that the message is already a digest — no hashing is applied.
+	// The caller is responsible for passing a correctly sized digest for the chosen key type.
+	// Note: PREHASHED has no varsig representation and is not supported by some key types.
+	PREHASHED
 	KECCAK_256
 	KECCAK_512
 
@@ -81,6 +88,9 @@ func (h Hash) New() hash.Hash {
 func (h Hash) ToVarsigHash() varsig.Hash {
 	if h == MD5SHA1 {
 		panic("no multihash/multicodec value exists for MD5+SHA1")
+	}
+	if h == PREHASHED {
+		panic("PREHASHED has no varsig hash representation")
 	}
 	if h < maxHash {
 		return hashVarsigs[h]
@@ -137,10 +147,12 @@ func FromVarsigHash(h varsig.Hash) Hash {
 }
 
 var hashNames = []string{
+	"Prehashed",
 	"Keccak-256",
 	"Keccak-512",
 }
 var hashFns = []func() hash.Hash{
+	helpers.NewPreHashedHasher,
 	sha3.NewLegacyKeccak256,
 	sha3.NewLegacyKeccak512,
 }
@@ -166,6 +178,7 @@ var hashVarsigs = []varsig.Hash{
 	varsig.HashBlake2b_384,
 	varsig.HashBlake2b_512,
 	0, // maxStdHash
+	0, // PREHASHED - no varsig representation; ToVarsigHash panics before reaching here
 	varsig.HashKeccak_256,
 	varsig.HashKeccak_512,
 }
