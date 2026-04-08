@@ -170,6 +170,9 @@ func (p *PrivateKey) SignToASN1(message []byte, opts ...crypto.SigningOption) ([
 	params := crypto.CollectSigningOptions(opts)
 
 	hashCode := params.HashOrDefault(defaultSigHash(p.k.N.BitLen()))
+	if hashCode == crypto.PREHASHED {
+		return nil, fmt.Errorf("rsa: PREHASHED is not supported")
+	}
 	hasher := hashCode.New()
 	hasher.Write(message)
 	hash := hasher.Sum(nil)

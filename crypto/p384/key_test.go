@@ -20,6 +20,7 @@ var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 	MultibaseCode:                   MultibaseCode,
 	DefaultHash:                     crypto.SHA384,
 	OtherHashes:                     []crypto.Hash{crypto.SHA256, crypto.SHA512},
+	SupportsPreHashed:               true,
 	PublicKeyBytesSize:              PublicKeyBytesSize,
 	PrivateKeyBytesSize:             PrivateKeyBytesSize,
 	SignatureBytesSize:              SignatureBytesSize,

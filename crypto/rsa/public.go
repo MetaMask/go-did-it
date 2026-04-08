@@ -146,6 +146,9 @@ func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.Signing
 	}
 
 	hashCode := params.HashOrDefault(defaultSigHash(p.k.N.BitLen()))
+	if hashCode == crypto.PREHASHED {
+		return false
+	}
 	hasher := hashCode.New()
 	hasher.Write(message)
 	hash := hasher.Sum(nil)
