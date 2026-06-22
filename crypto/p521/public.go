@@ -73,6 +73,9 @@ func PublicKeyFromX509DER(bytes []byte) (*PublicKey, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid public key")
 	}
+	if ecdsaPub.Curve != elliptic.P521() {
+		return nil, fmt.Errorf("invalid P-521 public key curve")
+	}
 	return &PublicKey{k: ecdsaPub}, nil
 }
 
