@@ -1,6 +1,7 @@
 package p384
 
 import (
+	"crypto/elliptic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -79,4 +80,14 @@ func TestRejectForeignCurveX509AndPKCS8(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
+}
+
+func TestRejectInvalidPrivateScalars(t *testing.T) {
+	// Zero is outside the valid scalar range [1, N-1].
+	_, err := PrivateKeyFromBytes(make([]byte, PrivateKeyBytesSize))
+	require.Error(t, err)
+
+	// N is out of range; valid scalars are [1, N-1].
+	_, err = PrivateKeyFromBytes(elliptic.P384().Params().N.FillBytes(make([]byte, PrivateKeyBytesSize)))
+	require.Error(t, err)
 }
