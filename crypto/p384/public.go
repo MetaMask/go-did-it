@@ -137,6 +137,18 @@ func (p *PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.Signin
 		return false
 	}
 
+	params := crypto.CollectSigningOptions(opts)
+
+	// The raw r||s form lets us check low-S directly, without decoding.
+	if params.EcdsaLowS() {
+		s := new(big.Int).SetBytes(signature[SignatureBytesSize/2:])
+		// new(big.Int).Rsh(N, 1) is N>>1, which is N/2,
+		// so this is "if s > N/2", i.e. reject high-S signatures
+		if s.Cmp(new(big.Int).Rsh(p.k.Curve.Params().N, 1)) > 0 {
+			return false
+		}
+	}
+
 	// For some reason, the go crypto library in ecdsa.Verify() encodes the signature as ASN.1 to then decode it.
 	// This means it's actually more efficient to encode the signature as ASN.1 here.
 	sigAsn1, err := helpers.EncodeSignatureToASN1(signature[:SignatureBytesSize/2], signature[SignatureBytesSize/2:])
@@ -144,13 +156,29 @@ func (p *PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.Signin
 		return false
 	}
 
-	return p.VerifyASN1(message, sigAsn1, opts...)
+	return p.verify(params, message, sigAsn1)
 }
 
 // The default signing hash is SHA-384.
 func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningOption) bool {
 	params := crypto.CollectSigningOptions(opts)
 
+	if params.EcdsaLowS() {
+		_, s, err := helpers.DecodeSignatureFromASN1(signature)
+		// new(big.Int).Rsh(N, 1) is N>>1, which is N/2,
+		// so this is "if s > N/2", i.e. reject high-S signatures
+		if err != nil || s.Cmp(new(big.Int).Rsh(p.k.Curve.Params().N, 1)) > 0 {
+			return false
+		}
+	}
+
+	return p.verify(params, message, signature)
+}
+
+// verify checks the varsig constraints and the ASN.1 signature. Low-S enforcement,
+// if requested, is done by the exported VerifyBytes/VerifyASN1 from their respective
+// signature forms, so it is not repeated here.
+func (p *PublicKey) verify(params crypto.SigningOpts, message, sigAsn1 []byte) bool {
 	if !params.VarsigMatch(varsig.AlgorithmECDSA, uint64(varsig.CurveP384), 0) {
 		return false
 	}
@@ -159,7 +187,7 @@ func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.Signing
 	hasher.Write(message)
 	hash := hasher.Sum(nil)
 
-	return ecdsa.VerifyASN1(p.k, hash[:], signature)
+	return ecdsa.VerifyASN1(p.k, hash, sigAsn1)
 }
 
 // Unwrap returns the underlying crypto/ecdsa public key.

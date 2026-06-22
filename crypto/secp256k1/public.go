@@ -238,6 +238,9 @@ func (p *PublicKey) VerifyBytes(message, signature []byte, opts ...crypto.Signin
 	if s.SetByteSlice(signature[32:]) {
 		return false // s >= curve order n
 	}
+	if params.EcdsaLowS() && s.IsOverHalfOrder() {
+		return false
+	}
 
 	return ecdsa.NewSignature(&r, &s).Verify(hash, p.k)
 }
@@ -257,6 +260,13 @@ func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.Signing
 	sig, err := ecdsa.ParseDERSignature(signature)
 	if err != nil {
 		return false
+	}
+
+	if params.EcdsaLowS() {
+		s := sig.S()
+		if s.IsOverHalfOrder() {
+			return false
+		}
 	}
 
 	return sig.Verify(hash, p.k)

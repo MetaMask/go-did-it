@@ -1,6 +1,7 @@
 package p384
 
 import (
+	"crypto/elliptic"
 	"testing"
 
 	"github.com/MetaMask/go-did-it/crypto"
@@ -28,6 +29,10 @@ var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 
 func TestSuite(t *testing.T) {
 	testsuite.TestSuite(t, harness)
+}
+
+func TestEcdsaLowS(t *testing.T) {
+	testsuite.TestEcdsaLowSSuite(t, harness, elliptic.P384().Params().N)
 }
 
 func BenchmarkSuite(b *testing.B) {

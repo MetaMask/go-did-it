@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"errors"
+	"math/big"
 
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"
@@ -34,4 +35,20 @@ func addASN1IntBytes(b *cryptobyte.Builder, bytes []byte) {
 		}
 		c.AddBytes(bytes)
 	})
+}
+
+// DecodeSignatureFromASN1 parses a DER-encoded ECDSA signature and returns
+// R and S as big.Ints.
+func DecodeSignatureFromASN1(sig []byte) (r, s *big.Int, err error) {
+	input := cryptobyte.String(sig)
+	var inner cryptobyte.String
+	if !input.ReadASN1(&inner, asn1.SEQUENCE) || !input.Empty() {
+		return nil, nil, errors.New("invalid ASN.1 signature")
+	}
+	r = new(big.Int)
+	s = new(big.Int)
+	if !inner.ReadASN1Integer(r) || !inner.ReadASN1Integer(s) || !inner.Empty() {
+		return nil, nil, errors.New("invalid ASN.1 signature integers")
+	}
+	return r, s, nil
 }

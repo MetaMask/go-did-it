@@ -1,7 +1,9 @@
 package testsuite
 
 import (
+	"encoding/asn1"
 	"fmt"
+	"math/big"
 	"strings"
 	"testing"
 	"text/tabwriter"
@@ -689,6 +691,69 @@ func BenchSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](b *testing.B, ha
 			}
 		})
 	})
+}
+
+// TestEcdsaLowSSuite tests low-S signing and verification for ECDSA key types.
+// curveOrder is the group order N of the curve (used to construct high-S test vectors).
+// Call this from each ECDSA key's test file alongside TestSuite.
+func TestEcdsaLowSSuite[PubT crypto.PublicKey, PrivT crypto.PrivateKey](t *testing.T, harness TestHarness[PubT, PrivT], curveOrder *big.Int) {
+	t.Helper()
+	n := curveOrder
+	halfN := new(big.Int).Rsh(n, 1)
+	msg := []byte("message")
+
+	pub, priv, err := harness.GenerateKeyPair()
+	require.NoError(t, err)
+
+	if implements[PubT, crypto.PublicKeySigningBytes]() {
+		t.Run("Bytes", func(t *testing.T) {
+			spub := (crypto.PublicKey(pub)).(crypto.PublicKeySigningBytes)
+			spriv := (crypto.PrivateKey(priv)).(crypto.PrivateKeySigningBytes)
+			half := harness.SignatureBytesSize / 2
+
+			// low-S signature must verify with and without the option
+			sig, err := spriv.SignToBytes(msg, crypto.WithEcdsaLowSSig())
+			require.NoError(t, err)
+			s := new(big.Int).SetBytes(sig[half:])
+			require.True(t, s.Cmp(halfN) <= 0, "signature produced with WithEcdsaLowSSig must have s ≤ N/2")
+			require.True(t, spub.VerifyBytes(msg, sig, crypto.WithEcdsaLowSSig()))
+			require.True(t, spub.VerifyBytes(msg, sig))
+
+			// flip to high-S: s' = N - s
+			highS := new(big.Int).Sub(n, s)
+			highSig := make([]byte, harness.SignatureBytesSize)
+			copy(highSig[:half], sig[:half])
+			highS.FillBytes(highSig[half:])
+
+			require.False(t, spub.VerifyBytes(msg, highSig, crypto.WithEcdsaLowSSig()), "high-S must be rejected with WithEcdsaLowSSig")
+			require.True(t, spub.VerifyBytes(msg, highSig), "high-S must be accepted without WithEcdsaLowSSig")
+		})
+	}
+
+	if implements[PubT, crypto.PublicKeySigningASN1]() {
+		t.Run("ASN1", func(t *testing.T) {
+			spub := (crypto.PublicKey(pub)).(crypto.PublicKeySigningASN1)
+			spriv := (crypto.PrivateKey(priv)).(crypto.PrivateKeySigningASN1)
+
+			// low-S signature must verify with and without the option
+			sig, err := spriv.SignToASN1(msg, crypto.WithEcdsaLowSSig())
+			require.NoError(t, err)
+			var parsed struct{ R, S *big.Int }
+			_, err = asn1.Unmarshal(sig, &parsed)
+			require.NoError(t, err)
+			require.True(t, parsed.S.Cmp(halfN) <= 0, "signature produced with WithEcdsaLowSSig must have s ≤ N/2")
+			require.True(t, spub.VerifyASN1(msg, sig, crypto.WithEcdsaLowSSig()))
+			require.True(t, spub.VerifyASN1(msg, sig))
+
+			// flip to high-S: s' = N - s
+			highS := new(big.Int).Sub(n, parsed.S)
+			highSig, err := asn1.Marshal(struct{ R, S *big.Int }{parsed.R, highS})
+			require.NoError(t, err)
+
+			require.False(t, spub.VerifyASN1(msg, highSig, crypto.WithEcdsaLowSSig()), "high-S must be rejected with WithEcdsaLowSSig")
+			require.True(t, spub.VerifyASN1(msg, highSig), "high-S must be accepted without WithEcdsaLowSSig")
+		})
+	}
 }
 
 func implements[T, I any]() bool {

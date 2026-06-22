@@ -12,6 +12,7 @@ import (
 	"github.com/ucan-wg/go-varsig"
 
 	"github.com/MetaMask/go-did-it/crypto"
+	helpers "github.com/MetaMask/go-did-it/crypto/internal"
 )
 
 var _ crypto.PrivateKeySigningBytes = &PrivateKey{}
@@ -122,6 +123,15 @@ func (p *PrivateKey) SignToBytes(message []byte, opts ...crypto.SigningOption) (
 		return nil, err
 	}
 
+	if params.EcdsaLowS() {
+		n := p.k.Curve.Params().N
+		// new(big.Int).Rsh(n, 1) is n>>1, which is N/2,
+		// so this is "if s > N/2"
+		if s.Cmp(new(big.Int).Rsh(n, 1)) > 0 {
+			s.Sub(n, s)
+		}
+	}
+
 	sig := make([]byte, SignatureBytesSize)
 	r.FillBytes(sig[:SignatureBytesSize/2])
 	s.FillBytes(sig[SignatureBytesSize/2:])
@@ -137,7 +147,19 @@ func (p *PrivateKey) SignToASN1(message []byte, opts ...crypto.SigningOption) ([
 	hasher.Write(message)
 	hash := hasher.Sum(nil)
 
-	return ecdsa.SignASN1(rand.Reader, p.k, hash[:])
+	r, s, err := ecdsa.Sign(rand.Reader, p.k, hash[:])
+	if err != nil {
+		return nil, err
+	}
+	if params.EcdsaLowS() {
+		n := p.k.Curve.Params().N
+		// new(big.Int).Rsh(n, 1) is n>>1, which is N/2,
+		// so this is "if s > N/2"
+		if s.Cmp(new(big.Int).Rsh(n, 1)) > 0 {
+			s.Sub(n, s)
+		}
+	}
+	return helpers.EncodeSignatureToASN1(r.Bytes(), s.Bytes())
 }
 
 func (p *PrivateKey) PublicKeyIsCompatible(remote crypto.PublicKey) bool {
