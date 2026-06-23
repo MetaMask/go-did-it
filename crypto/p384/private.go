@@ -28,15 +28,19 @@ type PrivateKey struct {
 
 // PrivateKeyFromBytes converts a serialized public key to a PrivateKey.
 // This compact serialization format is the raw key material, without metadata or structure.
-// It errors if the slice is not the right size.
+// It errors out if the slice is not the right size or the curve point is invalid.
 func PrivateKeyFromBytes(b []byte) (*PrivateKey, error) {
 	if len(b) != PrivateKeyBytesSize {
 		return nil, fmt.Errorf("invalid P-384 private key size")
 	}
+	d := new(big.Int).SetBytes(b)
+	if d.Sign() <= 0 || d.Cmp(elliptic.P384().Params().N) >= 0 {
+		return nil, fmt.Errorf("invalid P-384 private key scalar")
+	}
 
 	res := &PrivateKey{
 		k: &ecdsa.PrivateKey{
-			D:         new(big.Int).SetBytes(b),
+			D:         d,
 			PublicKey: ecdsa.PublicKey{Curve: elliptic.P384()},
 		},
 	}

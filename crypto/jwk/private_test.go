@@ -1,10 +1,16 @@
 package jwk
 
 import (
+	"crypto/elliptic"
+	"encoding/base64"
 	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/MetaMask/go-did-it/crypto/p256"
+	"github.com/MetaMask/go-did-it/crypto/p384"
+	"github.com/MetaMask/go-did-it/crypto/p521"
 )
 
 // Origin: https://github.com/w3c-ccg/did-key-spec/tree/main/test-vectors
@@ -131,6 +137,60 @@ func TestPrivateJwkRoundtrip(t *testing.T) {
 			bytes, err := json.Marshal(priv)
 			require.NoError(t, err)
 			require.JSONEq(t, tc.in, string(bytes))
+		})
+	}
+}
+
+func TestPrivateJwkRejectInvalidNistScalars(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		crv  string
+		d    []byte
+	}{
+		{
+			name: "p256 zero",
+			crv:  "P-256",
+			d:    make([]byte, p256.PrivateKeyBytesSize),
+		},
+		{
+			name: "p256 order",
+			crv:  "P-256",
+			d:    elliptic.P256().Params().N.FillBytes(make([]byte, p256.PrivateKeyBytesSize)),
+		},
+		{
+			name: "p384 zero",
+			crv:  "P-384",
+			d:    make([]byte, p384.PrivateKeyBytesSize),
+		},
+		{
+			name: "p384 order",
+			crv:  "P-384",
+			d:    elliptic.P384().Params().N.FillBytes(make([]byte, p384.PrivateKeyBytesSize)),
+		},
+		{
+			name: "p521 zero",
+			crv:  "P-521",
+			d:    make([]byte, p521.PrivateKeyBytesSize),
+		},
+		{
+			name: "p521 order",
+			crv:  "P-521",
+			d:    elliptic.P521().Params().N.FillBytes(make([]byte, p521.PrivateKeyBytesSize)),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := map[string]string{
+				"kty": "EC",
+				"crv": tc.crv,
+				"d":   base64.RawURLEncoding.EncodeToString(tc.d),
+			}
+
+			body, err := json.Marshal(in)
+			require.NoError(t, err)
+
+			var priv PrivateJwk
+			err = json.Unmarshal(body, &priv)
+			require.Error(t, err)
 		})
 	}
 }

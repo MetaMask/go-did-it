@@ -53,6 +53,9 @@ func PublicKeyFromNE(n, e []byte) (*PublicKey, error) {
 	if eBInt.Sign() <= 0 {
 		return nil, fmt.Errorf("exponent must be positive")
 	}
+	if eBInt.Cmp(big.NewInt(2)) < 0 {
+		return nil, fmt.Errorf("exponent too small")
+	}
 	if eBInt.Bit(0) == 0 {
 		return nil, fmt.Errorf("exponent must be odd")
 	}
