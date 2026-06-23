@@ -1,6 +1,7 @@
 package p256
 
 import (
+	"crypto/elliptic"
 	"encoding/base64"
 	"testing"
 
@@ -31,6 +32,10 @@ var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 
 func TestSuite(t *testing.T) {
 	testsuite.TestSuite(t, harness)
+}
+
+func TestEcdsaLowS(t *testing.T) {
+	testsuite.TestEcdsaLowSSuite(t, harness, elliptic.P256().Params().N)
 }
 
 func BenchmarkSuite(b *testing.B) {

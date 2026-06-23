@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
@@ -35,6 +36,11 @@ var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
 
 func TestSuite(t *testing.T) {
 	testsuite.TestSuite(t, harness)
+}
+
+func TestEcdsaLowS(t *testing.T) {
+	n, _ := new(big.Int).SetString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
+	testsuite.TestEcdsaLowSSuite(t, harness, n)
 }
 
 func BenchmarkSuite(b *testing.B) {

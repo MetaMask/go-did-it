@@ -8,6 +8,7 @@ import (
 type SigningOpts struct {
 	hash            Hash
 	payloadEncoding varsig.PayloadEncoding
+	ecdsaLowS       bool
 
 	// if WithVarsig is used
 	algo   varsig.Algorithm
@@ -58,6 +59,9 @@ func (opts SigningOpts) VarsigMatch(algo varsig.Algorithm, curve uint64, keyLeng
 	}
 }
 
+// EcdsaLowS returns true if the ECDSA low-S signature enforcement was requested.
+func (opts SigningOpts) EcdsaLowS() bool { return opts.ecdsaLowS }
+
 type SigningOption func(opts *SigningOpts)
 
 // WithSigningHash specify the hash algorithm to be used for signatures
@@ -74,6 +78,15 @@ func WithSigningHash(hash Hash) SigningOption {
 func WithSigningPreHashed() SigningOption {
 	return func(opts *SigningOpts) {
 		opts.hash = PREHASHED
+	}
+}
+
+// WithEcdsaLowSSig requests that the produced ECDSA signature be normalised to low-S
+// canonical form (s ≤ N/2).
+// secp256k1 always produces low-S signatures.
+func WithEcdsaLowSSig() SigningOption {
+	return func(opts *SigningOpts) {
+		opts.ecdsaLowS = true
 	}
 }
 
