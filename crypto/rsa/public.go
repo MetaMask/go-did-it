@@ -26,40 +26,23 @@ func PublicKeyFromPKCS1DER(bytes []byte) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := validatePublicKey(pub); err != nil {
+		return nil, err
+	}
 	return &PublicKey{k: pub}, nil
 }
 
 func PublicKeyFromNE(n, e []byte) (*PublicKey, error) {
 	nBInt := new(big.Int).SetBytes(n)
-	// some basic checks
-	if nBInt.Sign() <= 0 {
-		return nil, fmt.Errorf("invalid modulus")
-	}
-	if nBInt.BitLen() < MinRsaKeyBits {
-		return nil, fmt.Errorf("key length too small")
-	}
-	if nBInt.BitLen() > MaxRsaKeyBits {
-		return nil, fmt.Errorf("key length too large")
-	}
-	if nBInt.Bit(0) == 0 {
-		return nil, fmt.Errorf("modulus must be odd")
-	}
-
 	eBInt := new(big.Int).SetBytes(e)
-	// some basic checks
 	if !eBInt.IsInt64() {
 		return nil, fmt.Errorf("invalid exponent")
 	}
-	if eBInt.Sign() <= 0 {
-		return nil, fmt.Errorf("exponent must be positive")
+	pub := &rsa.PublicKey{N: nBInt, E: int(eBInt.Int64())}
+	if err := validatePublicKey(pub); err != nil {
+		return nil, err
 	}
-	if eBInt.Cmp(big.NewInt(2)) < 0 {
-		return nil, fmt.Errorf("exponent too small")
-	}
-	if eBInt.Bit(0) == 0 {
-		return nil, fmt.Errorf("exponent must be odd")
-	}
-	return &PublicKey{k: &rsa.PublicKey{N: nBInt, E: int(eBInt.Int64())}}, nil
+	return &PublicKey{k: pub}, nil
 }
 
 // PublicKeyFromPublicKeyMultibase decodes the public key from its Multibase form
@@ -84,6 +67,9 @@ func PublicKeyFromX509DER(bytes []byte) (*PublicKey, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid public key")
 	}
+	if err := validatePublicKey(rsaPub); err != nil {
+		return nil, err
+	}
 	return &PublicKey{k: rsaPub}, nil
 }
 
@@ -97,6 +83,34 @@ func PublicKeyFromX509PEM(str string) (*PublicKey, error) {
 		return nil, fmt.Errorf("incorrect PEM block type")
 	}
 	return PublicKeyFromX509DER(block.Bytes)
+}
+
+func validatePublicKey(pub *rsa.PublicKey) error {
+	if pub == nil || pub.N == nil {
+		return fmt.Errorf("invalid public key")
+	}
+	if pub.N.Sign() <= 0 {
+		return fmt.Errorf("invalid modulus")
+	}
+	if pub.N.BitLen() < MinRsaKeyBits {
+		return fmt.Errorf("key length too small")
+	}
+	if pub.N.BitLen() > MaxRsaKeyBits {
+		return fmt.Errorf("key length too large")
+	}
+	if pub.N.Bit(0) == 0 {
+		return fmt.Errorf("modulus must be odd")
+	}
+	if pub.E <= 0 {
+		return fmt.Errorf("exponent must be positive")
+	}
+	if pub.E < 2 {
+		return fmt.Errorf("exponent too small")
+	}
+	if pub.E%2 == 0 {
+		return fmt.Errorf("exponent must be odd")
+	}
+	return nil
 }
 
 func (p *PublicKey) KeyLength() uint64 {

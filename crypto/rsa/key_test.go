@@ -1,14 +1,19 @@
 package rsa
 
 import (
+	"crypto/rand"
+	stdrsa "crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/_testsuite"
+	helpers "github.com/MetaMask/go-did-it/crypto/internal"
 )
 
 var harness2048 = testsuite.TestHarness[*PublicKey, *PrivateKey]{
@@ -175,6 +180,105 @@ func TestPublicKeyPKCS1RoundTrip(t *testing.T) {
 	rt, err := PublicKeyFromPKCS1DER(der)
 	require.NoError(t, err)
 	require.True(t, pub.Equal(rt))
+}
+
+func TestRejectBelowPolicyRSAImports(t *testing.T) {
+	weak, err := stdrsa.GenerateKey(rand.Reader, 1024)
+	require.NoError(t, err)
+
+	pkixDER, err := x509.MarshalPKIXPublicKey(&weak.PublicKey)
+	require.NoError(t, err)
+	pkixPEM := string(pem.EncodeToMemory(&pem.Block{
+		Type:  pemPubBlockType,
+		Bytes: pkixDER,
+	}))
+	pkcs1DER := x509.MarshalPKCS1PublicKey(&weak.PublicKey)
+	publicKeyMultibase := helpers.PublicKeyMultibaseEncode(MultibaseCode, pkixDER)
+	pkcs8DER, err := x509.MarshalPKCS8PrivateKey(weak)
+	require.NoError(t, err)
+	pkcs8PEM := string(pem.EncodeToMemory(&pem.Block{
+		Type:  pemPrivBlockType,
+		Bytes: pkcs8DER,
+	}))
+
+	n := weak.N.Bytes()
+	e := big.NewInt(int64(weak.E)).Bytes()
+	d := weak.D.Bytes()
+	p := weak.Primes[0].Bytes()
+	q := weak.Primes[1].Bytes()
+
+	for _, tc := range []struct {
+		name      string
+		importKey func() error
+	}{
+		{
+			name: "GenerateKeyPair",
+			importKey: func() error {
+				_, _, err := GenerateKeyPair(1024)
+				return err
+			},
+		},
+		{
+			name: "PublicKeyFromNE",
+			importKey: func() error {
+				_, err := PublicKeyFromNE(n, e)
+				return err
+			},
+		},
+		{
+			name: "PublicKeyFromPublicKeyMultibase",
+			importKey: func() error {
+				_, err := PublicKeyFromPublicKeyMultibase(publicKeyMultibase)
+				return err
+			},
+		},
+		{
+			name: "PublicKeyFromX509DER",
+			importKey: func() error {
+				_, err := PublicKeyFromX509DER(pkixDER)
+				return err
+			},
+		},
+		{
+			name: "PublicKeyFromPKCS1DER",
+			importKey: func() error {
+				_, err := PublicKeyFromPKCS1DER(pkcs1DER)
+				return err
+			},
+		},
+		{
+			name: "PublicKeyFromX509PEM",
+			importKey: func() error {
+				_, err := PublicKeyFromX509PEM(pkixPEM)
+				return err
+			},
+		},
+		{
+			name: "PrivateKeyFromNEDPQ",
+			importKey: func() error {
+				_, err := PrivateKeyFromNEDPQ(n, e, d, p, q)
+				return err
+			},
+		},
+		{
+			name: "PrivateKeyFromPKCS8DER",
+			importKey: func() error {
+				_, err := PrivateKeyFromPKCS8DER(pkcs8DER)
+				return err
+			},
+		},
+		{
+			name: "PrivateKeyFromPKCS8PEM",
+			importKey: func() error {
+				_, err := PrivateKeyFromPKCS8PEM(pkcs8PEM)
+				return err
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Error(t, tc.importKey())
+		})
+	}
 }
 
 func TestPublicKeyFromNERoundTrip(t *testing.T) {
