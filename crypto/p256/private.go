@@ -57,6 +57,9 @@ func PrivateKeyFromPKCS8DER(bytes []byte) (*PrivateKey, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid private key type")
 	}
+	if ecdsaPriv.Curve != elliptic.P256() {
+		return nil, fmt.Errorf("invalid P-256 private key curve")
+	}
 	return &PrivateKey{k: ecdsaPriv}, nil
 }
 

@@ -9,6 +9,8 @@ import (
 
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/_testsuite"
+	"github.com/MetaMask/go-did-it/crypto/p384"
+	"github.com/MetaMask/go-did-it/crypto/p521"
 )
 
 var harness = testsuite.TestHarness[*PublicKey, *PrivateKey]{
@@ -62,4 +64,47 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+UhEHZqcaKn+qhNtMmW843ZTRkX/
 	require.NoError(t, err)
 
 	require.True(t, pub.VerifyASN1([]byte("message"), sig))
+}
+
+func TestRejectForeignCurveX509AndPKCS8(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		pubDER  func() []byte
+		privDER func() []byte
+	}{
+		{
+			name: "p384",
+			pubDER: func() []byte {
+				pub, _, err := p384.GenerateKeyPair()
+				require.NoError(t, err)
+				return pub.ToX509DER()
+			},
+			privDER: func() []byte {
+				_, priv, err := p384.GenerateKeyPair()
+				require.NoError(t, err)
+				return priv.ToPKCS8DER()
+			},
+		},
+		{
+			name: "p521",
+			pubDER: func() []byte {
+				pub, _, err := p521.GenerateKeyPair()
+				require.NoError(t, err)
+				return pub.ToX509DER()
+			},
+			privDER: func() []byte {
+				_, priv, err := p521.GenerateKeyPair()
+				require.NoError(t, err)
+				return priv.ToPKCS8DER()
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := PublicKeyFromX509DER(tc.pubDER())
+			require.Error(t, err)
+
+			_, err = PrivateKeyFromPKCS8DER(tc.privDER())
+			require.Error(t, err)
+		})
+	}
 }
