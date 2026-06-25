@@ -6,7 +6,6 @@ import (
 
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
-	allkeys "github.com/MetaMask/go-did-it/crypto/_allkeys"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
 	"github.com/MetaMask/go-did-it/crypto/p256"
 	"github.com/MetaMask/go-did-it/crypto/p384"
@@ -31,8 +30,7 @@ func init() {
 var _ did.DID = DidKey{}
 
 type DidKey struct {
-	msi    string // method-specific identifier, i.e. "12345" in "did:key:12345"
-	pubkey crypto.PublicKey
+	msi string // method-specific identifier, i.e. "12345" in "did:key:12345"
 }
 
 func Decode(identifier string) (did.DID, error) {
@@ -44,15 +42,11 @@ func Decode(identifier string) (did.DID, error) {
 
 	msi := identifier[len(keyPrefix):]
 
-	pub, err := allkeys.PublicKeyFromPublicKeyMultibase(msi)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
-	}
-	return DidKey{msi: msi, pubkey: pub}, nil
+	return DidKey{msi: msi}, nil
 }
 
 func FromPublicKey(pub crypto.PublicKey) did.DID {
-	return DidKey{msi: pub.ToPublicKeyMultibase(), pubkey: pub}
+	return DidKey{msi: pub.ToPublicKeyMultibase()}
 }
 
 func FromPrivateKey(priv crypto.PrivateKey) did.DID {
@@ -66,10 +60,15 @@ func (d DidKey) Method() string {
 func (d DidKey) Document(opts ...did.ResolutionOption) (did.Document, error) {
 	params := did.CollectResolutionOpts(opts)
 
+	pub, err := params.KeySet().PublicKeyFromMultibase(d.msi)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+	}
+
 	doc := document{id: d.String()}
 	mainVmId := fmt.Sprintf("did:key:%s#%s", d.msi, d.msi)
 
-	switch pub := d.pubkey.(type) {
+	switch pub := pub.(type) {
 	case ed25519.PublicKey:
 		xpub, err := x25519.PublicKeyFromEd25519(pub)
 		if err != nil {

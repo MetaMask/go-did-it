@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	_ "github.com/MetaMask/go-did-it/crypto/all"
 	"github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
 	"github.com/MetaMask/go-did-it/verifiers/_methods/jsonwebkey"
 	"github.com/MetaMask/go-did-it/verifiers/_methods/x25519"

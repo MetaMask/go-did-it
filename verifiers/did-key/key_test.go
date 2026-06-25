@@ -8,7 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto"
+	_ "github.com/MetaMask/go-did-it/crypto/all"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
+	"github.com/MetaMask/go-did-it/crypto/p256"
 	didkey "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
 
@@ -49,7 +52,7 @@ func TestMustParseDIDKey(t *testing.T) {
 		d := did.MustParse(str)
 		require.Equal(t, str, d.String())
 	})
-	str = "did:key:z7Mkod5Jr3yd5SC7UDueqK4dAAw5xYJYjksy722tA9Boxc4z"
+	str = "did:unknown:z6Mkod5Jr3yd5SC7UDueqK4dAAw5xYJYjksy722tA9Boxc4z"
 	require.Panics(t, func() {
 		did.MustParse(str)
 	})
@@ -63,6 +66,21 @@ func TestFromPublicKey(t *testing.T) {
 	doc, err := dk.Document()
 	require.NoError(t, err)
 	require.NotEmpty(t, doc)
+}
+
+func TestWithKeySet(t *testing.T) {
+	pub, _, err := ed25519.GenerateKeyPair()
+	require.NoError(t, err)
+	dk := didkey.FromPublicKey(pub)
+
+	// A KeySet allowing Ed25519: resolution succeeds.
+	doc, err := dk.Document(did.WithKeySet(crypto.NewKeySet(ed25519.KeyType())))
+	require.NoError(t, err)
+	require.NotEmpty(t, doc)
+
+	// A KeySet allowing only P-256: the Ed25519 key is not in the set, so resolution fails.
+	_, err = dk.Document(did.WithKeySet(crypto.NewKeySet(p256.KeyType())))
+	require.Error(t, err)
 }
 
 func TestEquivalence(t *testing.T) {

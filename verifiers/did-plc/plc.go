@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/MetaMask/go-did-it"
-	allkeys "github.com/MetaMask/go-did-it/crypto/_allkeys"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
 	"github.com/MetaMask/go-did-it/crypto/p256"
 	"github.com/MetaMask/go-did-it/crypto/p384"
@@ -138,7 +137,7 @@ func (d DidPlc) Document(opts ...did.ResolutionOption) (did.Document, error) {
 		}
 		msi := data[len(keyPrefix):]
 
-		pub, err := allkeys.PublicKeyFromPublicKeyMultibase(msi)
+		pub, err := params.KeySet().PublicKeyFromMultibase(msi)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}

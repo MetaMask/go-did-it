@@ -3,10 +3,13 @@ package did
 import (
 	"context"
 	"net/http"
+
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
 type ResolutionOpts struct {
 	ctx                    context.Context
+	keySet                 *crypto.KeySet
 	hintVerificationMethod []string
 	client                 HttpClient
 }
@@ -16,6 +19,13 @@ func (opts *ResolutionOpts) Context() context.Context {
 		return opts.ctx
 	}
 	return context.Background()
+}
+
+func (opts *ResolutionOpts) KeySet() *crypto.KeySet {
+	if opts.keySet == nil {
+		return crypto.DefaultKeySet
+	}
+	return opts.keySet
 }
 
 func (opts *ResolutionOpts) HasVerificationMethodHint(hint string) bool {
@@ -49,6 +59,16 @@ type ResolutionOption func(opts *ResolutionOpts)
 func WithResolutionContext(ctx context.Context) ResolutionOption {
 	return func(opts *ResolutionOpts) {
 		opts.ctx = ctx
+	}
+}
+
+// WithKeySet provides a KeySet, a set of cryptographic key algorithm as
+// allowed during resolution. If the DID to resolve has an algorithm not included
+// in this set, resolution will fail.
+// This is a way for the caller to control what algorithm are deemed safe or expected.
+func WithKeySet(keyset *crypto.KeySet) ResolutionOption {
+	return func(opts *ResolutionOpts) {
+		opts.keySet = keyset
 	}
 }
 

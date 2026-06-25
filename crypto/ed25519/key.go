@@ -3,6 +3,8 @@ package ed25519
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
 const (
@@ -28,3 +30,13 @@ const (
 	pemPubBlockType  = "PUBLIC KEY"
 	pemPrivBlockType = "PRIVATE KEY"
 )
+
+// KeyType returns the crypto.KeyType describing Ed25519, to be added to a crypto.KeySet.
+func KeyType() crypto.KeyType {
+	return crypto.KeyType{
+		Name:         "Ed25519",
+		Code:         MultibaseCode,
+		DecodePublic: func(b []byte) (crypto.PublicKey, error) { return crypto.ToPub(PublicKeyFromBytes(b)) },
+		Matches:      func(key crypto.PublicKey) bool { _, ok := key.(PublicKey); return ok },
+	}
+}

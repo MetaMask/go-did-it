@@ -8,6 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto"
+	_ "github.com/MetaMask/go-did-it/crypto/all"
+	"github.com/MetaMask/go-did-it/crypto/ed25519"
+	"github.com/MetaMask/go-did-it/crypto/p256"
 	"github.com/MetaMask/go-did-it/crypto/x25519"
 	_ "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
@@ -51,6 +55,21 @@ func Example_keyAgreement() {
 
 	// Output: Shared key: 7G1qwS/gn5W1hxBtObHc3F0jA7m2vuXkLJJ32yBuHVQ=
 	// Verification method used: X25519KeyAgreementKey2020 did:key:z6MkgRNXpJRbEE6FoXhT8KWHwJo4KyzFo1FdSEFpRLh5vuXZ#z6LSjeQx2VkXz8yirhrYJv8uicu9BBaeYU3Q1D9sFBovhmPF
+}
+
+func TestWithKeySet(t *testing.T) {
+	// did:key holding an Ed25519 key
+	d, err := did.Parse("did:key:z6MknwcywUtTy2ADJQ8FH1GcSySKPyKDmyzT4rPEE84XREse")
+	require.NoError(t, err)
+
+	// A KeySet allowing Ed25519: resolution succeeds.
+	doc, err := d.Document(did.WithKeySet(crypto.NewKeySet(ed25519.KeyType())))
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+
+	// A KeySet allowing only P-256: the Ed25519 key is not in the set, so resolution fails.
+	_, err = d.Document(did.WithKeySet(crypto.NewKeySet(p256.KeyType())))
+	require.Error(t, err)
 }
 
 func TestHasValidDIDSyntax(t *testing.T) {

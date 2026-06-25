@@ -64,6 +64,7 @@ func (d DidWeb) Method() string {
 	return "web"
 }
 
+// Does not support WithKeySet.
 func (d DidWeb) Document(opts ...did.ResolutionOption) (did.Document, error) {
 	params := did.CollectResolutionOpts(opts)
 

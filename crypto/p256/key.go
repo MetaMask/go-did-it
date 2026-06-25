@@ -4,6 +4,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
 const (
@@ -33,3 +35,13 @@ const (
 	pemPubBlockType  = "PUBLIC KEY"
 	pemPrivBlockType = "PRIVATE KEY"
 )
+
+// KeyType returns the crypto.KeyType describing P-256, to be added to a crypto.KeySet.
+func KeyType() crypto.KeyType {
+	return crypto.KeyType{
+		Name:         "P-256",
+		Code:         MultibaseCode,
+		DecodePublic: func(b []byte) (crypto.PublicKey, error) { return crypto.ToPub(PublicKeyFromBytes(b)) },
+		Matches:      func(key crypto.PublicKey) bool { _, ok := key.(*PublicKey); return ok },
+	}
+}
