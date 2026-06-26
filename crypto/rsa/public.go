@@ -54,7 +54,8 @@ func PublicKeyFromPublicKeyMultibase(multibase string) (*PublicKey, error) {
 	if code != MultibaseCode {
 		return nil, fmt.Errorf("invalid code")
 	}
-	return PublicKeyFromX509DER(bytes)
+	// The did:key spec encodes the RSA public key as PKCS#1 (RSAPublicKey) DER.
+	return PublicKeyFromPKCS1DER(bytes)
 }
 
 // PublicKeyFromX509DER decodes an X.509 DER (binary) encoded public key.
@@ -133,7 +134,8 @@ func (p *PublicKey) Equal(other crypto.PublicKey) bool {
 }
 
 func (p *PublicKey) ToPublicKeyMultibase() string {
-	bytes := p.ToX509DER()
+	// The did:key spec encodes the RSA public key as PKCS#1 (RSAPublicKey) DER.
+	bytes := x509.MarshalPKCS1PublicKey(p.k)
 	return helpers.PublicKeyMultibaseEncode(MultibaseCode, bytes)
 }
 

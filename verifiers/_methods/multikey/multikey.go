@@ -7,7 +7,6 @@ import (
 
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
-	allkeys "github.com/MetaMask/go-did-it/crypto/_allkeys"
 )
 
 // Specification: https://www.w3.org/TR/cid-1.0/#Multikey
@@ -72,7 +71,7 @@ func (m *MultiKey) UnmarshalJSON(bytes []byte) error {
 		return errors.New("invalid controller")
 	}
 
-	m.pubkey, err = allkeys.PublicKeyFromPublicKeyMultibase(aux.PublicKeyMultibase)
+	m.pubkey, err = crypto.PublicKeyFromMultibase(aux.PublicKeyMultibase)
 	if err != nil {
 		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}
