@@ -45,6 +45,21 @@ func PublicKeyFromNE(n, e []byte) (*PublicKey, error) {
 	return &PublicKey{k: pub}, nil
 }
 
+// WrapPublicKey converts an already-parsed public key object — for RSA, a standard library
+// *rsa.PublicKey — into a PublicKey. It is the inverse of Unwrap. The boolean reports whether
+// the given key belongs to this algorithm at all. Note that a KeySet applies its own size policy
+// on top of the library-wide [MinRsaKeyBits, MaxRsaKeyBits] bounds enforced here.
+func WrapPublicKey(key any) (*PublicKey, bool, error) {
+	k, ok := key.(*rsa.PublicKey)
+	if !ok {
+		return nil, false, nil
+	}
+	if err := validatePublicKey(k); err != nil {
+		return nil, true, err
+	}
+	return &PublicKey{k: k}, true, nil
+}
+
 // PublicKeyFromPublicKeyMultibase decodes the public key from its Multibase form
 func PublicKeyFromPublicKeyMultibase(multibase string) (*PublicKey, error) {
 	code, bytes, err := helpers.PublicKeyMultibaseDecode(multibase)
@@ -94,10 +109,10 @@ func validatePublicKey(pub *rsa.PublicKey) error {
 		return fmt.Errorf("invalid modulus")
 	}
 	if pub.N.BitLen() < MinRsaKeyBits {
-		return fmt.Errorf("key length too small")
+		return fmt.Errorf("%w: key length too small", crypto.ErrKeyNotAccepted)
 	}
 	if pub.N.BitLen() > MaxRsaKeyBits {
-		return fmt.Errorf("key length too large")
+		return fmt.Errorf("%w: key length too large", crypto.ErrKeyNotAccepted)
 	}
 	if pub.N.Bit(0) == 0 {
 		return fmt.Errorf("modulus must be odd")

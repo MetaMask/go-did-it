@@ -51,6 +51,19 @@ func PublicKeyFromXY(x, y []byte) (*PublicKey, error) {
 	return &PublicKey{k: pub}, nil
 }
 
+// WrapPublicKey converts an already-parsed public key object into a PublicKey. It is the inverse
+// of Unwrap. The standard library has no secp256k1 curve, so this accepts the underlying library's
+// type: dcrd's *secp256k1.PublicKey. For keys held as an *ecdsa.PublicKey with a third-party curve
+// (dcrd's ToECDSA, go-ethereum's S256), convert explicitly with PublicKeyFromXY instead. The
+// boolean reports whether the given key belongs to this algorithm at all.
+func WrapPublicKey(key any) (*PublicKey, bool, error) {
+	k, ok := key.(*secp256k1.PublicKey)
+	if !ok {
+		return nil, false, nil
+	}
+	return &PublicKey{k: k}, true, nil
+}
+
 // PublicKeyFromRecovery recovers the secp256k1 public key from a compact signature
 // and the hash of the signed message.
 // The signature must be 65 bytes: [recovery_flag (1 byte) | R (32 bytes) | S (32 bytes)].

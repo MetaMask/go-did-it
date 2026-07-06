@@ -30,6 +30,17 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	return &PublicKey{k: pub}, nil
 }
 
+// WrapPublicKey converts an already-parsed public key object — for X25519, a standard library
+// *ecdh.PublicKey on the X25519 curve — into a PublicKey. It is the inverse of Unwrap. The boolean
+// reports whether the given key belongs to this algorithm at all.
+func WrapPublicKey(key any) (*PublicKey, bool, error) {
+	k, ok := key.(*ecdh.PublicKey)
+	if !ok || k.Curve() != ecdh.X25519() {
+		return nil, false, nil
+	}
+	return &PublicKey{k: k}, true, nil
+}
+
 // PublicKeyFromEd25519 converts an ed25519 public key to a x25519 public key.
 // It errors if the slice is not the right size.
 //

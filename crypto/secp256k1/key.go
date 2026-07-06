@@ -56,5 +56,6 @@ func KeyType() crypto.KeyType {
 		Code:         MultibaseCode,
 		DecodePublic: func(b []byte) (crypto.PublicKey, error) { return crypto.ToPub(PublicKeyFromBytes(b)) },
 		Matches:      func(key crypto.PublicKey) bool { _, ok := key.(*PublicKey); return ok },
+		Wrap:         func(key any) (crypto.PublicKey, bool, error) { return crypto.ToWrap(WrapPublicKey(key)) },
 	}
 }

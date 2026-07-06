@@ -50,7 +50,7 @@ func KeyType(sizes ...int) crypto.KeyType {
 	checkSize := func(bits int) error {
 		if len(sizes) == 0 {
 			if bits < MinRsaKeyBits || bits > MaxRsaKeyBits {
-				return fmt.Errorf("rsa key size %d not allowed", bits)
+				return fmt.Errorf("%w: rsa key size %d not allowed", crypto.ErrKeyNotAccepted, bits)
 			}
 			return nil
 		}
@@ -59,7 +59,7 @@ func KeyType(sizes ...int) crypto.KeyType {
 				return nil
 			}
 		}
-		return fmt.Errorf("rsa key size %d not allowed", bits)
+		return fmt.Errorf("%w: rsa key size %d not allowed", crypto.ErrKeyNotAccepted, bits)
 	}
 	return crypto.KeyType{
 		Name: rsaName(sizes),
@@ -78,6 +78,16 @@ func KeyType(sizes ...int) crypto.KeyType {
 		Matches: func(key crypto.PublicKey) bool {
 			rk, ok := key.(*PublicKey)
 			return ok && checkSize(rk.k.N.BitLen()) == nil
+		},
+		Wrap: func(key any) (crypto.PublicKey, bool, error) {
+			pub, ok, err := WrapPublicKey(key)
+			if !ok || err != nil {
+				return nil, ok, err
+			}
+			if err := checkSize(pub.k.N.BitLen()); err != nil {
+				return nil, true, err
+			}
+			return pub, true, nil
 		},
 	}
 }

@@ -51,6 +51,18 @@ func PublicKeyFromXY(x, y []byte) (*PublicKey, error) {
 	return pub, nil
 }
 
+// WrapPublicKey converts an already-parsed public key object — for P-384, a standard library
+// *ecdsa.PublicKey on the P-384 curve — into a PublicKey. It is the inverse of Unwrap. The boolean
+// reports whether the given key belongs to this algorithm at all.
+func WrapPublicKey(key any) (*PublicKey, bool, error) {
+	k, ok := key.(*ecdsa.PublicKey)
+	if !ok || k.Curve != elliptic.P384() {
+		return nil, false, nil
+	}
+	pub, err := PublicKeyFromXY(k.X.Bytes(), k.Y.Bytes())
+	return pub, true, err
+}
+
 // PublicKeyFromPublicKeyMultibase decodes the public key from its Multibase form
 func PublicKeyFromPublicKeyMultibase(multibase string) (*PublicKey, error) {
 	code, bytes, err := helpers.PublicKeyMultibaseDecode(multibase)

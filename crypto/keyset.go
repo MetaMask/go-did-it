@@ -1,11 +1,21 @@
 package crypto
 
 import (
+	"cmp"
+	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	helpers "github.com/MetaMask/go-did-it/crypto/internal"
 )
+
+// ErrKeyNotAccepted reports a policy rejection: the key is well-formed, but its algorithm (or its
+// parameters, like the RSA modulus size) is not accepted by the KeySet.
+var ErrKeyNotAccepted = errors.New("key type not accepted by the key set")
+
+// ErrInvalidKey reports malformed key data that failed to decode.
+var ErrInvalidKey = errors.New("invalid key data")
 
 // KeyType describes how to decode keys of a single algorithm (and, for RSA, which key sizes to accept).
 //
@@ -33,6 +43,15 @@ type KeyType struct {
 	// It is the inverse of DecodePublic: a type assertion plus any additional constraints
 	// (e.g. RSA key size). Nil means a code match alone is sufficient.
 	Matches func(key PublicKey) bool
+
+	// Wrap converts an already-parsed public key object into this KeyType's PublicKey. It is the
+	// inverse of the concrete types' Unwrap: it accepts a standard library key (ed25519.PublicKey,
+	// *ecdsa.PublicKey, *rsa.PublicKey, *ecdh.PublicKey) or, for algorithms without a standard
+	// library type, the underlying library's type (e.g. dcrd's *secp256k1.PublicKey). The boolean
+	// reports whether the key belongs to this KeyType at all; an error means the key belongs here
+	// but is rejected (for example by the RSA size policy). Nil means wrapping is not supported
+	// for this algorithm.
+	Wrap func(key any) (PublicKey, bool, error)
 }
 
 // KeySet is a configured-once set of the key algorithms (and sizes) that decoding is allowed to
@@ -69,7 +88,7 @@ func (ks *KeySet) Register(keyTypes ...KeyType) {
 func (ks *KeySet) PublicKeyFromMultibase(multibase string) (PublicKey, error) {
 	code, body, err := helpers.PublicKeyMultibaseDecode(multibase)
 	if err != nil {
-		return nil, fmt.Errorf("invalid publicKeyMultibase: %w", err)
+		return nil, fmt.Errorf("%w: invalid publicKeyMultibase: %w", ErrInvalidKey, err)
 	}
 	return ks.PublicKeyFromBytes(code, body)
 }
@@ -82,12 +101,52 @@ func (ks *KeySet) PublicKeyFromBytes(code uint64, body []byte) (PublicKey, error
 	ks.mu.RUnlock()
 
 	if !ok {
-		return nil, fmt.Errorf("unsupported key: multicodec code %#x not in key set", code)
+		return nil, fmt.Errorf("%w: multicodec code %#x not in key set", ErrKeyNotAccepted, code)
 	}
 	if kt.DecodePublic == nil {
-		return nil, fmt.Errorf("public key decoding not supported for multicodec code %#x", code)
+		return nil, fmt.Errorf("%w: public key decoding not supported for %s", ErrKeyNotAccepted, kt.Name)
 	}
-	return kt.DecodePublic(body)
+	pub, err := kt.DecodePublic(body)
+	if err != nil {
+		if errors.Is(err, ErrKeyNotAccepted) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("%w: %w", ErrInvalidKey, err)
+	}
+	return pub, nil
+}
+
+// WrapPublicKey converts an already-parsed public key object (see KeyType.Wrap) into the
+// corresponding PublicKey, accepting it only if its algorithm is in the KeySet.
+func (ks *KeySet) WrapPublicKey(key any) (PublicKey, error) {
+	ks.mu.RLock()
+	defer ks.mu.RUnlock()
+	for _, kt := range ks.byCode {
+		if kt.Wrap == nil {
+			continue
+		}
+		pub, ok, err := kt.Wrap(key)
+		if !ok {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		return pub, nil
+	}
+	return nil, fmt.Errorf("%w: no key type in the key set matches %T", ErrKeyNotAccepted, key)
+}
+
+// KeyTypes returns the key types registered in the KeySet, sorted by multicodec code.
+func (ks *KeySet) KeyTypes() []KeyType {
+	ks.mu.RLock()
+	defer ks.mu.RUnlock()
+	res := make([]KeyType, 0, len(ks.byCode))
+	for _, kt := range ks.byCode {
+		res = append(res, kt)
+	}
+	slices.SortFunc(res, func(a, b KeyType) int { return cmp.Compare(a.Code, b.Code) })
+	return res
 }
 
 // Accepts reports whether key's type (and, for constrained types like RSA, its parameters)
@@ -122,9 +181,26 @@ func PublicKeyFromBytes(code uint64, body []byte) (PublicKey, error) {
 	return DefaultKeySet.PublicKeyFromBytes(code, body)
 }
 
+// WrapPublicKey converts an already-parsed public key object using the DefaultKeySet KeySet.
+func WrapPublicKey(key any) (PublicKey, error) {
+	return DefaultKeySet.WrapPublicKey(key)
+}
+
+// KeyTypes returns the key types registered in the DefaultKeySet KeySet, sorted by multicodec code.
+func KeyTypes() []KeyType {
+	return DefaultKeySet.KeyTypes()
+}
+
 // ToPub converts the result of a concrete public-key constructor (one returning a specific key type,
 // as the crypto/<algo> packages do) to the PublicKey interface. It is a convenience for writing the
 // decode functions of a KeyType:
 //
 //	DecodePublic: func(b []byte) (crypto.PublicKey, error) { return crypto.ToPub(PublicKeyFromBytes(b)) },
 func ToPub[T PublicKey](k T, err error) (PublicKey, error) { return k, err }
+
+// ToWrap converts the result of a concrete WrapPublicKey constructor (one returning a specific key
+// type, as the crypto/<algo> packages do) to the PublicKey interface. It is a convenience for
+// writing the Wrap function of a KeyType:
+//
+//	Wrap: func(key any) (crypto.PublicKey, bool, error) { return crypto.ToWrap(WrapPublicKey(key)) },
+func ToWrap[T PublicKey](k T, ok bool, err error) (PublicKey, bool, error) { return k, ok, err }
