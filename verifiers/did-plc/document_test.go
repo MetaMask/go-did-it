@@ -80,7 +80,10 @@ func TestDocument(t *testing.T) {
 	d, err := did.Parse("did:plc:ewvi7nxzyoun6zhxrhs64oiz")
 	require.NoError(t, err)
 
-	doc, err := d.Document(did.WithHttpClient(mockClient))
+	doc, err := d.Document(
+		did.WithHttpClient(mockClient),
+		did.WithKeySet(crypto.NewKeySet(secp256k1.KeyType())),
+	)
 	require.NoError(t, err)
 
 	docBytes, err := json.Marshal(doc)
