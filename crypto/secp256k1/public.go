@@ -3,6 +3,7 @@ package secp256k1
 import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 
@@ -295,4 +296,14 @@ func must[T any](v T, err error) T {
 		panic(err)
 	}
 	return v
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p *PublicKey) JwkParams() map[string]string {
+	return map[string]string{
+		"kty": "EC",
+		"crv": "secp256k1",
+		"x":   base64.RawURLEncoding.EncodeToString(p.XBytes()),
+		"y":   base64.RawURLEncoding.EncodeToString(p.YBytes()),
+	}
 }

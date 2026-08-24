@@ -10,6 +10,7 @@ import (
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/secp256k1"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 // Specification: https://w3c-ccg.github.io/lds-ecdsa-secp256k1-2019/
@@ -18,6 +19,16 @@ const (
 	JsonLdContext        = "https://w3id.org/security/suites/secp256k1-2019/v1"
 	TypeVerification2019 = "EcdsaSecp256k1VerificationKey2019"
 )
+
+func init() {
+	methods.Register(TypeVerification2019, func(data []byte, _ *crypto.KeySet) (did.VerificationMethod, error) {
+		vm := &VerificationKey2019{}
+		if err := json.Unmarshal(data, vm); err != nil {
+			return nil, err
+		}
+		return vm, nil
+	})
+}
 
 var _ did.VerificationMethodSignature = &VerificationKey2019{}
 var _ did.VerificationMethodKeyAgreement = &VerificationKey2019{}
@@ -95,6 +106,11 @@ func (vm VerificationKey2019) Type() string {
 
 func (vm VerificationKey2019) Controller() string {
 	return vm.controller
+}
+
+// PublicKey returns the decoded public key.
+func (vm VerificationKey2019) PublicKey() crypto.PublicKey {
+	return vm.pubkey
 }
 
 func (vm VerificationKey2019) JsonLdContext() string {

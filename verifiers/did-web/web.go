@@ -64,7 +64,6 @@ func (d DidWeb) Method() string {
 	return "web"
 }
 
-// Does not support WithKeySet.
 func (d DidWeb) Document(opts ...did.ResolutionOption) (did.Document, error) {
 	params := did.CollectResolutionOpts(opts)
 
@@ -100,7 +99,7 @@ func (d DidWeb) Document(opts ...did.ResolutionOption) (did.Document, error) {
 	// limit at 1MB to avoid abuse
 	limiter := io.LimitReader(res.Body, 1<<20)
 
-	doc, err := document.FromJsonReader(limiter)
+	doc, err := document.FromJsonReader(limiter, params.KeySet())
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrResolutionFailure, err)
 	}

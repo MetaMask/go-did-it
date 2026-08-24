@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 
@@ -165,4 +166,13 @@ func (p PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningO
 // Unwrap returns the underlying crypto/ed25519 public key.
 func (p PublicKey) Unwrap() ed25519.PublicKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p PublicKey) JwkParams() map[string]string {
+	return map[string]string{
+		"kty": "OKP",
+		"crv": "Ed25519",
+		"x":   base64.RawURLEncoding.EncodeToString(p.ToBytes()),
+	}
 }

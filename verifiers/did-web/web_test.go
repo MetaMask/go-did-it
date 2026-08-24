@@ -10,6 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto"
+	_ "github.com/MetaMask/go-did-it/crypto/all"
+	"github.com/MetaMask/go-did-it/crypto/ed25519"
+	"github.com/MetaMask/go-did-it/crypto/secp256k1"
+	"github.com/MetaMask/go-did-it/crypto/x25519"
+	_ "github.com/MetaMask/go-did-it/verifiers/_methods/all"
 )
 
 func TestDecode(t *testing.T) {
@@ -109,6 +115,20 @@ func TestResolution(t *testing.T) {
 	require.Len(t, doc.Authentication(), 1)
 	require.Len(t, doc.Assertion(), 1)
 	require.Len(t, doc.KeyAgreement(), 1)
+
+	// A KeySet allowing the document's algorithms: resolution succeeds.
+	_, err = d.Document(
+		did.WithHttpClient(client),
+		did.WithKeySet(crypto.NewKeySet(ed25519.KeyType(), x25519.KeyType())),
+	)
+	require.NoError(t, err)
+
+	// A KeySet without ed25519: the document's keys are not in the set, so resolution fails.
+	_, err = d.Document(
+		did.WithHttpClient(client),
+		did.WithKeySet(crypto.NewKeySet(secp256k1.KeyType())),
+	)
+	require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
 }
 
 type MockHTTPClient struct {

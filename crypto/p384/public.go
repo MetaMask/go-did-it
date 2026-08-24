@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -208,4 +209,14 @@ func (p *PublicKey) verify(params crypto.SigningOpts, message, sigAsn1 []byte) b
 // Unwrap returns the underlying crypto/ecdsa public key.
 func (p *PublicKey) Unwrap() *ecdsa.PublicKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p *PublicKey) JwkParams() map[string]string {
+	return map[string]string{
+		"kty": "EC",
+		"crv": "P-384",
+		"x":   base64.RawURLEncoding.EncodeToString(p.XBytes()),
+		"y":   base64.RawURLEncoding.EncodeToString(p.YBytes()),
+	}
 }

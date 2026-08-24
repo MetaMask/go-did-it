@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -196,4 +197,11 @@ func (p *PrivateKey) KeyExchange(remote crypto.PublicKey) ([]byte, error) {
 // Unwrap returns the underlying crypto/ecdsa private key.
 func (p *PrivateKey) Unwrap() *ecdsa.PrivateKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p *PrivateKey) JwkParams() map[string]string {
+	params := p.Public().(*PublicKey).JwkParams()
+	params["d"] = base64.RawURLEncoding.EncodeToString(p.ToBytes())
+	return params
 }

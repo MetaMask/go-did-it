@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	// register all key algorithms in the DefaultKeySet for the whole test package
+	_ "github.com/MetaMask/go-did-it/crypto/all"
 )
 
 func TestJsonRoundTrip(t *testing.T) {

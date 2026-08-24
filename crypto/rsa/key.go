@@ -89,6 +89,27 @@ func KeyType(sizes ...int) crypto.KeyType {
 			}
 			return pub, true, nil
 		},
+		JwkKty: "RSA",
+		DecodeJwkPublic: func(params map[string][]byte) (crypto.PublicKey, error) {
+			k, err := PublicKeyFromNE(params["n"], params["e"])
+			if err != nil {
+				return nil, err
+			}
+			if err := checkSize(k.k.N.BitLen()); err != nil {
+				return nil, err
+			}
+			return k, nil
+		},
+		DecodeJwkPrivate: func(params map[string][]byte) (crypto.PrivateKey, error) {
+			k, err := PrivateKeyFromNEDPQ(params["n"], params["e"], params["d"], params["p"], params["q"])
+			if err != nil {
+				return nil, err
+			}
+			if err := checkSize(k.k.N.BitLen()); err != nil {
+				return nil, err
+			}
+			return k, nil
+		},
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 // Specification: https://w3c-ccg.github.io/lds-ed25519-2018/
@@ -18,6 +19,16 @@ const (
 	JsonLdContext2018 = "https://w3id.org/security/suites/ed25519-2018/v1"
 	Type2018          = "Ed25519VerificationKey2018"
 )
+
+func init() {
+	methods.Register(Type2018, func(data []byte, _ *crypto.KeySet) (did.VerificationMethod, error) {
+		v := &VerificationKey2018{}
+		if err := json.Unmarshal(data, v); err != nil {
+			return nil, err
+		}
+		return v, nil
+	})
+}
 
 var _ did.VerificationMethodSignature = &VerificationKey2018{}
 
@@ -92,6 +103,11 @@ func (v VerificationKey2018) Type() string {
 
 func (v VerificationKey2018) Controller() string {
 	return v.controller
+}
+
+// PublicKey returns the decoded public key.
+func (v VerificationKey2018) PublicKey() crypto.PublicKey {
+	return v.pubkey
 }
 
 func (v VerificationKey2018) JsonLdContext() string {

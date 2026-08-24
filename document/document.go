@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto"
 	verifications "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
@@ -44,7 +45,8 @@ type aux struct {
 }
 
 // FromJsonReader decodes an arbitrary Json DID Document into a usable did.Document.
-func FromJsonReader(reader io.Reader) (*Document, error) {
+// Keys are decoded and accepted according to ks; if ks is nil, crypto.DefaultKeySet is used.
+func FromJsonReader(reader io.Reader, ks *crypto.KeySet) (*Document, error) {
 	// 1 MiB read limit to shut down abuse
 	reader = io.LimitReader(reader, 1<<20)
 
@@ -53,20 +55,21 @@ func FromJsonReader(reader io.Reader) (*Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	return fromAux(&aux)
+	return fromAux(&aux, ks)
 }
 
 // FromJsonBytes decodes an arbitrary Json DID Document into a usable did.Document.
-func FromJsonBytes(data []byte) (*Document, error) {
+// Keys are decoded and accepted according to ks; if ks is nil, crypto.DefaultKeySet is used.
+func FromJsonBytes(data []byte, ks *crypto.KeySet) (*Document, error) {
 	var aux aux
 	err := json.Unmarshal(data, &aux)
 	if err != nil {
 		return nil, err
 	}
-	return fromAux(&aux)
+	return fromAux(&aux, ks)
 }
 
-func fromAux(aux *aux) (*Document, error) {
+func fromAux(aux *aux, ks *crypto.KeySet) (*Document, error) {
 	var err error
 	res := Document{
 		context:  aux.Context,
@@ -114,7 +117,7 @@ func fromAux(aux *aux) (*Document, error) {
 	// verificationMethods
 	res.verificationMethods = map[string]did.VerificationMethod{}
 	for _, m := range aux.VerificationMethods {
-		vm, err := verifications.UnmarshalJSON(m)
+		vm, err := verifications.UnmarshalJSON(m, ks)
 		if err != nil {
 			return nil, fmt.Errorf("invalid verificationMethods: %w", err)
 		}
@@ -122,31 +125,31 @@ func fromAux(aux *aux) (*Document, error) {
 	}
 
 	// authentication
-	res.authentication, err = resolveVerificationMethods[did.VerificationMethodSignature](&res, aux.Authentication)
+	res.authentication, err = resolveVerificationMethods[did.VerificationMethodSignature](&res, aux.Authentication, ks)
 	if err != nil {
 		return nil, fmt.Errorf("invalid authentication: %w", err)
 	}
 
 	// assertion
-	res.assertion, err = resolveVerificationMethods[did.VerificationMethodSignature](&res, aux.Assertion)
+	res.assertion, err = resolveVerificationMethods[did.VerificationMethodSignature](&res, aux.Assertion, ks)
 	if err != nil {
 		return nil, fmt.Errorf("invalid assertion: %w", err)
 	}
 
 	// keyAgreement
-	res.keyAgreement, err = resolveVerificationMethods[did.VerificationMethodKeyAgreement](&res, aux.KeyAgreement)
+	res.keyAgreement, err = resolveVerificationMethods[did.VerificationMethodKeyAgreement](&res, aux.KeyAgreement, ks)
 	if err != nil {
 		return nil, fmt.Errorf("invalid keyAgreement: %w", err)
 	}
 
 	// capabilityInvocation
-	res.capabilityInvocation, err = resolveVerificationMethods[did.VerificationMethodSignature](&res, aux.CapabilityInvocation)
+	res.capabilityInvocation, err = resolveVerificationMethods[did.VerificationMethodSignature](&res, aux.CapabilityInvocation, ks)
 	if err != nil {
 		return nil, fmt.Errorf("invalid capabilityInvocation: %w", err)
 	}
 
 	// capabilityDelegation
-	res.capabilityDelegation, err = resolveVerificationMethods[did.VerificationMethodSignature](&res, aux.CapabilityDelegation)
+	res.capabilityDelegation, err = resolveVerificationMethods[did.VerificationMethodSignature](&res, aux.CapabilityDelegation, ks)
 	if err != nil {
 		return nil, fmt.Errorf("invalid capabilityDelegation: %w", err)
 	}
@@ -154,7 +157,7 @@ func fromAux(aux *aux) (*Document, error) {
 	return &res, nil
 }
 
-func resolveVerificationMethods[T did.VerificationMethod](doc *Document, msgs []json.RawMessage) ([]T, error) {
+func resolveVerificationMethods[T did.VerificationMethod](doc *Document, msgs []json.RawMessage, ks *crypto.KeySet) ([]T, error) {
 	res := make([]T, len(msgs))
 	for i, auth := range msgs {
 		var s string
@@ -175,7 +178,7 @@ func resolveVerificationMethods[T did.VerificationMethod](doc *Document, msgs []
 			continue
 		}
 
-		vm, err := verifications.UnmarshalJSON(auth)
+		vm, err := verifications.UnmarshalJSON(auth, ks)
 		if err == nil {
 			// we have a complete verification method
 			vms, ok := vm.(T)

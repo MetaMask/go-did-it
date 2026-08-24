@@ -1,18 +1,11 @@
 package jwk
 
 import (
-	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/MetaMask/go-did-it/crypto"
-	"github.com/MetaMask/go-did-it/crypto/ed25519"
-	"github.com/MetaMask/go-did-it/crypto/p256"
-	"github.com/MetaMask/go-did-it/crypto/p384"
-	"github.com/MetaMask/go-did-it/crypto/p521"
-	"github.com/MetaMask/go-did-it/crypto/rsa"
-	"github.com/MetaMask/go-did-it/crypto/secp256k1"
-	"github.com/MetaMask/go-did-it/crypto/x25519"
 )
 
 // PrivateJwk is a JWK holding a private key
@@ -23,228 +16,56 @@ type PrivateJwk struct {
 }
 
 func (pj PrivateJwk) MarshalJSON() ([]byte, error) {
-	switch privkey := pj.Privkey.(type) {
-	case ed25519.PrivateKey:
-		pubkey := privkey.Public().(ed25519.PublicKey)
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-			D   string `json:"d"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "OKP",
-			Crv: "Ed25519",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
-			D:   base64.RawURLEncoding.EncodeToString(privkey.Seed()),
-		})
-	case *p256.PrivateKey:
-		pubkey := privkey.Public().(*p256.PublicKey)
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-			Y   string `json:"y"`
-			D   string `json:"d"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "EC",
-			Crv: "P-256",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
-			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
-			D:   base64.RawURLEncoding.EncodeToString(privkey.ToBytes()),
-		})
-	case *p384.PrivateKey:
-		pubkey := privkey.Public().(*p384.PublicKey)
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-			Y   string `json:"y"`
-			D   string `json:"d"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "EC",
-			Crv: "P-384",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
-			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
-			D:   base64.RawURLEncoding.EncodeToString(privkey.ToBytes()),
-		})
-	case *p521.PrivateKey:
-		pubkey := privkey.Public().(*p521.PublicKey)
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-			Y   string `json:"y"`
-			D   string `json:"d"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "EC",
-			Crv: "P-521",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
-			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
-			D:   base64.RawURLEncoding.EncodeToString(privkey.ToBytes()),
-		})
-	case *rsa.PrivateKey:
-		pubkey := privkey.Public().(*rsa.PublicKey)
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			N   string `json:"n"`
-			E   string `json:"e"`
-			D   string `json:"d"`
-			P   string `json:"p"`
-			Q   string `json:"q"`
-			Dp  string `json:"dp"`
-			Dq  string `json:"dq"`
-			Qi  string `json:"qi"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "RSA",
-			N:   base64.RawURLEncoding.EncodeToString(pubkey.NBytes()),
-			E:   base64.RawURLEncoding.EncodeToString(pubkey.EBytes()),
-			D:   base64.RawURLEncoding.EncodeToString(privkey.DBytes()),
-			P:   base64.RawURLEncoding.EncodeToString(privkey.PBytes()),
-			Q:   base64.RawURLEncoding.EncodeToString(privkey.QBytes()),
-			Dp:  base64.RawURLEncoding.EncodeToString(privkey.DpBytes()),
-			Dq:  base64.RawURLEncoding.EncodeToString(privkey.DqBytes()),
-			Qi:  base64.RawURLEncoding.EncodeToString(privkey.QiBytes()),
-		})
-	case *secp256k1.PrivateKey:
-		pubkey := privkey.Public().(*secp256k1.PublicKey)
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-			Y   string `json:"y"`
-			D   string `json:"d"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "EC",
-			Crv: "secp256k1",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
-			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
-			D:   base64.RawURLEncoding.EncodeToString(privkey.ToBytes()),
-		})
-	case *x25519.PrivateKey:
-		pubkey := privkey.Public().(*x25519.PublicKey)
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-			D   string `json:"d"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "OKP",
-			Crv: "X25519",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
-			D:   base64.RawURLEncoding.EncodeToString(privkey.ToBytes()),
-		})
-
-	default:
-		return nil, fmt.Errorf("unsupported key type %T", privkey)
+	enc, ok := pj.Privkey.(interface{ JwkParams() map[string]string })
+	if !ok {
+		return nil, fmt.Errorf("unsupported key type %T", pj.Privkey)
 	}
+	params := enc.JwkParams()
+	if pj.Kid != "" {
+		params["kid"] = pj.Kid
+	}
+	if pj.Use != "" {
+		params["use"] = pj.Use
+	}
+	return json.Marshal(params)
 }
 
 func (pj *PrivateJwk) UnmarshalJSON(bytes []byte) error {
-	aux := make(map[string]string)
-	err := json.Unmarshal(bytes, &aux)
+	res, err := PrivateFromJSON(bytes, nil)
 	if err != nil {
 		return err
 	}
+	*pj = *res
+	return nil
+}
 
-	pj.Kid = aux["kid"]
-	pj.Use = aux["use"]
-
-	switch aux["kty"] {
-	case "EC": // Elliptic curve
-		// we only use D, ignore X/Y which will be recomputed from D
-		d, err := base64.RawURLEncoding.DecodeString(aux["d"])
-		if err != nil {
-			return fmt.Errorf("invalid d parameter with kty=EC: %w", err)
-		}
-		switch aux["crv"] {
-		case "P-256":
-			pj.Privkey, err = p256.PrivateKeyFromBytes(d)
-			return err
-		case "P-384":
-			pj.Privkey, err = p384.PrivateKeyFromBytes(d)
-			return err
-		case "P-521":
-			pj.Privkey, err = p521.PrivateKeyFromBytes(d)
-			return err
-		case "secp256k1":
-			pj.Privkey, err = secp256k1.PrivateKeyFromBytes(d)
-			return err
-
-		default:
-			return fmt.Errorf("unsupported Curve %s", aux["crv"])
-		}
-
-	case "RSA":
-		// we only use N,E,D,P,Q ignore Dp/Dq/Qi which will be recomputed from other parameters
-		n, err := base64.RawURLEncoding.DecodeString(aux["n"])
-		if err != nil {
-			return fmt.Errorf("invalid n parameter with kty=RSA: %w", err)
-		}
-		e, err := base64.RawURLEncoding.DecodeString(aux["e"])
-		if err != nil {
-			return fmt.Errorf("invalid e parameter with kty=RSA: %w", err)
-		}
-		d, err := base64.RawURLEncoding.DecodeString(aux["d"])
-		if err != nil {
-			return fmt.Errorf("invalid d parameter with kty=RSA: %w", err)
-		}
-		p, err := base64.RawURLEncoding.DecodeString(aux["p"])
-		if err != nil {
-			return fmt.Errorf("invalid p parameter with kty=RSA: %w", err)
-		}
-		q, err := base64.RawURLEncoding.DecodeString(aux["q"])
-		if err != nil {
-			return fmt.Errorf("invalid q parameter with kty=RSA: %w", err)
-		}
-		pj.Privkey, err = rsa.PrivateKeyFromNEDPQ(n, e, d, p, q)
-		return err
-
-	case "OKP": // Octet key pair
-		d, err := base64.RawURLEncoding.DecodeString(aux["d"])
-		if err != nil {
-			return fmt.Errorf("invalid x parameter with kty=OKP: %w", err)
-		}
-		switch aux["crv"] {
-		case "Ed25519":
-			pj.Privkey, err = ed25519.PrivateKeyFromSeed(d)
-			return err
-		case "X25519":
-			pj.Privkey, err = x25519.PrivateKeyFromBytes(d)
-			return err
-
-		default:
-			return fmt.Errorf("unsupported Curve %s", aux["crv"])
-		}
-
-	default:
-		return fmt.Errorf("unsupported key type %s", aux["kty"])
+// PrivateFromJSON decodes a private key JWK, accepting only key algorithms in ks.
+// If ks is nil, crypto.DefaultKeySet is used.
+func PrivateFromJSON(data []byte, ks *crypto.KeySet) (*PrivateJwk, error) {
+	if ks == nil {
+		ks = crypto.DefaultKeySet
 	}
+	aux := make(map[string]string)
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return nil, err
+	}
+	kt, ok := ks.KeyTypeForJwk(aux["kty"], aux["crv"])
+	if !ok {
+		return nil, fmt.Errorf("%w: JWK kty %q crv %q not in the key set", crypto.ErrKeyNotAccepted, aux["kty"], aux["crv"])
+	}
+	if kt.DecodeJwkPrivate == nil {
+		return nil, fmt.Errorf("%w: private JWK decoding not supported for %s", crypto.ErrKeyNotAccepted, kt.Name)
+	}
+	params, err := decodeParams(aux)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", crypto.ErrInvalidKey, err)
+	}
+	priv, err := kt.DecodeJwkPrivate(params)
+	if err != nil {
+		if errors.Is(err, crypto.ErrKeyNotAccepted) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("%w: %w", crypto.ErrInvalidKey, err)
+	}
+	return &PrivateJwk{Privkey: priv, Kid: aux["kid"], Use: aux["use"]}, nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it/crypto"
+	_ "github.com/MetaMask/go-did-it/crypto/all"
 	secp256k1crypto "github.com/MetaMask/go-did-it/crypto/secp256k1"
 	"github.com/MetaMask/go-did-it/didtest"
 	secp256k1vm "github.com/MetaMask/go-did-it/verifiers/_methods/secp256k1"

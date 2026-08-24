@@ -52,6 +52,21 @@ type KeyType struct {
 	// but is rejected (for example by the RSA size policy). Nil means wrapping is not supported
 	// for this algorithm.
 	Wrap func(key any) (PublicKey, bool, error)
+
+	// JwkKty and JwkCrv identify the algorithm in the JWK format (RFC 7517/7518): the "kty" and
+	// "crv" members, e.g. "OKP"/"Ed25519", "EC"/"P-256". JwkCrv is empty for RSA.
+	JwkKty string
+	JwkCrv string
+
+	// DecodeJwkPublic decodes a public key from the base64url-decoded JWK parameters
+	// (e.g. params["x"], params["y"] for EC, params["n"], params["e"] for RSA).
+	// Nil means JWK public key decoding is not supported for this algorithm.
+	DecodeJwkPublic func(params map[string][]byte) (PublicKey, error)
+
+	// DecodeJwkPrivate decodes a private key from the base64url-decoded JWK parameters
+	// (e.g. params["d"], and for RSA also params["n"], params["e"], params["p"], params["q"]).
+	// Nil means JWK private key decoding is not supported for this algorithm.
+	DecodeJwkPrivate func(params map[string][]byte) (PrivateKey, error)
 }
 
 // KeySet is a configured-once set of the key algorithms (and sizes) that decoding is allowed to
@@ -137,6 +152,19 @@ func (ks *KeySet) WrapPublicKey(key any) (PublicKey, error) {
 	return nil, fmt.Errorf("%w: no key type in the key set matches %T", ErrKeyNotAccepted, key)
 }
 
+// KeyTypeForJwk returns the KeyType registered for the given JWK "kty"/"crv" pair
+// (crv is empty for RSA), or false if none matches.
+func (ks *KeySet) KeyTypeForJwk(kty, crv string) (KeyType, bool) {
+	ks.mu.RLock()
+	defer ks.mu.RUnlock()
+	for _, kt := range ks.byCode {
+		if kt.JwkKty != "" && kt.JwkKty == kty && kt.JwkCrv == crv {
+			return kt, true
+		}
+	}
+	return KeyType{}, false
+}
+
 // KeyTypes returns the key types registered in the KeySet, sorted by multicodec code.
 func (ks *KeySet) KeyTypes() []KeyType {
 	ks.mu.RLock()
@@ -160,6 +188,15 @@ func (ks *KeySet) Accepts(key PublicKey) bool {
 		}
 	}
 	return false
+}
+
+// CheckKey returns nil if key is accepted by the KeySet (see Accepts), or an error wrapping
+// ErrKeyNotAccepted otherwise.
+func (ks *KeySet) CheckKey(key PublicKey) error {
+	if !ks.Accepts(key) {
+		return fmt.Errorf("%w: %T", ErrKeyNotAccepted, key)
+	}
+	return nil
 }
 
 // DefaultKeySet is the package-level KeySet used by the package-level decoding functions and, by default,
@@ -197,6 +234,11 @@ func KeyTypes() []KeyType {
 //
 //	DecodePublic: func(b []byte) (crypto.PublicKey, error) { return crypto.ToPub(PublicKeyFromBytes(b)) },
 func ToPub[T PublicKey](k T, err error) (PublicKey, error) { return k, err }
+
+// ToPriv converts the result of a concrete private-key constructor (one returning a specific key
+// type, as the crypto/<algo> packages do) to the PrivateKey interface. It is a convenience for
+// writing the decode functions of a KeyType, like ToPub.
+func ToPriv[T PrivateKey](k T, err error) (PrivateKey, error) { return k, err }
 
 // ToWrap converts the result of a concrete WrapPublicKey constructor (one returning a specific key
 // type, as the crypto/<algo> packages do) to the PublicKey interface. It is a convenience for

@@ -11,6 +11,7 @@ import (
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/jwk"
 	"github.com/MetaMask/go-did-it/crypto/secp256k1"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 // Specification: https://identity.foundation/EcdsaSecp256k1RecoverySignature2020/
@@ -19,6 +20,12 @@ const (
 	JsonLdContext2020 = "https://w3id.org/security/suites/secp256k1recovery-2020/v2"
 	TypeRecovery2020  = "EcdsaSecp256k1RecoveryMethod2020"
 )
+
+func init() {
+	methods.Register(TypeRecovery2020, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
+		return FromJSON(data, ks)
+	})
+}
 
 var _ did.VerificationMethodSignature = &RecoveryMethod2020{}
 
@@ -97,32 +104,42 @@ func (vm RecoveryMethod2020) MarshalJSON() ([]byte, error) {
 }
 
 func (vm *RecoveryMethod2020) UnmarshalJSON(data []byte) error {
-	aux := struct {
-		ID                  string         `json:"id"`
-		Type                string         `json:"type"`
-		Controller          string         `json:"controller"`
-		PublicKeyJwk        *jwk.PublicJwk `json:"publicKeyJwk,omitempty"`
-		PublicKeyHex        string         `json:"publicKeyHex,omitempty"`
-		EthereumAddress     string         `json:"ethereumAddress,omitempty"`
-		BlockchainAccountId string         `json:"blockchainAccountId,omitempty"`
-	}{}
-	if err := json.Unmarshal(data, &aux); err != nil {
+	res, err := FromJSON(data, nil)
+	if err != nil {
 		return err
 	}
-	if aux.Type != vm.Type() {
-		return errors.New("invalid type")
+	*vm = *res
+	return nil
+}
+
+// FromJSON decodes an EcdsaSecp256k1RecoveryMethod2020 verification method from JSON,
+// using ks to decode and accept the publicKeyJwk field, if that variant is used.
+// If ks is nil, crypto.DefaultKeySet is used.
+func FromJSON(data []byte, ks *crypto.KeySet) (*RecoveryMethod2020, error) {
+	aux := struct {
+		ID                  string          `json:"id"`
+		Type                string          `json:"type"`
+		Controller          string          `json:"controller"`
+		PublicKeyJwk        json.RawMessage `json:"publicKeyJwk,omitempty"`
+		PublicKeyHex        string          `json:"publicKeyHex,omitempty"`
+		EthereumAddress     string          `json:"ethereumAddress,omitempty"`
+		BlockchainAccountId string          `json:"blockchainAccountId,omitempty"`
+	}{}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return nil, err
 	}
-	vm.id = aux.ID
-	if len(vm.id) == 0 {
-		return errors.New("invalid id")
+	if aux.Type != TypeRecovery2020 {
+		return nil, errors.New("invalid type")
 	}
-	vm.controller = aux.Controller
-	if !did.HasValidDIDSyntax(vm.controller) {
-		return errors.New("invalid controller")
+	if len(aux.ID) == 0 {
+		return nil, errors.New("invalid id")
+	}
+	if !did.HasValidDIDSyntax(aux.Controller) {
+		return nil, errors.New("invalid controller")
 	}
 
 	count := 0
-	if aux.PublicKeyJwk != nil {
+	if len(aux.PublicKeyJwk) > 0 {
 		count++
 	}
 	if aux.PublicKeyHex != "" {
@@ -135,28 +152,28 @@ func (vm *RecoveryMethod2020) UnmarshalJSON(data []byte) error {
 		count++
 	}
 	if count != 1 {
-		return fmt.Errorf("exactly one key material field must be present, got %d", count)
+		return nil, fmt.Errorf("exactly one key material field must be present, got %d", count)
 	}
 
-	// reset in case of unmarshalling into an existing struct
-	vm.pubKeyJwk = nil
-	vm.pubKeyHex = nil
-	vm.ethAddress = ""
-	vm.blockchainAcctId = ""
+	vm := &RecoveryMethod2020{id: aux.ID, controller: aux.Controller}
 	switch {
-	case aux.PublicKeyJwk != nil:
-		if _, ok := aux.PublicKeyJwk.Pubkey.(*secp256k1.PublicKey); !ok {
-			return errors.New("publicKeyJwk must contain a secp256k1 key")
+	case len(aux.PublicKeyJwk) > 0:
+		pj, err := jwk.PublicFromJSON(aux.PublicKeyJwk, ks)
+		if err != nil {
+			return nil, fmt.Errorf("invalid publicKeyJwk: %w", err)
 		}
-		vm.pubKeyJwk = aux.PublicKeyJwk
+		if _, ok := pj.Pubkey.(*secp256k1.PublicKey); !ok {
+			return nil, errors.New("publicKeyJwk must contain a secp256k1 key")
+		}
+		vm.pubKeyJwk = pj
 	case aux.PublicKeyHex != "":
 		b, err := hex.DecodeString(aux.PublicKeyHex)
 		if err != nil {
-			return fmt.Errorf("invalid publicKeyHex: %w", err)
+			return nil, fmt.Errorf("invalid publicKeyHex: %w", err)
 		}
 		pubkey, err := secp256k1.PublicKeyFromBytes(b)
 		if err != nil {
-			return fmt.Errorf("invalid publicKeyHex: %w", err)
+			return nil, fmt.Errorf("invalid publicKeyHex: %w", err)
 		}
 		vm.pubKeyHex = pubkey
 	case aux.EthereumAddress != "":
@@ -165,7 +182,7 @@ func (vm *RecoveryMethod2020) UnmarshalJSON(data []byte) error {
 		vm.blockchainAcctId = aux.BlockchainAccountId
 	}
 
-	return nil
+	return vm, nil
 }
 
 func (vm RecoveryMethod2020) ID() string {
@@ -178,6 +195,18 @@ func (vm RecoveryMethod2020) Type() string {
 
 func (vm RecoveryMethod2020) Controller() string {
 	return vm.controller
+}
+
+// PublicKey returns the decoded public key, or nil for the address-only variants
+// (ethereumAddress, blockchainAccountId) which carry no key material.
+func (vm RecoveryMethod2020) PublicKey() crypto.PublicKey {
+	switch {
+	case vm.pubKeyJwk != nil:
+		return vm.pubKeyJwk.Pubkey
+	case vm.pubKeyHex != nil:
+		return vm.pubKeyHex
+	}
+	return nil
 }
 
 func (vm RecoveryMethod2020) JsonLdContext() string {

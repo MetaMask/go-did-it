@@ -8,6 +8,7 @@ import (
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/x25519"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 // Specification: https://w3c-ccg.github.io/did-method-key/#ed25519-x25519
@@ -16,6 +17,16 @@ const (
 	JsonLdContext2020 = "https://w3id.org/security/suites/x25519-2020/v1"
 	Type2020          = "X25519KeyAgreementKey2020"
 )
+
+func init() {
+	methods.Register(Type2020, func(data []byte, _ *crypto.KeySet) (did.VerificationMethod, error) {
+		k := &KeyAgreementKey2020{}
+		if err := json.Unmarshal(data, k); err != nil {
+			return nil, err
+		}
+		return k, nil
+	})
+}
 
 var _ did.VerificationMethodKeyAgreement = &KeyAgreementKey2020{}
 
@@ -86,6 +97,11 @@ func (k KeyAgreementKey2020) Type() string {
 
 func (k KeyAgreementKey2020) Controller() string {
 	return k.controller
+}
+
+// PublicKey returns the decoded public key.
+func (k KeyAgreementKey2020) PublicKey() crypto.PublicKey {
+	return k.pubkey
 }
 
 func (k KeyAgreementKey2020) JsonLdContext() string {

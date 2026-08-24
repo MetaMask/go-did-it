@@ -4,6 +4,7 @@ import (
 	stdcrypto "crypto"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -194,4 +195,13 @@ func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.Signing
 // Unwrap returns the underlying crypto/rsa public key.
 func (p *PublicKey) Unwrap() *rsa.PublicKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p *PublicKey) JwkParams() map[string]string {
+	return map[string]string{
+		"kty": "RSA",
+		"n":   base64.RawURLEncoding.EncodeToString(p.NBytes()),
+		"e":   base64.RawURLEncoding.EncodeToString(p.EBytes()),
+	}
 }

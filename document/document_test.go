@@ -56,7 +56,7 @@ func TestRoundTrip(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			doc, err := FromJsonBytes([]byte(tc.strDoc))
+			doc, err := FromJsonBytes([]byte(tc.strDoc), nil)
 			require.NoError(t, err)
 
 			tc.assertion(t, doc)

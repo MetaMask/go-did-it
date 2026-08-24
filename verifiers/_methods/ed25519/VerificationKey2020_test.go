@@ -77,7 +77,7 @@ func TestSignature2020(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			valid, err := vk.Verify(tc.data, tc.signature)
+			valid, err := vk.VerifyBytes(tc.data, tc.signature)
 			require.NoError(t, err)
 			require.Equal(t, tc.valid, valid)
 		})

@@ -10,6 +10,7 @@ import (
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/p256"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 // Specification: missing
@@ -18,6 +19,16 @@ const (
 	JsonLdContext2021 = "https://w3id.org/security/suites/multikey-2021/v1"
 	Type2021          = "P256Key2021"
 )
+
+func init() {
+	methods.Register(Type2021, func(data []byte, _ *crypto.KeySet) (did.VerificationMethod, error) {
+		m := &Key2021{}
+		if err := json.Unmarshal(data, m); err != nil {
+			return nil, err
+		}
+		return m, nil
+	})
+}
 
 var _ did.VerificationMethodSignature = &Key2021{}
 var _ did.VerificationMethodKeyAgreement = &Key2021{}
@@ -95,6 +106,11 @@ func (m Key2021) Type() string {
 
 func (m Key2021) Controller() string {
 	return m.controller
+}
+
+// PublicKey returns the decoded public key.
+func (m Key2021) PublicKey() crypto.PublicKey {
+	return m.pubkey
 }
 
 func (m Key2021) JsonLdContext() string {

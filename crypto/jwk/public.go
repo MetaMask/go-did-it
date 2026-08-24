@@ -3,16 +3,10 @@ package jwk
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/MetaMask/go-did-it/crypto"
-	"github.com/MetaMask/go-did-it/crypto/ed25519"
-	"github.com/MetaMask/go-did-it/crypto/p256"
-	"github.com/MetaMask/go-did-it/crypto/p384"
-	"github.com/MetaMask/go-did-it/crypto/p521"
-	"github.com/MetaMask/go-did-it/crypto/rsa"
-	"github.com/MetaMask/go-did-it/crypto/secp256k1"
-	"github.com/MetaMask/go-did-it/crypto/x25519"
 )
 
 // Specification:
@@ -27,187 +21,73 @@ type PublicJwk struct {
 }
 
 func (pj PublicJwk) MarshalJSON() ([]byte, error) {
-	switch pubkey := pj.Pubkey.(type) {
-	case ed25519.PublicKey:
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "OKP",
-			Crv: "Ed25519",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
-		})
-	case *p256.PublicKey:
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-			Y   string `json:"y"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "EC",
-			Crv: "P-256",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
-			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
-		})
-	case *p384.PublicKey:
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-			Y   string `json:"y"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "EC",
-			Crv: "P-384",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
-			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
-		})
-	case *p521.PublicKey:
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-			Y   string `json:"y"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "EC",
-			Crv: "P-521",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
-			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
-		})
-	case *rsa.PublicKey:
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			N   string `json:"n"`
-			E   string `json:"e"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "RSA",
-			N:   base64.RawURLEncoding.EncodeToString(pubkey.NBytes()),
-			E:   base64.RawURLEncoding.EncodeToString(pubkey.EBytes()),
-		})
-	case *secp256k1.PublicKey:
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-			Y   string `json:"y"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "EC",
-			Crv: "secp256k1",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.XBytes()),
-			Y:   base64.RawURLEncoding.EncodeToString(pubkey.YBytes()),
-		})
-	case *x25519.PublicKey:
-		return json.Marshal(struct {
-			Kid string `json:"kid,omitempty"`
-			Use string `json:"use,omitempty"`
-			Kty string `json:"kty"`
-			Crv string `json:"crv"`
-			X   string `json:"x"`
-		}{
-			Kid: pj.Kid,
-			Use: pj.Use,
-			Kty: "OKP",
-			Crv: "X25519",
-			X:   base64.RawURLEncoding.EncodeToString(pubkey.ToBytes()),
-		})
-
-	default:
-		return nil, fmt.Errorf("unsupported key type %T", pubkey)
+	enc, ok := pj.Pubkey.(interface{ JwkParams() map[string]string })
+	if !ok {
+		return nil, fmt.Errorf("unsupported key type %T", pj.Pubkey)
 	}
+	params := enc.JwkParams()
+	if pj.Kid != "" {
+		params["kid"] = pj.Kid
+	}
+	if pj.Use != "" {
+		params["use"] = pj.Use
+	}
+	return json.Marshal(params)
 }
 
 func (pj *PublicJwk) UnmarshalJSON(bytes []byte) error {
-	aux := make(map[string]string)
-	err := json.Unmarshal(bytes, &aux)
+	res, err := PublicFromJSON(bytes, nil)
 	if err != nil {
 		return err
 	}
+	*pj = *res
+	return nil
+}
 
-	pj.Kid = aux["kid"]
-	pj.Use = aux["use"]
-
-	switch aux["kty"] {
-	case "EC": // Elliptic curve
-		x, err := base64.RawURLEncoding.DecodeString(aux["x"])
-		if err != nil {
-			return fmt.Errorf("invalid x parameter with kty=EC: %w", err)
-		}
-		y, err := base64.RawURLEncoding.DecodeString(aux["y"])
-		if err != nil {
-			return fmt.Errorf("invalid y parameter with kty=EC: %w", err)
-		}
-		switch aux["crv"] {
-		case "P-256":
-			pj.Pubkey, err = p256.PublicKeyFromXY(x, y)
-			return err
-		case "P-384":
-			pj.Pubkey, err = p384.PublicKeyFromXY(x, y)
-			return err
-		case "P-521":
-			pj.Pubkey, err = p521.PublicKeyFromXY(x, y)
-			return err
-		case "secp256k1":
-			pj.Pubkey, err = secp256k1.PublicKeyFromXY(x, y)
-			return err
-
-		default:
-			return fmt.Errorf("unsupported Curve %s", aux["crv"])
-		}
-
-	case "RSA":
-		n, err := base64.RawURLEncoding.DecodeString(aux["n"])
-		if err != nil {
-			return fmt.Errorf("invalid n parameter with kty=RSA: %w", err)
-		}
-		e, err := base64.RawURLEncoding.DecodeString(aux["e"])
-		if err != nil {
-			return fmt.Errorf("invalid e parameter with kty=RSA: %w", err)
-		}
-		pj.Pubkey, err = rsa.PublicKeyFromNE(n, e)
-		return err
-
-	case "OKP": // Octet key pair
-		x, err := base64.RawURLEncoding.DecodeString(aux["x"])
-		if err != nil {
-			return fmt.Errorf("invalid x parameter with kty=OKP: %w", err)
-		}
-		switch aux["crv"] {
-		case "Ed25519":
-			pj.Pubkey, err = ed25519.PublicKeyFromBytes(x)
-			return err
-		case "X25519":
-			pj.Pubkey, err = x25519.PublicKeyFromBytes(x)
-			return err
-
-		default:
-			return fmt.Errorf("unsupported Curve %s", aux["crv"])
-		}
-
-	default:
-		return fmt.Errorf("unsupported key type %s", aux["kty"])
+// PublicFromJSON decodes a public key JWK, accepting only key algorithms in ks.
+// If ks is nil, crypto.DefaultKeySet is used.
+func PublicFromJSON(data []byte, ks *crypto.KeySet) (*PublicJwk, error) {
+	if ks == nil {
+		ks = crypto.DefaultKeySet
 	}
+	aux := make(map[string]string)
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return nil, err
+	}
+	kt, ok := ks.KeyTypeForJwk(aux["kty"], aux["crv"])
+	if !ok {
+		return nil, fmt.Errorf("%w: JWK kty %q crv %q not in the key set", crypto.ErrKeyNotAccepted, aux["kty"], aux["crv"])
+	}
+	if kt.DecodeJwkPublic == nil {
+		return nil, fmt.Errorf("%w: public JWK decoding not supported for %s", crypto.ErrKeyNotAccepted, kt.Name)
+	}
+	params, err := decodeParams(aux)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", crypto.ErrInvalidKey, err)
+	}
+	pub, err := kt.DecodeJwkPublic(params)
+	if err != nil {
+		if errors.Is(err, crypto.ErrKeyNotAccepted) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("%w: %w", crypto.ErrInvalidKey, err)
+	}
+	return &PublicJwk{Pubkey: pub, Kid: aux["kid"], Use: aux["use"]}, nil
+}
+
+// decodeParams base64url-decodes the standard JWK key parameters.
+func decodeParams(aux map[string]string) (map[string][]byte, error) {
+	params := make(map[string][]byte)
+	for _, name := range []string{"x", "y", "n", "e", "d", "p", "q", "dp", "dq", "qi"} {
+		s, ok := aux[name]
+		if !ok {
+			continue
+		}
+		b, err := base64.RawURLEncoding.DecodeString(s)
+		if err != nil {
+			return nil, fmt.Errorf("invalid %s parameter: %w", name, err)
+		}
+		params[name] = b
+	}
+	return params, nil
 }

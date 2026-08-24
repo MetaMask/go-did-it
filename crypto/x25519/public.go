@@ -3,6 +3,7 @@ package x25519
 import (
 	"crypto/ecdh"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -177,4 +178,13 @@ func reverseBytes(b []byte) []byte {
 // Unwrap returns the underlying crypto/ecdh public key.
 func (p *PublicKey) Unwrap() *ecdh.PublicKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p *PublicKey) JwkParams() map[string]string {
+	return map[string]string{
+		"kty": "OKP",
+		"crv": "X25519",
+		"x":   base64.RawURLEncoding.EncodeToString(p.ToBytes()),
+	}
 }

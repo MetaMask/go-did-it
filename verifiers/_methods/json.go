@@ -5,15 +5,31 @@ import (
 	"fmt"
 
 	"github.com/MetaMask/go-did-it"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/jsonwebkey"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/multikey"
-	p256vm "github.com/MetaMask/go-did-it/verifiers/_methods/p256"
-	secp256k1vm "github.com/MetaMask/go-did-it/verifiers/_methods/secp256k1"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/x25519"
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
-func UnmarshalJSON(data []byte) (did.VerificationMethod, error) {
+// FromJsonFunc decodes a verification method of a single type from JSON, using ks to
+// decode and accept keys. ks is never nil.
+type FromJsonFunc func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error)
+
+// registry maps verification method types (e.g. "Multikey") to their decoding function.
+// It is populated by the verification method packages' init(), so it is effectively
+// read-only afterward: importing a verification method package registers its types.
+var registry = map[string]FromJsonFunc{}
+
+// Register records the decoding function for a verification method type.
+func Register(vmType string, fn FromJsonFunc) {
+	registry[vmType] = fn
+}
+
+// UnmarshalJSON decodes a verification method from JSON. Only verification method types
+// registered with Register (done by importing their package) can be decoded. The key is
+// decoded and accepted according to ks; if ks is nil, crypto.DefaultKeySet is used.
+func UnmarshalJSON(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
+	if ks == nil {
+		ks = crypto.DefaultKeySet
+	}
+
 	var aux struct {
 		Type string
 	}
@@ -21,32 +37,23 @@ func UnmarshalJSON(data []byte) (did.VerificationMethod, error) {
 		return nil, err
 	}
 
-	var res did.VerificationMethod
-	switch aux.Type {
-	case ed25519vm.Type2018:
-		res = &ed25519vm.VerificationKey2018{}
-	case ed25519vm.Type2020:
-		res = &ed25519vm.VerificationKey2020{}
-	case multikey.Type:
-		res = &multikey.MultiKey{}
-	case p256vm.Type2021:
-		res = &p256vm.Key2021{}
-	case secp256k1vm.TypeVerification2019:
-		res = &secp256k1vm.VerificationKey2019{}
-	case secp256k1vm.TypeRecovery2020:
-		res = &secp256k1vm.RecoveryMethod2020{}
-	case x25519vm.Type2019:
-		res = &x25519vm.KeyAgreementKey2019{}
-	case x25519vm.Type2020:
-		res = &x25519vm.KeyAgreementKey2020{}
-	case jsonwebkey.Type:
-		res = &jsonwebkey.JsonWebKey2020{}
-	default:
+	fn, ok := registry[aux.Type]
+	if !ok {
 		return nil, fmt.Errorf("unknown verification type: %s", aux.Type)
 	}
 
-	if err := json.Unmarshal(data, &res); err != nil {
+	res, err := fn(data, ks)
+	if err != nil {
 		return nil, err
+	}
+
+	// Enforce the key set on the decoded key, when the verification method holds one.
+	if wk, ok := res.(interface{ PublicKey() crypto.PublicKey }); ok {
+		if key := wk.PublicKey(); key != nil {
+			if err := ks.CheckKey(key); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return res, nil
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 // Specification: https://www.w3.org/TR/cid-1.0/#Multikey
@@ -16,6 +17,12 @@ const (
 	JsonLdContext = "https://w3id.org/security/multikey/v1"
 	Type          = "Multikey"
 )
+
+func init() {
+	methods.Register(Type, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
+		return FromJSON(data, ks)
+	})
+}
 
 var _ did.VerificationMethodSignature = &MultiKey{}
 var _ did.VerificationMethodKeyAgreement = &MultiKey{}
@@ -34,6 +41,38 @@ func NewMultiKey(id string, pubkey crypto.PublicKey, controller did.DID) *MultiK
 	}
 }
 
+// FromJSON decodes a Multikey verification method from JSON. As the key algorithm is only
+// known at decode time, ks is used to both decode the publicKeyMultibase field and control
+// which algorithms are accepted. If ks is nil, crypto.DefaultKeySet is used.
+func FromJSON(data []byte, ks *crypto.KeySet) (*MultiKey, error) {
+	if ks == nil {
+		ks = crypto.DefaultKeySet
+	}
+	aux := struct {
+		ID                 string `json:"id"`
+		Type               string `json:"type"`
+		Controller         string `json:"controller"`
+		PublicKeyMultibase string `json:"publicKeyMultibase"`
+	}{}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return nil, err
+	}
+	if aux.Type != Type {
+		return nil, errors.New("invalid type")
+	}
+	if len(aux.ID) == 0 {
+		return nil, errors.New("invalid id")
+	}
+	if !did.HasValidDIDSyntax(aux.Controller) {
+		return nil, errors.New("invalid controller")
+	}
+	pub, err := ks.PublicKeyFromMultibase(aux.PublicKeyMultibase)
+	if err != nil {
+		return nil, fmt.Errorf("invalid publicKeyMultibase: %w", err)
+	}
+	return &MultiKey{id: aux.ID, pubkey: pub, controller: aux.Controller}, nil
+}
+
 func (m MultiKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		ID                 string `json:"id"`
@@ -49,33 +88,11 @@ func (m MultiKey) MarshalJSON() ([]byte, error) {
 }
 
 func (m *MultiKey) UnmarshalJSON(bytes []byte) error {
-	aux := struct {
-		ID                 string `json:"id"`
-		Type               string `json:"type"`
-		Controller         string `json:"controller"`
-		PublicKeyMultibase string `json:"publicKeyMultibase"`
-	}{}
-	err := json.Unmarshal(bytes, &aux)
+	mk, err := FromJSON(bytes, nil)
 	if err != nil {
 		return err
 	}
-	if aux.Type != m.Type() {
-		return errors.New("invalid type")
-	}
-	m.id = aux.ID
-	if len(m.id) == 0 {
-		return errors.New("invalid id")
-	}
-	m.controller = aux.Controller
-	if !did.HasValidDIDSyntax(m.controller) {
-		return errors.New("invalid controller")
-	}
-
-	m.pubkey, err = crypto.PublicKeyFromMultibase(aux.PublicKeyMultibase)
-	if err != nil {
-		return fmt.Errorf("invalid publicKeyMultibase: %w", err)
-	}
-
+	*m = *mk
 	return nil
 }
 
@@ -89,6 +106,11 @@ func (m MultiKey) Type() string {
 
 func (m MultiKey) Controller() string {
 	return m.controller
+}
+
+// PublicKey returns the decoded public key.
+func (m MultiKey) PublicKey() crypto.PublicKey {
+	return m.pubkey
 }
 
 func (m MultiKey) JsonLdContext() string {

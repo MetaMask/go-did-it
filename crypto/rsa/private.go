@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -190,4 +191,16 @@ func (p *PrivateKey) SignToASN1(message []byte, opts ...crypto.SigningOption) ([
 // Unwrap returns the underlying crypto/rsa private key.
 func (p *PrivateKey) Unwrap() *rsa.PrivateKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p *PrivateKey) JwkParams() map[string]string {
+	params := p.Public().(*PublicKey).JwkParams()
+	params["d"] = base64.RawURLEncoding.EncodeToString(p.DBytes())
+	params["p"] = base64.RawURLEncoding.EncodeToString(p.PBytes())
+	params["q"] = base64.RawURLEncoding.EncodeToString(p.QBytes())
+	params["dp"] = base64.RawURLEncoding.EncodeToString(p.DpBytes())
+	params["dq"] = base64.RawURLEncoding.EncodeToString(p.DqBytes())
+	params["qi"] = base64.RawURLEncoding.EncodeToString(p.QiBytes())
+	return params
 }

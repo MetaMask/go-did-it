@@ -39,5 +39,13 @@ func KeyType() crypto.KeyType {
 		DecodePublic: func(b []byte) (crypto.PublicKey, error) { return crypto.ToPub(PublicKeyFromBytes(b)) },
 		Matches:      func(key crypto.PublicKey) bool { _, ok := key.(PublicKey); return ok },
 		Wrap:         func(key any) (crypto.PublicKey, bool, error) { return crypto.ToWrap(WrapPublicKey(key)) },
+		JwkKty:       "OKP",
+		JwkCrv:       "Ed25519",
+		DecodeJwkPublic: func(params map[string][]byte) (crypto.PublicKey, error) {
+			return crypto.ToPub(PublicKeyFromBytes(params["x"]))
+		},
+		DecodeJwkPrivate: func(params map[string][]byte) (crypto.PrivateKey, error) {
+			return crypto.ToPriv(PrivateKeyFromSeed(params["d"]))
+		},
 	}
 }
