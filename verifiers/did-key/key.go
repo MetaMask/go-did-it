@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	mbase "github.com/multiformats/go-multibase"
+	"github.com/multiformats/go-varint"
+
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
@@ -42,6 +45,19 @@ func Decode(identifier string) (did.DID, error) {
 
 	msi := identifier[len(keyPrefix):]
 
+	// Validate the identifier syntax (multibase + multicodec prefix). Whether the key algorithm
+	// is accepted is a policy decision deferred to Document(), where the caller provides the KeySet.
+	enc, data, err := mbase.Decode(msi)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+	}
+	if enc != mbase.Base58BTC {
+		return nil, fmt.Errorf("%w: not Base58BTC encoded", did.ErrInvalidDid)
+	}
+	if _, _, err := varint.FromUvarint(data); err != nil {
+		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+	}
+
 	return DidKey{msi: msi}, nil
 }
 
@@ -77,24 +93,32 @@ func (d DidKey) Document(opts ...did.ResolutionOption) (did.Document, error) {
 		xmsi := xpub.ToPublicKeyMultibase()
 		xVmId := fmt.Sprintf("did:key:%s#%s", d.msi, xmsi)
 
+		// The derived X25519 key is subject to the key set policy as well:
+		// when excluded, the document simply has no keyAgreement.
+		xAllowed := params.KeySet().Accepts(xpub)
+
 		switch {
 		case params.HasVerificationMethodHint(jsonwebkey.Type):
 			doc.signature = jsonwebkey.NewJsonWebKey2020(mainVmId, pub, d)
-			doc.keyAgreement = jsonwebkey.NewJsonWebKey2020(xVmId, xpub, d)
+			if xAllowed {
+				doc.keyAgreement = jsonwebkey.NewJsonWebKey2020(xVmId, xpub, d)
+			}
 		case params.HasVerificationMethodHint(multikey.Type):
 			doc.signature = multikey.NewMultiKey(mainVmId, pub, d)
-			doc.keyAgreement = multikey.NewMultiKey(xVmId, xpub, d)
+			if xAllowed {
+				doc.keyAgreement = multikey.NewMultiKey(xVmId, xpub, d)
+			}
 		default:
 			if params.HasVerificationMethodHint(ed25519vm.Type2018) {
 				doc.signature = ed25519vm.NewVerificationKey2018(mainVmId, pub, d)
 			}
-			if params.HasVerificationMethodHint(x25519vm.Type2019) {
+			if xAllowed && params.HasVerificationMethodHint(x25519vm.Type2019) {
 				doc.keyAgreement = x25519vm.NewKeyAgreementKey2019(xVmId, xpub, d)
 			}
 			if doc.signature == nil {
 				doc.signature = ed25519vm.NewVerificationKey2020(mainVmId, pub, d)
 			}
-			if doc.keyAgreement == nil {
+			if xAllowed && doc.keyAgreement == nil {
 				doc.keyAgreement = x25519vm.NewKeyAgreementKey2020(xVmId, xpub, d)
 			}
 		}

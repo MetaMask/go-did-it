@@ -56,6 +56,9 @@ func PublicFromJSON(data []byte, ks *crypto.KeySet) (*PublicJwk, error) {
 	}
 	kt, ok := ks.KeyTypeForJwk(aux["kty"], aux["crv"])
 	if !ok {
+		if len(ks.KeyTypes()) == 0 {
+			return nil, fmt.Errorf("%w: the key set is empty (register algorithms with crypto.Register, or import crypto/all)", crypto.ErrKeyNotAccepted)
+		}
 		return nil, fmt.Errorf("%w: JWK kty %q crv %q not in the key set", crypto.ErrKeyNotAccepted, aux["kty"], aux["crv"])
 	}
 	if kt.DecodeJwkPublic == nil {

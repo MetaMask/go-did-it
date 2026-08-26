@@ -2,6 +2,7 @@ package didkey_test
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	_ "github.com/MetaMask/go-did-it/crypto/all"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
 	"github.com/MetaMask/go-did-it/crypto/p256"
+	"github.com/MetaMask/go-did-it/crypto/x25519"
 	didkey "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
 
@@ -46,6 +48,18 @@ func TestParseDIDKey(t *testing.T) {
 	require.Equal(t, str, d.String())
 }
 
+func TestParseInvalidDIDKey(t *testing.T) {
+	for _, str := range []string{
+		"did:key:",                     // empty identifier
+		"did:key:not-multibase-at-all", // invalid multibase
+		"did:key:uAAE",                 // valid multibase, but not Base58BTC
+		"did:key:z",                    // no multicodec prefix
+	} {
+		_, err := did.Parse(str)
+		require.ErrorIs(t, err, did.ErrInvalidDid, str)
+	}
+}
+
 func TestMustParseDIDKey(t *testing.T) {
 	str := "did:key:z6Mkod5Jr3yd5SC7UDueqK4dAAw5xYJYjksy722tA9Boxc4z"
 	require.NotPanics(t, func() {
@@ -73,10 +87,19 @@ func TestWithKeySet(t *testing.T) {
 	require.NoError(t, err)
 	dk := didkey.FromPublicKey(pub)
 
-	// A KeySet allowing Ed25519: resolution succeeds.
-	doc, err := dk.Document(did.WithKeySet(crypto.NewKeySet(ed25519.KeyType())))
+	// A KeySet allowing Ed25519 and X25519: resolution succeeds, with a key agreement.
+	doc, err := dk.Document(did.WithKeySet(crypto.NewKeySet(ed25519.KeyType(), x25519.KeyType())))
+	require.NoError(t, err)
+	require.NotEmpty(t, doc.KeyAgreement())
+
+	// A KeySet allowing only Ed25519: resolution succeeds, but the X25519 key agreement
+	// derived from the Ed25519 key is excluded from the document.
+	doc, err = dk.Document(did.WithKeySet(crypto.NewKeySet(ed25519.KeyType())))
 	require.NoError(t, err)
 	require.NotEmpty(t, doc)
+	require.Empty(t, doc.KeyAgreement())
+	_, err = json.Marshal(doc)
+	require.NoError(t, err)
 
 	// A KeySet allowing only P-256: the Ed25519 key is not in the set, so resolution fails.
 	_, err = dk.Document(did.WithKeySet(crypto.NewKeySet(p256.KeyType())))

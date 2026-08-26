@@ -9,6 +9,7 @@ import (
 
 	"github.com/MetaMask/go-did-it/crypto"
 	_ "github.com/MetaMask/go-did-it/crypto/all"
+	"github.com/MetaMask/go-did-it/crypto/ed25519"
 	secp256k1crypto "github.com/MetaMask/go-did-it/crypto/secp256k1"
 	"github.com/MetaMask/go-did-it/didtest"
 	secp256k1vm "github.com/MetaMask/go-did-it/verifiers/_methods/secp256k1"
@@ -130,6 +131,76 @@ func TestRecoveryMethod2020_JsonRoundTrip_BlockchainAccountId(t *testing.T) {
 	out, err := json.Marshal(vm)
 	require.NoError(t, err)
 	require.JSONEq(t, data, string(out))
+}
+
+// The key set policy applies to every variant: the whole method is secp256k1, including
+// the address-only variants that verify through key recovery.
+func TestRecoveryMethod2020_KeySetEnforcement(t *testing.T) {
+	withSecp := crypto.NewKeySet(secp256k1crypto.KeyType())
+	withoutSecp := crypto.NewKeySet(ed25519.KeyType())
+
+	for name, data := range map[string]string{
+		"jwk": `{
+			"id": "did:example:123#vm-1",
+			"type": "EcdsaSecp256k1RecoveryMethod2020",
+			"controller": "did:example:123",
+			"publicKeyJwk": {
+				"crv": "secp256k1",
+				"kty": "EC",
+				"x": "dWCvM4fTdeM0KmloF57zxtBPXTOythHPMm1HCLrdd3A",
+				"y": "36uMVGM7hnw-N6GnjFcihWE3SkrhMLzzLCdPMXPEXlA"
+			}
+		}`,
+		"hex": `{
+			"id": "did:example:123#vm-2",
+			"type": "EcdsaSecp256k1RecoveryMethod2020",
+			"controller": "did:example:123",
+			"publicKeyHex": "027560af3387d375e3342a6968179ef3c6d04f5d33b2b611cf326d4708badd7770"
+		}`,
+		"ethereumAddress": `{
+			"id": "did:example:123#vm-3",
+			"type": "EcdsaSecp256k1RecoveryMethod2020",
+			"controller": "did:example:123",
+			"ethereumAddress": "0xF3beAC30C498D9E26865F34fCAa57dBB935b0D74"
+		}`,
+		"blockchainAccountId": `{
+			"id": "did:example:123#vm-4",
+			"type": "EcdsaSecp256k1RecoveryMethod2020",
+			"controller": "did:example:123",
+			"blockchainAccountId": "eip155:1:0xa136D6b820E41858b57b0136514e75f4174ceA5f"
+		}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := secp256k1vm.FromJSON([]byte(data), withSecp)
+			require.NoError(t, err)
+
+			_, err = secp256k1vm.FromJSON([]byte(data), withoutSecp)
+			require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
+		})
+	}
+}
+
+// An explicit JSON null does not count as present key material.
+func TestRecoveryMethod2020_NullJwk(t *testing.T) {
+	data := `{
+		"id": "did:example:123#vm-3",
+		"type": "EcdsaSecp256k1RecoveryMethod2020",
+		"controller": "did:example:123",
+		"publicKeyJwk": null,
+		"ethereumAddress": "0xF3beAC30C498D9E26865F34fCAa57dBB935b0D74"
+	}`
+	var vm secp256k1vm.RecoveryMethod2020
+	require.NoError(t, json.Unmarshal([]byte(data), &vm))
+
+	// a lone null means no key material at all
+	data = `{
+		"id": "did:example:123#vm-1",
+		"type": "EcdsaSecp256k1RecoveryMethod2020",
+		"controller": "did:example:123",
+		"publicKeyJwk": null
+	}`
+	err := json.Unmarshal([]byte(data), &vm)
+	require.ErrorContains(t, err, "exactly one key material field must be present")
 }
 
 // publicKeyJwk and publicKeyHex default to SHA-256 (ES256K-R spec).

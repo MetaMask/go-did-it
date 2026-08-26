@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/MetaMask/go-did-it"
@@ -23,7 +24,7 @@ const (
 
 func init() {
 	methods.Register(TypeRecovery2020, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
-		return FromJSON(data, ks)
+		return RecoveryMethod2020FromJSON(data, ks)
 	})
 }
 
@@ -103,19 +104,14 @@ func (vm RecoveryMethod2020) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-func (vm *RecoveryMethod2020) UnmarshalJSON(data []byte) error {
-	res, err := FromJSON(data, nil)
-	if err != nil {
-		return err
+// RecoveryMethod2020FromJSON decodes an EcdsaSecp256k1RecoveryMethod2020 verification method
+// from JSON. All variants require secp256k1 to be allowed by ks: verification always performs
+// secp256k1 signature recovery, even for the address-only variants that carry no key
+// material. If ks is nil, crypto.DefaultKeySet is used.
+func RecoveryMethod2020FromJSON(data []byte, ks *crypto.KeySet) (*RecoveryMethod2020, error) {
+	if ks == nil {
+		ks = crypto.DefaultKeySet
 	}
-	*vm = *res
-	return nil
-}
-
-// FromJSON decodes an EcdsaSecp256k1RecoveryMethod2020 verification method from JSON,
-// using ks to decode and accept the publicKeyJwk field, if that variant is used.
-// If ks is nil, crypto.DefaultKeySet is used.
-func FromJSON(data []byte, ks *crypto.KeySet) (*RecoveryMethod2020, error) {
 	aux := struct {
 		ID                  string          `json:"id"`
 		Type                string          `json:"type"`
@@ -138,8 +134,11 @@ func FromJSON(data []byte, ks *crypto.KeySet) (*RecoveryMethod2020, error) {
 		return nil, errors.New("invalid controller")
 	}
 
+	// an explicit JSON null must not count as present key material
+	hasJwk := len(aux.PublicKeyJwk) > 0 && string(aux.PublicKeyJwk) != "null"
+
 	count := 0
-	if len(aux.PublicKeyJwk) > 0 {
+	if hasJwk {
 		count++
 	}
 	if aux.PublicKeyHex != "" {
@@ -157,7 +156,7 @@ func FromJSON(data []byte, ks *crypto.KeySet) (*RecoveryMethod2020, error) {
 
 	vm := &RecoveryMethod2020{id: aux.ID, controller: aux.Controller}
 	switch {
-	case len(aux.PublicKeyJwk) > 0:
+	case hasJwk:
 		pj, err := jwk.PublicFromJSON(aux.PublicKeyJwk, ks)
 		if err != nil {
 			return nil, fmt.Errorf("invalid publicKeyJwk: %w", err)
@@ -171,14 +170,22 @@ func FromJSON(data []byte, ks *crypto.KeySet) (*RecoveryMethod2020, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid publicKeyHex: %w", err)
 		}
-		pubkey, err := secp256k1.PublicKeyFromBytes(b)
+		pub, err := ks.PublicKeyFromBytes(secp256k1.MultibaseCode, b)
 		if err != nil {
 			return nil, fmt.Errorf("invalid publicKeyHex: %w", err)
 		}
+		pubkey, ok := pub.(*secp256k1.PublicKey)
+		if !ok {
+			return nil, errors.New("publicKeyHex is not a secp256k1 key")
+		}
 		vm.pubKeyHex = pubkey
-	case aux.EthereumAddress != "":
+	default:
+		// The address-only variants carry no key material, but verification still performs
+		// secp256k1 signature recovery, so the algorithm must be allowed by the key set.
+		if !slices.ContainsFunc(ks.KeyTypes(), func(kt crypto.KeyType) bool { return kt.Code == secp256k1.MultibaseCode }) {
+			return nil, fmt.Errorf("%w: secp256k1", crypto.ErrKeyNotAccepted)
+		}
 		vm.ethAddress = aux.EthereumAddress
-	case aux.BlockchainAccountId != "":
 		vm.blockchainAcctId = aux.BlockchainAccountId
 	}
 

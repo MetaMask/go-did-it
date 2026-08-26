@@ -101,6 +101,27 @@ func TestKeySet_TypedErrors(t *testing.T) {
 	}
 }
 
+// An empty KeySet is the likely sign of a missing registration (DefaultKeySet starts empty),
+// so the rejection errors must say so.
+func TestKeySet_EmptySetHint(t *testing.T) {
+	edPub, _, err := ed25519.GenerateKeyPair()
+	require.NoError(t, err)
+
+	ks := crypto.NewKeySet()
+
+	_, err = ks.PublicKeyFromMultibase(edPub.ToPublicKeyMultibase())
+	require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
+	require.ErrorContains(t, err, "the key set is empty")
+
+	_, err = ks.WrapPublicKey(stded25519.PublicKey(make([]byte, stded25519.PublicKeySize)))
+	require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
+	require.ErrorContains(t, err, "the key set is empty")
+
+	err = ks.CheckKey(edPub)
+	require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
+	require.ErrorContains(t, err, "the key set is empty")
+}
+
 func TestKeySet_WrapPublicKey(t *testing.T) {
 	ks := crypto.NewKeySet(ed25519.KeyType(), p256.KeyType(), p384.KeyType(), rsa.KeyType(3072, 4096))
 

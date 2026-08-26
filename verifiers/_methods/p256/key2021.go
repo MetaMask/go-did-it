@@ -21,12 +21,8 @@ const (
 )
 
 func init() {
-	methods.Register(Type2021, func(data []byte, _ *crypto.KeySet) (did.VerificationMethod, error) {
-		m := &Key2021{}
-		if err := json.Unmarshal(data, m); err != nil {
-			return nil, err
-		}
-		return m, nil
+	methods.Register(Type2021, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
+		return FromJSON(data, ks)
 	})
 }
 
@@ -61,39 +57,43 @@ func (m Key2021) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (m *Key2021) UnmarshalJSON(bytes []byte) error {
+// FromJSON decodes a P256Key2021 verification method from JSON, using ks to decode and
+// accept the publicKeyBase58 field. If ks is nil, crypto.DefaultKeySet is used.
+func FromJSON(data []byte, ks *crypto.KeySet) (*Key2021, error) {
+	if ks == nil {
+		ks = crypto.DefaultKeySet
+	}
 	aux := struct {
 		ID              string `json:"id"`
 		Type            string `json:"type"`
 		Controller      string `json:"controller"`
 		PublicKeyBase58 string `json:"publicKeyBase58"`
 	}{}
-	err := json.Unmarshal(bytes, &aux)
-	if err != nil {
-		return err
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return nil, err
 	}
-	if aux.Type != m.Type() {
-		return errors.New("invalid type")
+	if aux.Type != Type2021 {
+		return nil, errors.New("invalid type")
 	}
-	m.id = aux.ID
-	if len(m.id) == 0 {
-		return errors.New("invalid id")
+	if len(aux.ID) == 0 {
+		return nil, errors.New("invalid id")
 	}
-	m.controller = aux.Controller
-	if !did.HasValidDIDSyntax(m.controller) {
-		return errors.New("invalid controller")
+	if !did.HasValidDIDSyntax(aux.Controller) {
+		return nil, errors.New("invalid controller")
 	}
-
 	pubBytes, err := base58.Decode(aux.PublicKeyBase58)
 	if err != nil {
-		return fmt.Errorf("invalid publicKeyBase58: %w", err)
+		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
-	m.pubkey, err = p256.PublicKeyFromBytes(pubBytes)
+	pub, err := ks.PublicKeyFromBytes(p256.MultibaseCode, pubBytes)
 	if err != nil {
-		return fmt.Errorf("invalid publicKeyBase58: %w", err)
+		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
-
-	return nil
+	pubkey, ok := pub.(*p256.PublicKey)
+	if !ok {
+		return nil, errors.New("publicKeyBase58 is not a P-256 key")
+	}
+	return &Key2021{id: aux.ID, pubkey: pubkey, controller: aux.Controller}, nil
 }
 
 func (m Key2021) ID() string {

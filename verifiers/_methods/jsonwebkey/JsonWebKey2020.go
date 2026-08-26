@@ -57,15 +57,6 @@ func (j JsonWebKey2020) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (j *JsonWebKey2020) UnmarshalJSON(bytes []byte) error {
-	jk, err := FromJSON(bytes, nil)
-	if err != nil {
-		return err
-	}
-	*j = *jk
-	return nil
-}
-
 // FromJSON decodes a JsonWebKey2020 verification method from JSON, using ks to decode
 // and accept the publicKeyJwk field. If ks is nil, crypto.DefaultKeySet is used.
 func FromJSON(data []byte, ks *crypto.KeySet) (*JsonWebKey2020, error) {

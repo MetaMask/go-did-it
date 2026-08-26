@@ -14,6 +14,10 @@ import (
 // parameters, like the RSA modulus size) is not accepted by the KeySet.
 var ErrKeyNotAccepted = errors.New("key type not accepted by the key set")
 
+// emptySetHint points at the likely cause when a KeySet rejects everything: DefaultKeySet starts
+// empty and nothing was registered.
+const emptySetHint = "the key set is empty (register algorithms with Register, or import crypto/all)"
+
 // ErrInvalidKey reports malformed key data that failed to decode.
 var ErrInvalidKey = errors.New("invalid key data")
 
@@ -41,7 +45,8 @@ type KeyType struct {
 
 	// Matches reports whether an already-decoded key belongs to this KeyType.
 	// It is the inverse of DecodePublic: a type assertion plus any additional constraints
-	// (e.g. RSA key size). Nil means a code match alone is sufficient.
+	// (e.g. RSA key size). It is required for the key set acceptance checks (Accepts, CheckKey):
+	// a KeyType with a nil Matches is never accepted by them.
 	Matches func(key PublicKey) bool
 
 	// Wrap converts an already-parsed public key object into this KeyType's PublicKey. It is the
@@ -113,9 +118,13 @@ func (ks *KeySet) PublicKeyFromMultibase(multibase string) (PublicKey, error) {
 func (ks *KeySet) PublicKeyFromBytes(code uint64, body []byte) (PublicKey, error) {
 	ks.mu.RLock()
 	kt, ok := ks.byCode[code]
+	empty := len(ks.byCode) == 0
 	ks.mu.RUnlock()
 
 	if !ok {
+		if empty {
+			return nil, fmt.Errorf("%w: %s", ErrKeyNotAccepted, emptySetHint)
+		}
 		return nil, fmt.Errorf("%w: multicodec code %#x not in key set", ErrKeyNotAccepted, code)
 	}
 	if kt.DecodePublic == nil {
@@ -148,6 +157,9 @@ func (ks *KeySet) WrapPublicKey(key any) (PublicKey, error) {
 			return nil, err
 		}
 		return pub, nil
+	}
+	if len(ks.byCode) == 0 {
+		return nil, fmt.Errorf("%w: %s", ErrKeyNotAccepted, emptySetHint)
 	}
 	return nil, fmt.Errorf("%w: no key type in the key set matches %T", ErrKeyNotAccepted, key)
 }
@@ -193,10 +205,16 @@ func (ks *KeySet) Accepts(key PublicKey) bool {
 // CheckKey returns nil if key is accepted by the KeySet (see Accepts), or an error wrapping
 // ErrKeyNotAccepted otherwise.
 func (ks *KeySet) CheckKey(key PublicKey) error {
-	if !ks.Accepts(key) {
-		return fmt.Errorf("%w: %T", ErrKeyNotAccepted, key)
+	if ks.Accepts(key) {
+		return nil
 	}
-	return nil
+	ks.mu.RLock()
+	empty := len(ks.byCode) == 0
+	ks.mu.RUnlock()
+	if empty {
+		return fmt.Errorf("%w: %s", ErrKeyNotAccepted, emptySetHint)
+	}
+	return fmt.Errorf("%w: %T", ErrKeyNotAccepted, key)
 }
 
 // DefaultKeySet is the package-level KeySet used by the package-level decoding functions and, by default,

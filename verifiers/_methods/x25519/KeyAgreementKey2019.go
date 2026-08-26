@@ -21,12 +21,8 @@ const (
 )
 
 func init() {
-	methods.Register(Type2019, func(data []byte, _ *crypto.KeySet) (did.VerificationMethod, error) {
-		k := &KeyAgreementKey2019{}
-		if err := json.Unmarshal(data, k); err != nil {
-			return nil, err
-		}
-		return k, nil
+	methods.Register(Type2019, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
+		return KeyAgreementKey2019FromJSON(data, ks)
 	})
 }
 
@@ -60,37 +56,44 @@ func (k KeyAgreementKey2019) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (k *KeyAgreementKey2019) UnmarshalJSON(bytes []byte) error {
+// KeyAgreementKey2019FromJSON decodes an X25519KeyAgreementKey2019 verification method from
+// JSON, using ks to decode and accept the publicKeyBase58 field. If ks is nil,
+// crypto.DefaultKeySet is used.
+func KeyAgreementKey2019FromJSON(data []byte, ks *crypto.KeySet) (*KeyAgreementKey2019, error) {
+	if ks == nil {
+		ks = crypto.DefaultKeySet
+	}
 	aux := struct {
 		ID              string `json:"id"`
 		Type            string `json:"type"`
 		Controller      string `json:"controller"`
 		PublicKeyBase58 string `json:"publicKeyBase58"`
 	}{}
-	err := json.Unmarshal(bytes, &aux)
-	if err != nil {
-		return err
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return nil, err
 	}
-	if aux.Type != k.Type() {
-		return errors.New("invalid type")
+	if aux.Type != Type2019 {
+		return nil, errors.New("invalid type")
 	}
-	k.id = aux.ID
-	if len(k.id) == 0 {
-		return errors.New("invalid id")
+	if len(aux.ID) == 0 {
+		return nil, errors.New("invalid id")
+	}
+	if !did.HasValidDIDSyntax(aux.Controller) {
+		return nil, errors.New("invalid controller")
 	}
 	pubBytes, err := base58.Decode(aux.PublicKeyBase58)
 	if err != nil {
-		return fmt.Errorf("invalid publicKeyBase58: %w", err)
+		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
-	k.pubkey, err = x25519.PublicKeyFromBytes(pubBytes)
+	pub, err := ks.PublicKeyFromBytes(x25519.MultibaseCode, pubBytes)
 	if err != nil {
-		return fmt.Errorf("invalid publicKeyBase58: %w", err)
+		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
-	k.controller = aux.Controller
-	if !did.HasValidDIDSyntax(k.controller) {
-		return errors.New("invalid controller")
+	pubkey, ok := pub.(*x25519.PublicKey)
+	if !ok {
+		return nil, errors.New("publicKeyBase58 is not an X25519 key")
 	}
-	return nil
+	return &KeyAgreementKey2019{id: aux.ID, pubkey: pubkey, controller: aux.Controller}, nil
 }
 
 func (k KeyAgreementKey2019) ID() string {

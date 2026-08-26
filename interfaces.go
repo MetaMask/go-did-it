@@ -79,9 +79,12 @@ type Document interface {
 
 // VerificationMethod is a common interface for a cryptographic signature verification method.
 // For example, Ed25519VerificationKey2020 implements the Ed25519 signature verification.
+//
+// Note: this interface deliberately does not include json.Unmarshaler. Decoding a verification
+// method from untrusted JSON requires a crypto.KeySet to control which key algorithms are
+// accepted; use the per-type FromJSON functions or the verification method registry instead.
 type VerificationMethod interface {
 	json.Marshaler
-	json.Unmarshaler
 
 	// ID is a string identifier for the VerificationMethod. It can be referenced in a Document.
 	ID() string

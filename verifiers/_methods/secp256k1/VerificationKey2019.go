@@ -21,12 +21,8 @@ const (
 )
 
 func init() {
-	methods.Register(TypeVerification2019, func(data []byte, _ *crypto.KeySet) (did.VerificationMethod, error) {
-		vm := &VerificationKey2019{}
-		if err := json.Unmarshal(data, vm); err != nil {
-			return nil, err
-		}
-		return vm, nil
+	methods.Register(TypeVerification2019, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
+		return VerificationKey2019FromJSON(data, ks)
 	})
 }
 
@@ -61,39 +57,44 @@ func (vm VerificationKey2019) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (vm *VerificationKey2019) UnmarshalJSON(bytes []byte) error {
+// VerificationKey2019FromJSON decodes an EcdsaSecp256k1VerificationKey2019 verification
+// method from JSON, using ks to decode and accept the publicKeyBase58 field. If ks is nil,
+// crypto.DefaultKeySet is used.
+func VerificationKey2019FromJSON(data []byte, ks *crypto.KeySet) (*VerificationKey2019, error) {
+	if ks == nil {
+		ks = crypto.DefaultKeySet
+	}
 	aux := struct {
 		ID              string `json:"id"`
 		Type            string `json:"type"`
 		Controller      string `json:"controller"`
 		PublicKeyBase58 string `json:"publicKeyBase58"`
 	}{}
-	err := json.Unmarshal(bytes, &aux)
-	if err != nil {
-		return err
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return nil, err
 	}
-	if aux.Type != vm.Type() {
-		return errors.New("invalid type")
+	if aux.Type != TypeVerification2019 {
+		return nil, errors.New("invalid type")
 	}
-	vm.id = aux.ID
-	if len(vm.id) == 0 {
-		return errors.New("invalid id")
+	if len(aux.ID) == 0 {
+		return nil, errors.New("invalid id")
 	}
-	vm.controller = aux.Controller
-	if !did.HasValidDIDSyntax(vm.controller) {
-		return errors.New("invalid controller")
+	if !did.HasValidDIDSyntax(aux.Controller) {
+		return nil, errors.New("invalid controller")
 	}
-
 	pubBytes, err := base58.Decode(aux.PublicKeyBase58)
 	if err != nil {
-		return fmt.Errorf("invalid publicKeyBase58: %w", err)
+		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
-	vm.pubkey, err = secp256k1.PublicKeyFromBytes(pubBytes)
+	pub, err := ks.PublicKeyFromBytes(secp256k1.MultibaseCode, pubBytes)
 	if err != nil {
-		return fmt.Errorf("invalid publicKeyBase58: %w", err)
+		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
-
-	return nil
+	pubkey, ok := pub.(*secp256k1.PublicKey)
+	if !ok {
+		return nil, errors.New("publicKeyBase58 is not a secp256k1 key")
+	}
+	return &VerificationKey2019{id: aux.ID, pubkey: pubkey, controller: aux.Controller}, nil
 }
 
 func (vm VerificationKey2019) ID() string {

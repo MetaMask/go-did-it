@@ -53,8 +53,10 @@ import (
 	"fmt"
 
 	"github.com/MetaMask/go-did-it"
-	
-	// 0) Import the methods you want to support
+
+	// 0) Register the key algorithms you accept (here: all of them),
+	//    and import the DID methods you want to support
+	_ "github.com/MetaMask/go-did-it/crypto/all"
 	_ "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
 
@@ -93,7 +95,9 @@ import (
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto/x25519"
 
-	// 0) Import the methods you want to support
+	// 0) Register the key algorithms you accept (here: all of them),
+	//    and import the DID methods you want to support
+	_ "github.com/MetaMask/go-did-it/crypto/all"
 	_ "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
 
@@ -116,6 +120,23 @@ func main() {
 	// Verification method used: X25519KeyAgreementKey2020 did:key:z6MkgRNXpJRbEE6FoXhT8KWHwJo4KyzFo1FdSEFpRLh5vuXZ#z6LSjeQx2VkXz8yirhrYJv8uicu9BBaeYU3Q1D9sFBovhmPF
 }
 ```
+
+### Choosing the accepted key algorithms
+
+Decoding keys is gated by a `crypto.KeySet`: the set of key algorithms (and, for RSA, key sizes) that you accept. This is a security policy under your control. The default set (`crypto.DefaultKeySet`) starts **empty** — register the algorithms you want, or import `crypto/all` to accept everything:
+
+```go
+// accept everything (tests, kitchen-sink tools)
+import _ "github.com/MetaMask/go-did-it/crypto/all"
+
+// or register only what you accept in the default set
+crypto.Register(ed25519.KeyType(), p256.KeyType())
+
+// or pass an explicit set for a single resolution
+doc, err := d.Document(did.WithKeySet(crypto.NewKeySet(ed25519.KeyType())))
+```
+
+Similarly, parsing DID documents (e.g. resolved through `did:web`) only understands the verification method types that are registered: import the `verifiers/_methods/<type>` packages you expect, or `verifiers/_methods/all` for all of them.
 
 ## Features
 

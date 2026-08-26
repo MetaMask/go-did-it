@@ -87,15 +87,6 @@ func (m MultiKey) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (m *MultiKey) UnmarshalJSON(bytes []byte) error {
-	mk, err := FromJSON(bytes, nil)
-	if err != nil {
-		return err
-	}
-	*m = *mk
-	return nil
-}
-
 func (m MultiKey) ID() string {
 	return m.id
 }

@@ -21,8 +21,12 @@ func (d document) MarshalJSON() ([]byte, error) {
 	// See https://github.com/w3c-ccg/did-key-spec/issues/71
 
 	vms := []did.VerificationMethod{d.signature}
-	if d.signature != did.VerificationMethod(d.keyAgreement) {
+	if d.keyAgreement != nil && d.signature != did.VerificationMethod(d.keyAgreement) {
 		vms = append(vms, d.keyAgreement)
+	}
+	var keyAgreement []string
+	if d.keyAgreement != nil {
+		keyAgreement = []string{d.keyAgreement.ID()}
 	}
 
 	return json.Marshal(struct {
@@ -43,18 +47,18 @@ func (d document) MarshalJSON() ([]byte, error) {
 		VerificationMethod:   vms,
 		Authentication:       []string{d.signature.ID()},
 		AssertionMethod:      []string{d.signature.ID()},
-		KeyAgreement:         []string{d.keyAgreement.ID()},
+		KeyAgreement:         keyAgreement,
 		CapabilityInvocation: []string{d.signature.ID()},
 		CapabilityDelegation: []string{d.signature.ID()},
 	})
 }
 
 func (d document) Context() []string {
-	return stringSet(
-		did.JsonLdContext,
-		d.signature.JsonLdContext(),
-		d.keyAgreement.JsonLdContext(),
-	)
+	ctxs := []string{did.JsonLdContext, d.signature.JsonLdContext()}
+	if d.keyAgreement != nil {
+		ctxs = append(ctxs, d.keyAgreement.JsonLdContext())
+	}
+	return stringSet(ctxs...)
 }
 
 func (d document) ID() string {
@@ -71,15 +75,13 @@ func (d document) AlsoKnownAs() []*url.URL {
 }
 
 func (d document) VerificationMethods() map[string]did.VerificationMethod {
-	if d.signature == did.VerificationMethod(d.keyAgreement) {
-		return map[string]did.VerificationMethod{
-			d.signature.ID(): d.signature,
-		}
+	res := map[string]did.VerificationMethod{
+		d.signature.ID(): d.signature,
 	}
-	return map[string]did.VerificationMethod{
-		d.signature.ID():    d.signature,
-		d.keyAgreement.ID(): d.keyAgreement,
+	if d.keyAgreement != nil {
+		res[d.keyAgreement.ID()] = d.keyAgreement
 	}
+	return res
 }
 
 func (d document) Authentication() []did.VerificationMethodSignature {
@@ -91,6 +93,9 @@ func (d document) Assertion() []did.VerificationMethodSignature {
 }
 
 func (d document) KeyAgreement() []did.VerificationMethodKeyAgreement {
+	if d.keyAgreement == nil {
+		return nil
+	}
 	return []did.VerificationMethodKeyAgreement{d.keyAgreement}
 }
 
