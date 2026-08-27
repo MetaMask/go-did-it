@@ -49,7 +49,7 @@ var (
 	oidSecp256k1 = asn1.ObjectIdentifier{1, 3, 132, 0, 10}
 )
 
-// KeyType returns the crypto.KeyType describing secp256k1, to be added to a crypto.KeySet.
+// KeyType returns the crypto.KeyType describing secp256k1, to be added to a crypto.KeyPolicy.
 func KeyType() crypto.KeyType {
 	return crypto.KeyType{
 		Name:         "secp256k1",

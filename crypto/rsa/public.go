@@ -48,17 +48,24 @@ func PublicKeyFromNE(n, e []byte) (*PublicKey, error) {
 
 // WrapPublicKey converts an already-parsed public key object — for RSA, a standard library
 // *rsa.PublicKey — into a PublicKey. It is the inverse of Unwrap. The boolean reports whether
-// the given key belongs to this algorithm at all. Note that a KeySet applies its own size policy
+// the given key belongs to this algorithm at all. Note that a KeyPolicy applies its own size policy
 // on top of the library-wide [MinRsaKeyBits, MaxRsaKeyBits] bounds enforced here.
 func WrapPublicKey(key any) (*PublicKey, bool, error) {
 	k, ok := key.(*rsa.PublicKey)
 	if !ok {
 		return nil, false, nil
 	}
-	if err := validatePublicKey(k); err != nil {
+	if k == nil || k.N == nil {
+		return nil, true, fmt.Errorf("invalid public key")
+	}
+	// Copy before validating, so that what we check is what we keep: rsa.PublicKey.N is a
+	// mutable *big.Int, and holding on to the caller's key would let it change size (or become
+	// malformed) after the KeyPolicy has accepted it. The ECDSA wrappers copy for the same reason.
+	cloned := &rsa.PublicKey{N: new(big.Int).Set(k.N), E: k.E}
+	if err := validatePublicKey(cloned); err != nil {
 		return nil, true, err
 	}
-	return &PublicKey{k: k}, true, nil
+	return &PublicKey{k: cloned}, true, nil
 }
 
 // PublicKeyFromPublicKeyMultibase decodes the public key from its Multibase form

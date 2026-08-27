@@ -50,7 +50,7 @@ var curve25519PMinusOne = new(big.Int).Sub(curve25519P, big.NewInt(1))
 
 var one = big.NewInt(1)
 
-// KeyType returns the crypto.KeyType describing X25519, to be added to a crypto.KeySet.
+// KeyType returns the crypto.KeyType describing X25519, to be added to a crypto.KeyPolicy.
 func KeyType() crypto.KeyType {
 	return crypto.KeyType{
 		Name:         "X25519",

@@ -2,6 +2,7 @@ package methods
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -9,13 +10,20 @@ import (
 	"github.com/MetaMask/go-did-it/crypto"
 )
 
-// FromJsonFunc decodes a verification method of a single type from JSON. ks is never nil.
-// Implementations must decode any key material through ks (never by calling an algorithm
+// ErrDirectUnmarshal is returned by the UnmarshalJSON method of every verification method type.
+// Those methods exist only to fail closed: encoding/json cannot supply the crypto.KeyPolicy that
+// decoding key material requires, and without them json.Unmarshal would silently succeed and leave
+// a zero-value verification method (the struct fields are unexported, so there is nothing to fill).
+// Decode through the per-type FromJSON functions or through UnmarshalJSON in this package instead.
+var ErrDirectUnmarshal = errors.New("a verification method cannot be decoded with encoding/json: it needs a crypto.KeyPolicy to control which key algorithms are accepted")
+
+// FromJsonFunc decodes a verification method of a single type from JSON. kp is never nil.
+// Implementations must decode any key material through kp (never by calling an algorithm
 // package directly), so that disallowed algorithms are rejected before their key data is
 // even parsed. The registry itself carries no policy: which method types are decodable is
 // a format capability controlled by imports, while which key algorithms are accepted is
-// controlled solely by ks.
-type FromJsonFunc func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error)
+// controlled solely by kp.
+type FromJsonFunc func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error)
 
 // registry maps verification method types (e.g. "Multikey") to their decoding function.
 // It is typically populated by the verification method packages' init(): importing a
@@ -35,10 +43,10 @@ func Register(vmType string, fn FromJsonFunc) {
 
 // UnmarshalJSON decodes a verification method from JSON. Only verification method types
 // registered with Register (done by importing their package) can be decoded. The key is
-// decoded and accepted according to ks; if ks is nil, crypto.DefaultKeySet is used.
-func UnmarshalJSON(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
-	if ks == nil {
-		ks = crypto.DefaultKeySet
+// decoded and accepted according to kp; if kp is nil, crypto.DefaultKeyPolicy is used.
+func UnmarshalJSON(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
 	}
 
 	var aux struct {
@@ -59,5 +67,5 @@ func UnmarshalJSON(data []byte, ks *crypto.KeySet) (did.VerificationMethod, erro
 		return nil, fmt.Errorf("unknown verification type: %s", aux.Type)
 	}
 
-	return fn(data, ks)
+	return fn(data, kp)
 }

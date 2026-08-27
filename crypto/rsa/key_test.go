@@ -368,3 +368,43 @@ func TestRejectWeirdPublicKeyInputs(t *testing.T) {
 		})
 	}
 }
+
+// KeyType must not keep a reference to a caller-owned slice: mutating it afterwards would
+// otherwise silently change which sizes the already-built policy accepts.
+func TestKeyTypeCopiesSizes(t *testing.T) {
+	pub2048, _, err := GenerateKeyPair(2048)
+	require.NoError(t, err)
+	pub3072, _, err := GenerateKeyPair(3072)
+	require.NoError(t, err)
+
+	sizes := []int{2048}
+	kt := KeyType(sizes...)
+	name := kt.Name
+
+	sizes[0] = 3072
+
+	require.True(t, kt.Matches(pub2048), "policy must still accept the size it was built with")
+	require.False(t, kt.Matches(pub3072), "policy must not accept a size injected after the fact")
+	require.Equal(t, name, kt.Name, "Name must stay consistent with what the policy accepts")
+}
+
+// WrapPublicKey must not keep a reference to the caller's *rsa.PublicKey: N is a mutable
+// *big.Int, so aliasing it would let a key change size after a KeyPolicy accepted it.
+func TestWrapPublicKeyCopiesKey(t *testing.T) {
+	pub, _, err := GenerateKeyPair(2048)
+	require.NoError(t, err)
+
+	caller := &stdrsa.PublicKey{N: new(big.Int).Set(pub.Unwrap().N), E: pub.Unwrap().E}
+
+	kp := crypto.NewKeyPolicy(KeyType(2048))
+	wrapped, err := kp.WrapPublicKey(caller)
+	require.NoError(t, err)
+
+	// the caller mutates its own key after the policy check
+	caller.N.SetInt64(3)
+	caller.E = 1
+
+	require.Equal(t, 2048, wrapped.(*PublicKey).Unwrap().N.BitLen(), "wrapped key must not follow the caller's mutation")
+	require.True(t, kp.Accepts(wrapped), "a key the policy accepted must stay accepted")
+	require.True(t, wrapped.Equal(pub))
+}

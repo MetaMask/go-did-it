@@ -11,19 +11,19 @@ import (
 )
 
 // ErrKeyNotAccepted reports a policy rejection: the key is well-formed, but its algorithm (or its
-// parameters, like the RSA modulus size) is not accepted by the KeySet.
-var ErrKeyNotAccepted = errors.New("key type not accepted by the key set")
+// parameters, like the RSA modulus size) is not accepted by the KeyPolicy.
+var ErrKeyNotAccepted = errors.New("key type not accepted by the key policy")
 
-// emptySetHint points at the likely cause when a KeySet rejects everything: DefaultKeySet starts
+// emptyPolicyHint points at the likely cause when a KeyPolicy rejects everything: DefaultKeyPolicy starts
 // empty and nothing was registered.
-const emptySetHint = "the key set is empty (register algorithms with Register, or import crypto/all)"
+const emptyPolicyHint = "the key policy is empty (register algorithms with Register, or import crypto/all)"
 
 // ErrInvalidKey reports malformed key data that failed to decode.
 var ErrInvalidKey = errors.New("invalid key data")
 
 // KeyType describes how to decode keys of a single algorithm (and, for RSA, which key sizes to accept).
 //
-// It is the unit a KeySet is built from. Each crypto/<algo> package provides one through its
+// It is the unit a KeyPolicy is built from. Each crypto/<algo> package provides one through its
 // KeyType() constructor (e.g. ed25519.KeyType(), rsa.KeyType(2048)), which is the only place that knows
 // the algorithm's encoding details. Because the crypto package itself doesn't import any algorithm
 // package, your binary only links the algorithms you actually name.
@@ -35,7 +35,7 @@ type KeyType struct {
 	// Name is a human-readable identifier, used in error messages (e.g. "Ed25519", "RSA-2048").
 	Name string
 	// Code is the algorithm's multicodec code (the prefix in a publicKeyMultibase form). It is unique
-	// within a KeySet; registering a KeyType whose code is already present replaces the previous one.
+	// within a KeyPolicy; registering a KeyType whose code is already present replaces the previous one.
 	Code uint64
 
 	// DecodePublic decodes a public key from the body of its publicKeyMultibase form (the bytes
@@ -45,7 +45,7 @@ type KeyType struct {
 
 	// Matches reports whether an already-decoded key belongs to this KeyType.
 	// It is the inverse of DecodePublic: a type assertion plus any additional constraints
-	// (e.g. RSA key size). It is required for the key set acceptance checks (Accepts, CheckKey):
+	// (e.g. RSA key size). It is required for the key policy acceptance checks (Accepts, CheckKey):
 	// a KeyType with a nil Matches is never accepted by them.
 	Matches func(key PublicKey) bool
 
@@ -74,58 +74,58 @@ type KeyType struct {
 	DecodeJwkPrivate func(params map[string][]byte) (PrivateKey, error)
 }
 
-// KeySet is a configured-once set of the key algorithms (and sizes) that decoding is allowed to
-// accept. Build one with NewKeySet and pass it where you need explicit, isolated control; or use
-// the package-level DefaultKeySet singleton (and the matching package-level functions) for the global,
+// KeyPolicy is a configured-once set of the key algorithms (and sizes) that decoding is allowed to
+// accept. Build one with NewKeyPolicy and pass it where you need explicit, isolated control; or use
+// the package-level DefaultKeyPolicy singleton (and the matching package-level functions) for the global,
 // blank-import style.
 //
-// A KeySet is safe for concurrent use.
-type KeySet struct {
+// A KeyPolicy is safe for concurrent use.
+type KeyPolicy struct {
 	mu     sync.RWMutex
 	byCode map[uint64]KeyType
 }
 
-// NewKeySet builds a KeySet accepting exactly the given key types.
-func NewKeySet(keyTypes ...KeyType) *KeySet {
-	ks := &KeySet{byCode: make(map[uint64]KeyType)}
-	ks.Register(keyTypes...)
-	return ks
+// NewKeyPolicy builds a KeyPolicy accepting exactly the given key types.
+func NewKeyPolicy(keyTypes ...KeyType) *KeyPolicy {
+	kp := &KeyPolicy{byCode: make(map[uint64]KeyType)}
+	kp.Register(keyTypes...)
+	return kp
 }
 
-// Register adds key types to the KeySet, replacing any already registered under the same code. It is
-// safe to call concurrently; this is how the package-level DefaultKeySet is populated (directly, via
+// Register adds key types to the KeyPolicy, replacing any already registered under the same code. It is
+// safe to call concurrently; this is how the package-level DefaultKeyPolicy is populated (directly, via
 // Register, or via a blank import of a registering package such as crypto/all).
-func (ks *KeySet) Register(keyTypes ...KeyType) {
-	ks.mu.Lock()
-	defer ks.mu.Unlock()
+func (kp *KeyPolicy) Register(keyTypes ...KeyType) {
+	kp.mu.Lock()
+	defer kp.mu.Unlock()
 	for _, kt := range keyTypes {
-		ks.byCode[kt.Code] = kt
+		kp.byCode[kt.Code] = kt
 	}
 }
 
 // PublicKeyFromMultibase decodes a public key from its publicKeyMultibase form, accepting it only if
-// its algorithm is in the KeySet.
-func (ks *KeySet) PublicKeyFromMultibase(multibase string) (PublicKey, error) {
+// its algorithm is in the KeyPolicy.
+func (kp *KeyPolicy) PublicKeyFromMultibase(multibase string) (PublicKey, error) {
 	code, body, err := helpers.PublicKeyMultibaseDecode(multibase)
 	if err != nil {
 		return nil, fmt.Errorf("%w: invalid publicKeyMultibase: %w", ErrInvalidKey, err)
 	}
-	return ks.PublicKeyFromBytes(code, body)
+	return kp.PublicKeyFromBytes(code, body)
 }
 
 // PublicKeyFromBytes decodes a public key from the body bytes of the given multicodec code, accepting
-// it only if its algorithm is in the KeySet. For RSA the body is the PKCS#1 (RSAPublicKey) DER.
-func (ks *KeySet) PublicKeyFromBytes(code uint64, body []byte) (PublicKey, error) {
-	ks.mu.RLock()
-	kt, ok := ks.byCode[code]
-	empty := len(ks.byCode) == 0
-	ks.mu.RUnlock()
+// it only if its algorithm is in the KeyPolicy. For RSA the body is the PKCS#1 (RSAPublicKey) DER.
+func (kp *KeyPolicy) PublicKeyFromBytes(code uint64, body []byte) (PublicKey, error) {
+	kp.mu.RLock()
+	kt, ok := kp.byCode[code]
+	empty := len(kp.byCode) == 0
+	kp.mu.RUnlock()
 
 	if !ok {
 		if empty {
-			return nil, fmt.Errorf("%w: %s", ErrKeyNotAccepted, emptySetHint)
+			return nil, fmt.Errorf("%w: %s", ErrKeyNotAccepted, emptyPolicyHint)
 		}
-		return nil, fmt.Errorf("%w: multicodec code %#x not in key set", ErrKeyNotAccepted, code)
+		return nil, fmt.Errorf("%w: multicodec code %#x not in key policy", ErrKeyNotAccepted, code)
 	}
 	if kt.DecodePublic == nil {
 		return nil, fmt.Errorf("%w: public key decoding not supported for %s", ErrKeyNotAccepted, kt.Name)
@@ -141,11 +141,11 @@ func (ks *KeySet) PublicKeyFromBytes(code uint64, body []byte) (PublicKey, error
 }
 
 // WrapPublicKey converts an already-parsed public key object (see KeyType.Wrap) into the
-// corresponding PublicKey, accepting it only if its algorithm is in the KeySet.
-func (ks *KeySet) WrapPublicKey(key any) (PublicKey, error) {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-	for _, kt := range ks.byCode {
+// corresponding PublicKey, accepting it only if its algorithm is in the KeyPolicy.
+func (kp *KeyPolicy) WrapPublicKey(key any) (PublicKey, error) {
+	kp.mu.RLock()
+	defer kp.mu.RUnlock()
+	for _, kt := range kp.byCode {
 		if kt.Wrap == nil {
 			continue
 		}
@@ -154,22 +154,27 @@ func (ks *KeySet) WrapPublicKey(key any) (PublicKey, error) {
 			continue
 		}
 		if err != nil {
-			return nil, err
+			// Same split as PublicKeyFromBytes: a policy rejection stays ErrKeyNotAccepted,
+			// anything else is malformed key data.
+			if errors.Is(err, ErrKeyNotAccepted) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("%w: %w", ErrInvalidKey, err)
 		}
 		return pub, nil
 	}
-	if len(ks.byCode) == 0 {
-		return nil, fmt.Errorf("%w: %s", ErrKeyNotAccepted, emptySetHint)
+	if len(kp.byCode) == 0 {
+		return nil, fmt.Errorf("%w: %s", ErrKeyNotAccepted, emptyPolicyHint)
 	}
-	return nil, fmt.Errorf("%w: no key type in the key set matches %T", ErrKeyNotAccepted, key)
+	return nil, fmt.Errorf("%w: no key type in the key policy matches %T", ErrKeyNotAccepted, key)
 }
 
 // KeyTypeForJwk returns the KeyType registered for the given JWK "kty"/"crv" pair
 // (crv is empty for RSA), or false if none matches.
-func (ks *KeySet) KeyTypeForJwk(kty, crv string) (KeyType, bool) {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-	for _, kt := range ks.byCode {
+func (kp *KeyPolicy) KeyTypeForJwk(kty, crv string) (KeyType, bool) {
+	kp.mu.RLock()
+	defer kp.mu.RUnlock()
+	for _, kt := range kp.byCode {
 		if kt.JwkKty != "" && kt.JwkKty == kty && kt.JwkCrv == crv {
 			return kt, true
 		}
@@ -177,12 +182,12 @@ func (ks *KeySet) KeyTypeForJwk(kty, crv string) (KeyType, bool) {
 	return KeyType{}, false
 }
 
-// KeyTypes returns the key types registered in the KeySet, sorted by multicodec code.
-func (ks *KeySet) KeyTypes() []KeyType {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-	res := make([]KeyType, 0, len(ks.byCode))
-	for _, kt := range ks.byCode {
+// KeyTypes returns the key types registered in the KeyPolicy, sorted by multicodec code.
+func (kp *KeyPolicy) KeyTypes() []KeyType {
+	kp.mu.RLock()
+	defer kp.mu.RUnlock()
+	res := make([]KeyType, 0, len(kp.byCode))
+	for _, kt := range kp.byCode {
 		res = append(res, kt)
 	}
 	slices.SortFunc(res, func(a, b KeyType) int { return cmp.Compare(a.Code, b.Code) })
@@ -190,11 +195,11 @@ func (ks *KeySet) KeyTypes() []KeyType {
 }
 
 // Accepts reports whether key's type (and, for constrained types like RSA, its parameters)
-// are accepted by this KeySet. It uses the Matches predicate from the registered KeyType.
-func (ks *KeySet) Accepts(key PublicKey) bool {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-	for _, kt := range ks.byCode {
+// are accepted by this KeyPolicy. It uses the Matches predicate from the registered KeyType.
+func (kp *KeyPolicy) Accepts(key PublicKey) bool {
+	kp.mu.RLock()
+	defer kp.mu.RUnlock()
+	for _, kt := range kp.byCode {
 		if kt.Matches != nil && kt.Matches(key) {
 			return true
 		}
@@ -202,48 +207,48 @@ func (ks *KeySet) Accepts(key PublicKey) bool {
 	return false
 }
 
-// CheckKey returns nil if key is accepted by the KeySet (see Accepts), or an error wrapping
+// CheckKey returns nil if key is accepted by the KeyPolicy (see Accepts), or an error wrapping
 // ErrKeyNotAccepted otherwise.
-func (ks *KeySet) CheckKey(key PublicKey) error {
-	if ks.Accepts(key) {
+func (kp *KeyPolicy) CheckKey(key PublicKey) error {
+	if kp.Accepts(key) {
 		return nil
 	}
-	ks.mu.RLock()
-	empty := len(ks.byCode) == 0
-	ks.mu.RUnlock()
+	kp.mu.RLock()
+	empty := len(kp.byCode) == 0
+	kp.mu.RUnlock()
 	if empty {
-		return fmt.Errorf("%w: %s", ErrKeyNotAccepted, emptySetHint)
+		return fmt.Errorf("%w: %s", ErrKeyNotAccepted, emptyPolicyHint)
 	}
 	return fmt.Errorf("%w: %T", ErrKeyNotAccepted, key)
 }
 
-// DefaultKeySet is the package-level KeySet used by the package-level decoding functions and, by default,
+// DefaultKeyPolicy is the package-level KeyPolicy used by the package-level decoding functions and, by default,
 // by the verifier packages (did:key, the Multikey verification method, ...). It starts empty:
 // register the algorithms you want with Register, or pull them all in for tests/tools with a blank
 // import of crypto/all.
-var DefaultKeySet = NewKeySet()
+var DefaultKeyPolicy = NewKeyPolicy()
 
-// Register adds key types to the DefaultKeySet KeySet.
-func Register(keyTypes ...KeyType) { DefaultKeySet.Register(keyTypes...) }
+// Register adds key types to the DefaultKeyPolicy.
+func Register(keyTypes ...KeyType) { DefaultKeyPolicy.Register(keyTypes...) }
 
-// PublicKeyFromMultibase decodes a public key from its publicKeyMultibase form using the DefaultKeySet KeySet.
+// PublicKeyFromMultibase decodes a public key from its publicKeyMultibase form using the DefaultKeyPolicy.
 func PublicKeyFromMultibase(multibase string) (PublicKey, error) {
-	return DefaultKeySet.PublicKeyFromMultibase(multibase)
+	return DefaultKeyPolicy.PublicKeyFromMultibase(multibase)
 }
 
-// PublicKeyFromBytes decodes a public key from its body bytes using the DefaultKeySet KeySet.
+// PublicKeyFromBytes decodes a public key from its body bytes using the DefaultKeyPolicy.
 func PublicKeyFromBytes(code uint64, body []byte) (PublicKey, error) {
-	return DefaultKeySet.PublicKeyFromBytes(code, body)
+	return DefaultKeyPolicy.PublicKeyFromBytes(code, body)
 }
 
-// WrapPublicKey converts an already-parsed public key object using the DefaultKeySet KeySet.
+// WrapPublicKey converts an already-parsed public key object using the DefaultKeyPolicy.
 func WrapPublicKey(key any) (PublicKey, error) {
-	return DefaultKeySet.WrapPublicKey(key)
+	return DefaultKeyPolicy.WrapPublicKey(key)
 }
 
-// KeyTypes returns the key types registered in the DefaultKeySet KeySet, sorted by multicodec code.
+// KeyTypes returns the key types registered in the DefaultKeyPolicy, sorted by multicodec code.
 func KeyTypes() []KeyType {
-	return DefaultKeySet.KeyTypes()
+	return DefaultKeyPolicy.KeyTypes()
 }
 
 // ToPub converts the result of a concrete public-key constructor (one returning a specific key type,

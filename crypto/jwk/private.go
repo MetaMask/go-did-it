@@ -39,22 +39,22 @@ func (pj *PrivateJwk) UnmarshalJSON(bytes []byte) error {
 	return nil
 }
 
-// PrivateFromJSON decodes a private key JWK, accepting only key algorithms in ks.
-// If ks is nil, crypto.DefaultKeySet is used.
-func PrivateFromJSON(data []byte, ks *crypto.KeySet) (*PrivateJwk, error) {
-	if ks == nil {
-		ks = crypto.DefaultKeySet
+// PrivateFromJSON decodes a private key JWK, accepting only key algorithms in kp.
+// If kp is nil, crypto.DefaultKeyPolicy is used.
+func PrivateFromJSON(data []byte, kp *crypto.KeyPolicy) (*PrivateJwk, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
 	}
 	aux := make(map[string]string)
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return nil, err
 	}
-	kt, ok := ks.KeyTypeForJwk(aux["kty"], aux["crv"])
+	kt, ok := kp.KeyTypeForJwk(aux["kty"], aux["crv"])
 	if !ok {
-		if len(ks.KeyTypes()) == 0 {
-			return nil, fmt.Errorf("%w: the key set is empty (register algorithms with crypto.Register, or import crypto/all)", crypto.ErrKeyNotAccepted)
+		if len(kp.KeyTypes()) == 0 {
+			return nil, fmt.Errorf("%w: the key policy is empty (register algorithms with crypto.Register, or import crypto/all)", crypto.ErrKeyNotAccepted)
 		}
-		return nil, fmt.Errorf("%w: JWK kty %q crv %q not in the key set", crypto.ErrKeyNotAccepted, aux["kty"], aux["crv"])
+		return nil, fmt.Errorf("%w: JWK kty %q crv %q not in the key policy", crypto.ErrKeyNotAccepted, aux["kty"], aux["crv"])
 	}
 	if kt.DecodeJwkPrivate == nil {
 		return nil, fmt.Errorf("%w: private JWK decoding not supported for %s", crypto.ErrKeyNotAccepted, kt.Name)

@@ -8,26 +8,39 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 	ed25519vm "github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
 	_ "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
 
-func TestJsonRoundTrip2020(t *testing.T) {
-	data := `{
-		"id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
-		"type": "Ed25519VerificationKey2020",
-		"controller": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
-		"publicKeyMultibase": "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
-	  }`
+const key2020Json = `{
+	"id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+	"type": "Ed25519VerificationKey2020",
+	"controller": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+	"publicKeyMultibase": "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
+}`
 
-	var vk ed25519vm.VerificationKey2020
-	err := json.Unmarshal([]byte(data), &vk)
+func TestJsonRoundTrip2020(t *testing.T) {
+	vk, err := ed25519vm.NewVerificationKey2020FromJSON([]byte(key2020Json), crypto.NewKeyPolicy(ed25519.KeyType()))
 	require.NoError(t, err)
 
 	bytes, err := json.Marshal(vk)
 	require.NoError(t, err)
-	require.JSONEq(t, data, string(bytes))
+	require.JSONEq(t, key2020Json, string(bytes))
+}
+
+// json.Unmarshal must fail rather than quietly produce an empty verification method.
+func TestUnmarshalJSONRefused2020(t *testing.T) {
+	var vk ed25519vm.VerificationKey2020
+	err := json.Unmarshal([]byte(key2020Json), &vk)
+	require.ErrorIs(t, err, methods.ErrDirectUnmarshal)
+}
+
+func TestKeyPolicyEnforcement2020(t *testing.T) {
+	_, err := ed25519vm.NewVerificationKey2020FromJSON([]byte(key2020Json), crypto.NewKeyPolicy())
+	require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
 }
 
 func TestSignature2020(t *testing.T) {

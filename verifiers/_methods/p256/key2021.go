@@ -21,8 +21,8 @@ const (
 )
 
 func init() {
-	methods.Register(Type2021, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
-		return FromJSON(data, ks)
+	methods.Register(Type2021, func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+		return NewKey2021FromJSON(data, kp)
 	})
 }
 
@@ -43,25 +43,11 @@ func NewKey2021(id string, pubkey *p256.PublicKey, controller did.DID) *Key2021 
 	}
 }
 
-func (m Key2021) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		ID              string `json:"id"`
-		Type            string `json:"type"`
-		Controller      string `json:"controller"`
-		PublicKeyBase58 string `json:"publicKeyBase58"`
-	}{
-		ID:              m.ID(),
-		Type:            m.Type(),
-		Controller:      m.Controller(),
-		PublicKeyBase58: base58.Encode(m.pubkey.ToBytes()),
-	})
-}
-
-// FromJSON decodes a P256Key2021 verification method from JSON, using ks to decode and
-// accept the publicKeyBase58 field. If ks is nil, crypto.DefaultKeySet is used.
-func FromJSON(data []byte, ks *crypto.KeySet) (*Key2021, error) {
-	if ks == nil {
-		ks = crypto.DefaultKeySet
+// NewKey2021FromJSON decodes a P256Key2021 verification method from JSON, using kp to decode and
+// accept the publicKeyBase58 field. If kp is nil, crypto.DefaultKeyPolicy is used.
+func NewKey2021FromJSON(data []byte, kp *crypto.KeyPolicy) (*Key2021, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
 	}
 	aux := struct {
 		ID              string `json:"id"`
@@ -85,7 +71,7 @@ func FromJSON(data []byte, ks *crypto.KeySet) (*Key2021, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
-	pub, err := ks.PublicKeyFromBytes(p256.MultibaseCode, pubBytes)
+	pub, err := kp.PublicKeyFromBytes(p256.MultibaseCode, pubBytes)
 	if err != nil {
 		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
@@ -94,6 +80,25 @@ func FromJSON(data []byte, ks *crypto.KeySet) (*Key2021, error) {
 		return nil, errors.New("publicKeyBase58 is not a P-256 key")
 	}
 	return &Key2021{id: aux.ID, pubkey: pubkey, controller: aux.Controller}, nil
+}
+
+func (m Key2021) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		ID              string `json:"id"`
+		Type            string `json:"type"`
+		Controller      string `json:"controller"`
+		PublicKeyBase58 string `json:"publicKeyBase58"`
+	}{
+		ID:              m.ID(),
+		Type:            m.Type(),
+		Controller:      m.Controller(),
+		PublicKeyBase58: base58.Encode(m.pubkey.ToBytes()),
+	})
+}
+
+// UnmarshalJSON always fails: decoding needs a crypto.KeyPolicy. See methods.ErrDirectUnmarshal.
+func (m Key2021) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("%w: use p256vm.NewKey2021FromJSON", methods.ErrDirectUnmarshal)
 }
 
 func (m Key2021) ID() string {
@@ -106,11 +111,6 @@ func (m Key2021) Type() string {
 
 func (m Key2021) Controller() string {
 	return m.controller
-}
-
-// PublicKey returns the decoded public key.
-func (m Key2021) PublicKey() crypto.PublicKey {
-	return m.pubkey
 }
 
 func (m Key2021) JsonLdContext() string {

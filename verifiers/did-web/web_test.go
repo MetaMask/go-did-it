@@ -116,17 +116,17 @@ func TestResolution(t *testing.T) {
 	require.Len(t, doc.Assertion(), 1)
 	require.Len(t, doc.KeyAgreement(), 1)
 
-	// A KeySet allowing the document's algorithms: resolution succeeds.
+	// A KeyPolicy allowing the document's algorithms: resolution succeeds.
 	_, err = d.Document(
 		did.WithHttpClient(client),
-		did.WithKeySet(crypto.NewKeySet(ed25519.KeyType(), x25519.KeyType())),
+		did.WithKeyPolicy(crypto.NewKeyPolicy(ed25519.KeyType(), x25519.KeyType())),
 	)
 	require.NoError(t, err)
 
-	// A KeySet without ed25519: the document's keys are not in the set, so resolution fails.
+	// A KeyPolicy without ed25519: the document's keys are not in the set, so resolution fails.
 	_, err = d.Document(
 		did.WithHttpClient(client),
-		did.WithKeySet(crypto.NewKeySet(secp256k1.KeyType())),
+		did.WithKeyPolicy(crypto.NewKeyPolicy(secp256k1.KeyType())),
 	)
 	require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
 }

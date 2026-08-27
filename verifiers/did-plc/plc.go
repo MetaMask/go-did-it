@@ -2,6 +2,7 @@ package didplc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
 	"github.com/MetaMask/go-did-it/crypto/p256"
 	"github.com/MetaMask/go-did-it/crypto/p384"
@@ -137,8 +139,14 @@ func (d DidPlc) Document(opts ...did.ResolutionOption) (did.Document, error) {
 		}
 		msi := data[len(keyPrefix):]
 
-		pub, err := params.KeySet().PublicKeyFromMultibase(msi)
+		pub, err := params.KeyPolicy().PublicKeyFromMultibase(msi)
 		if err != nil {
+			// A declined algorithm is a policy decision of the caller, not a malformed identifier:
+			// ErrInvalidDid means "does not conform to valid syntax", which this DID does. Report
+			// the policy rejection as-is, and keep ErrInvalidDid for actually malformed key material.
+			if errors.Is(err, crypto.ErrKeyNotAccepted) {
+				return nil, err
+			}
 			return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 		}
 

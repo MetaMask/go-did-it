@@ -57,18 +57,18 @@ func Example_keyAgreement() {
 	// Verification method used: X25519KeyAgreementKey2020 did:key:z6MkgRNXpJRbEE6FoXhT8KWHwJo4KyzFo1FdSEFpRLh5vuXZ#z6LSjeQx2VkXz8yirhrYJv8uicu9BBaeYU3Q1D9sFBovhmPF
 }
 
-func TestWithKeySet(t *testing.T) {
+func TestWithKeyPolicy(t *testing.T) {
 	// did:key holding an Ed25519 key
 	d, err := did.Parse("did:key:z6MknwcywUtTy2ADJQ8FH1GcSySKPyKDmyzT4rPEE84XREse")
 	require.NoError(t, err)
 
-	// A KeySet allowing Ed25519: resolution succeeds.
-	doc, err := d.Document(did.WithKeySet(crypto.NewKeySet(ed25519.KeyType())))
+	// A KeyPolicy allowing Ed25519: resolution succeeds.
+	doc, err := d.Document(did.WithKeyPolicy(crypto.NewKeyPolicy(ed25519.KeyType())))
 	require.NoError(t, err)
 	require.NotNil(t, doc)
 
-	// A KeySet allowing only P-256: the Ed25519 key is not in the set, so resolution fails.
-	_, err = d.Document(did.WithKeySet(crypto.NewKeySet(p256.KeyType())))
+	// A KeyPolicy allowing only P-256: the Ed25519 key is not in the set, so resolution fails.
+	_, err = d.Document(did.WithKeyPolicy(crypto.NewKeyPolicy(p256.KeyType())))
 	require.Error(t, err)
 }
 

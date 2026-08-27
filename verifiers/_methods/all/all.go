@@ -9,7 +9,7 @@
 // It pulls in every verification method package (and their key algorithm packages), so only
 // this package pays that binary-size cost. For finer control, import only the verification
 // method packages you expect. Note that decoding a key additionally requires its algorithm
-// in the used crypto.KeySet (see crypto/all).
+// in the used crypto.KeyPolicy (see crypto/all).
 package all
 
 import (

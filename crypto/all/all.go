@@ -1,13 +1,12 @@
-// Package all registers every key algorithm supported by this module into the crypto.DefaultKeySet KeySet.
+// Package all registers every key algorithm supported by this module into the crypto.DefaultKeyPolicy KeyPolicy.
 //
 // Import it for its side effect when you want the global default to accept everything, typically in
 // tests or kitchen-sink tools:
 //
 //	import _ "github.com/MetaMask/go-did-it/crypto/all"
 //
-// It pulls in every algorithm package, so only this package pays that binary-size cost. For finer
-// control, register a subset yourself with crypto.Register(ed25519.KeyType(), ...) or build an explicit
-// crypto.KeySet.
+// For finer control, register a subset yourself with crypto.Register(ed25519.KeyType(), ...)
+// or build an explicit crypto.KeyPolicy.
 package all
 
 import (

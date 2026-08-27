@@ -36,7 +36,7 @@ const (
 	pemPrivBlockType = "PRIVATE KEY"
 )
 
-// KeyType returns the crypto.KeyType describing P-521, to be added to a crypto.KeySet.
+// KeyType returns the crypto.KeyType describing P-521, to be added to a crypto.KeyPolicy.
 func KeyType() crypto.KeyType {
 	return crypto.KeyType{
 		Name:         "P-521",

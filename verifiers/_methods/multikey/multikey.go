@@ -19,8 +19,8 @@ const (
 )
 
 func init() {
-	methods.Register(Type, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
-		return FromJSON(data, ks)
+	methods.Register(Type, func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+		return NewMultiKeyFromJSON(data, kp)
 	})
 }
 
@@ -41,12 +41,12 @@ func NewMultiKey(id string, pubkey crypto.PublicKey, controller did.DID) *MultiK
 	}
 }
 
-// FromJSON decodes a Multikey verification method from JSON. As the key algorithm is only
-// known at decode time, ks is used to both decode the publicKeyMultibase field and control
-// which algorithms are accepted. If ks is nil, crypto.DefaultKeySet is used.
-func FromJSON(data []byte, ks *crypto.KeySet) (*MultiKey, error) {
-	if ks == nil {
-		ks = crypto.DefaultKeySet
+// NewMultiKeyFromJSON decodes a Multikey verification method from JSON. As the key algorithm is only
+// known at decode time, kp is used to both decode the publicKeyMultibase field and control
+// which algorithms are accepted. If kp is nil, crypto.DefaultKeyPolicy is used.
+func NewMultiKeyFromJSON(data []byte, kp *crypto.KeyPolicy) (*MultiKey, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
 	}
 	aux := struct {
 		ID                 string `json:"id"`
@@ -66,11 +66,16 @@ func FromJSON(data []byte, ks *crypto.KeySet) (*MultiKey, error) {
 	if !did.HasValidDIDSyntax(aux.Controller) {
 		return nil, errors.New("invalid controller")
 	}
-	pub, err := ks.PublicKeyFromMultibase(aux.PublicKeyMultibase)
+	pub, err := kp.PublicKeyFromMultibase(aux.PublicKeyMultibase)
 	if err != nil {
 		return nil, fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}
 	return &MultiKey{id: aux.ID, pubkey: pub, controller: aux.Controller}, nil
+}
+
+// UnmarshalJSON always fails: decoding needs a crypto.KeyPolicy. See methods.ErrDirectUnmarshal.
+func (m MultiKey) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("%w: use multikey.NewMultiKeyFromJSON", methods.ErrDirectUnmarshal)
 }
 
 func (m MultiKey) MarshalJSON() ([]byte, error) {
@@ -97,11 +102,6 @@ func (m MultiKey) Type() string {
 
 func (m MultiKey) Controller() string {
 	return m.controller
-}
-
-// PublicKey returns the decoded public key.
-func (m MultiKey) PublicKey() crypto.PublicKey {
-	return m.pubkey
 }
 
 func (m MultiKey) JsonLdContext() string {

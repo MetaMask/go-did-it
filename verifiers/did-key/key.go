@@ -1,6 +1,7 @@
 package didkey
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -46,7 +47,7 @@ func Decode(identifier string) (did.DID, error) {
 	msi := identifier[len(keyPrefix):]
 
 	// Validate the identifier syntax (multibase + multicodec prefix). Whether the key algorithm
-	// is accepted is a policy decision deferred to Document(), where the caller provides the KeySet.
+	// is accepted is a policy decision deferred to Document(), where the caller provides the KeyPolicy.
 	enc, data, err := mbase.Decode(msi)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
@@ -54,8 +55,12 @@ func Decode(identifier string) (did.DID, error) {
 	if enc != mbase.Base58BTC {
 		return nil, fmt.Errorf("%w: not Base58BTC encoded", did.ErrInvalidDid)
 	}
-	if _, _, err := varint.FromUvarint(data); err != nil {
+	n, read, err := varint.FromUvarint(data)
+	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
+	}
+	if read == len(data) {
+		return nil, fmt.Errorf("%w: multicodec prefix %#x is not followed by any key material", did.ErrInvalidDid, n)
 	}
 
 	return DidKey{msi: msi}, nil
@@ -76,8 +81,14 @@ func (d DidKey) Method() string {
 func (d DidKey) Document(opts ...did.ResolutionOption) (did.Document, error) {
 	params := did.CollectResolutionOpts(opts)
 
-	pub, err := params.KeySet().PublicKeyFromMultibase(d.msi)
+	pub, err := params.KeyPolicy().PublicKeyFromMultibase(d.msi)
 	if err != nil {
+		// A declined algorithm is a policy decision of the caller, not a malformed identifier:
+		// ErrInvalidDid means "does not conform to valid syntax", which this DID does. Report
+		// the policy rejection as-is, and keep ErrInvalidDid for actually malformed key material.
+		if errors.Is(err, crypto.ErrKeyNotAccepted) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("%w: %w", did.ErrInvalidDid, err)
 	}
 
@@ -93,9 +104,9 @@ func (d DidKey) Document(opts ...did.ResolutionOption) (did.Document, error) {
 		xmsi := xpub.ToPublicKeyMultibase()
 		xVmId := fmt.Sprintf("did:key:%s#%s", d.msi, xmsi)
 
-		// The derived X25519 key is subject to the key set policy as well:
+		// The derived X25519 key is subject to the key policy as well:
 		// when excluded, the document simply has no keyAgreement.
-		xAllowed := params.KeySet().Accepts(xpub)
+		xAllowed := params.KeyPolicy().Accepts(xpub)
 
 		switch {
 		case params.HasVerificationMethodHint(jsonwebkey.Type):

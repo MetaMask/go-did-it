@@ -21,8 +21,8 @@ const (
 )
 
 func init() {
-	methods.Register(Type2019, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
-		return KeyAgreementKey2019FromJSON(data, ks)
+	methods.Register(Type2019, func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+		return NewKeyAgreementKey2019FromJSON(data, kp)
 	})
 }
 
@@ -42,26 +42,12 @@ func NewKeyAgreementKey2019(id string, pubkey *x25519.PublicKey, controller did.
 	}
 }
 
-func (k KeyAgreementKey2019) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		ID              string `json:"id"`
-		Type            string `json:"type"`
-		Controller      string `json:"controller"`
-		PublicKeyBase58 string `json:"publicKeyBase58"`
-	}{
-		ID:              k.ID(),
-		Type:            k.Type(),
-		Controller:      k.Controller(),
-		PublicKeyBase58: base58.Encode(k.pubkey.ToBytes()),
-	})
-}
-
-// KeyAgreementKey2019FromJSON decodes an X25519KeyAgreementKey2019 verification method from
-// JSON, using ks to decode and accept the publicKeyBase58 field. If ks is nil,
-// crypto.DefaultKeySet is used.
-func KeyAgreementKey2019FromJSON(data []byte, ks *crypto.KeySet) (*KeyAgreementKey2019, error) {
-	if ks == nil {
-		ks = crypto.DefaultKeySet
+// NewKeyAgreementKey2019FromJSON decodes an X25519KeyAgreementKey2019 verification method from
+// JSON, using kp to decode and accept the publicKeyBase58 field. If kp is nil,
+// crypto.DefaultKeyPolicy is used.
+func NewKeyAgreementKey2019FromJSON(data []byte, kp *crypto.KeyPolicy) (*KeyAgreementKey2019, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
 	}
 	aux := struct {
 		ID              string `json:"id"`
@@ -85,7 +71,7 @@ func KeyAgreementKey2019FromJSON(data []byte, ks *crypto.KeySet) (*KeyAgreementK
 	if err != nil {
 		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
-	pub, err := ks.PublicKeyFromBytes(x25519.MultibaseCode, pubBytes)
+	pub, err := kp.PublicKeyFromBytes(x25519.MultibaseCode, pubBytes)
 	if err != nil {
 		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
@@ -94,6 +80,25 @@ func KeyAgreementKey2019FromJSON(data []byte, ks *crypto.KeySet) (*KeyAgreementK
 		return nil, errors.New("publicKeyBase58 is not an X25519 key")
 	}
 	return &KeyAgreementKey2019{id: aux.ID, pubkey: pubkey, controller: aux.Controller}, nil
+}
+
+func (k KeyAgreementKey2019) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		ID              string `json:"id"`
+		Type            string `json:"type"`
+		Controller      string `json:"controller"`
+		PublicKeyBase58 string `json:"publicKeyBase58"`
+	}{
+		ID:              k.ID(),
+		Type:            k.Type(),
+		Controller:      k.Controller(),
+		PublicKeyBase58: base58.Encode(k.pubkey.ToBytes()),
+	})
+}
+
+// UnmarshalJSON always fails: decoding needs a crypto.KeyPolicy. See methods.ErrDirectUnmarshal.
+func (k KeyAgreementKey2019) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("%w: use x25519vm.NewKeyAgreementKey2019FromJSON", methods.ErrDirectUnmarshal)
 }
 
 func (k KeyAgreementKey2019) ID() string {
@@ -106,11 +111,6 @@ func (k KeyAgreementKey2019) Type() string {
 
 func (k KeyAgreementKey2019) Controller() string {
 	return k.controller
-}
-
-// PublicKey returns the decoded public key.
-func (k KeyAgreementKey2019) PublicKey() crypto.PublicKey {
-	return k.pubkey
 }
 
 func (k KeyAgreementKey2019) JsonLdContext() string {

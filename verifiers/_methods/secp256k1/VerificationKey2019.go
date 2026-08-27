@@ -21,8 +21,8 @@ const (
 )
 
 func init() {
-	methods.Register(TypeVerification2019, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
-		return VerificationKey2019FromJSON(data, ks)
+	methods.Register(TypeVerification2019, func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+		return NewVerificationKey2019FromJSON(data, kp)
 	})
 }
 
@@ -43,26 +43,12 @@ func NewVerificationKey2019(id string, pubkey *secp256k1.PublicKey, controller d
 	}
 }
 
-func (vm VerificationKey2019) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		ID              string `json:"id"`
-		Type            string `json:"type"`
-		Controller      string `json:"controller"`
-		PublicKeyBase58 string `json:"publicKeyBase58"`
-	}{
-		ID:              vm.ID(),
-		Type:            vm.Type(),
-		Controller:      vm.Controller(),
-		PublicKeyBase58: base58.Encode(vm.pubkey.ToBytes()),
-	})
-}
-
-// VerificationKey2019FromJSON decodes an EcdsaSecp256k1VerificationKey2019 verification
-// method from JSON, using ks to decode and accept the publicKeyBase58 field. If ks is nil,
-// crypto.DefaultKeySet is used.
-func VerificationKey2019FromJSON(data []byte, ks *crypto.KeySet) (*VerificationKey2019, error) {
-	if ks == nil {
-		ks = crypto.DefaultKeySet
+// NewVerificationKey2019FromJSON decodes an EcdsaSecp256k1VerificationKey2019 verification
+// method from JSON, using kp to decode and accept the publicKeyBase58 field. If kp is nil,
+// crypto.DefaultKeyPolicy is used.
+func NewVerificationKey2019FromJSON(data []byte, kp *crypto.KeyPolicy) (*VerificationKey2019, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
 	}
 	aux := struct {
 		ID              string `json:"id"`
@@ -86,7 +72,7 @@ func VerificationKey2019FromJSON(data []byte, ks *crypto.KeySet) (*VerificationK
 	if err != nil {
 		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
-	pub, err := ks.PublicKeyFromBytes(secp256k1.MultibaseCode, pubBytes)
+	pub, err := kp.PublicKeyFromBytes(secp256k1.MultibaseCode, pubBytes)
 	if err != nil {
 		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
 	}
@@ -95,6 +81,25 @@ func VerificationKey2019FromJSON(data []byte, ks *crypto.KeySet) (*VerificationK
 		return nil, errors.New("publicKeyBase58 is not a secp256k1 key")
 	}
 	return &VerificationKey2019{id: aux.ID, pubkey: pubkey, controller: aux.Controller}, nil
+}
+
+func (vm VerificationKey2019) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		ID              string `json:"id"`
+		Type            string `json:"type"`
+		Controller      string `json:"controller"`
+		PublicKeyBase58 string `json:"publicKeyBase58"`
+	}{
+		ID:              vm.ID(),
+		Type:            vm.Type(),
+		Controller:      vm.Controller(),
+		PublicKeyBase58: base58.Encode(vm.pubkey.ToBytes()),
+	})
+}
+
+// UnmarshalJSON always fails: decoding needs a crypto.KeyPolicy. See methods.ErrDirectUnmarshal.
+func (vm VerificationKey2019) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("%w: use secp256k1vm.NewVerificationKey2019FromJSON", methods.ErrDirectUnmarshal)
 }
 
 func (vm VerificationKey2019) ID() string {
@@ -107,11 +112,6 @@ func (vm VerificationKey2019) Type() string {
 
 func (vm VerificationKey2019) Controller() string {
 	return vm.controller
-}
-
-// PublicKey returns the decoded public key.
-func (vm VerificationKey2019) PublicKey() crypto.PublicKey {
-	return vm.pubkey
 }
 
 func (vm VerificationKey2019) JsonLdContext() string {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	// register all key algorithms in the DefaultKeySet for the whole test package
+	// register all key algorithms in the DefaultKeyPolicy for the whole test package
 	_ "github.com/MetaMask/go-did-it/crypto/all"
 )
 

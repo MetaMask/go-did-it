@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"slices"
 
 	"github.com/MetaMask/go-did-it/crypto"
 )
@@ -42,11 +43,14 @@ func defaultSigHash(keyLen int) crypto.Hash {
 	}
 }
 
-// KeyType returns the crypto.KeyType describing RSA, to be added to a crypto.KeySet.
+// KeyType returns the crypto.KeyType describing RSA, to be added to a crypto.KeyPolicy.
 //
 // For RSA the accepted modulus sizes are part of the policy. Pass the exact sizes (in bits) to allow,
 // e.g. rsa.KeyType(2048, 4096); pass none to accept any size within [MinRsaKeyBits, MaxRsaKeyBits].
 func KeyType(sizes ...int) crypto.KeyType {
+	// Copy: the closures below outlive this call, and a caller passing a slice with KeyType(sizes...)
+	// would otherwise be able to change the policy (or race with it) by mutating that slice later.
+	sizes = slices.Clone(sizes)
 	checkSize := func(bits int) error {
 		if len(sizes) == 0 {
 			if bits < MinRsaKeyBits || bits > MaxRsaKeyBits {

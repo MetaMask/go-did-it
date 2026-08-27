@@ -23,8 +23,8 @@ const (
 )
 
 func init() {
-	methods.Register(TypeRecovery2020, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
-		return RecoveryMethod2020FromJSON(data, ks)
+	methods.Register(TypeRecovery2020, func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+		return NewRecoveryMethod2020FromJSON(data, kp)
 	})
 }
 
@@ -77,40 +77,13 @@ func NewRecoveryMethod2020FromBlockchainAccountId(id string, blockchainAccountId
 	}
 }
 
-func (vm RecoveryMethod2020) MarshalJSON() ([]byte, error) {
-	out := struct {
-		ID                  string         `json:"id"`
-		Type                string         `json:"type"`
-		Controller          string         `json:"controller"`
-		PublicKeyJwk        *jwk.PublicJwk `json:"publicKeyJwk,omitempty"`
-		PublicKeyHex        string         `json:"publicKeyHex,omitempty"`
-		EthereumAddress     string         `json:"ethereumAddress,omitempty"`
-		BlockchainAccountId string         `json:"blockchainAccountId,omitempty"`
-	}{
-		ID:         vm.ID(),
-		Type:       vm.Type(),
-		Controller: vm.Controller(),
-	}
-	switch {
-	case vm.pubKeyJwk != nil:
-		out.PublicKeyJwk = vm.pubKeyJwk
-	case vm.pubKeyHex != nil:
-		out.PublicKeyHex = hex.EncodeToString(vm.pubKeyHex.ToBytes())
-	case vm.ethAddress != "":
-		out.EthereumAddress = vm.ethAddress
-	case vm.blockchainAcctId != "":
-		out.BlockchainAccountId = vm.blockchainAcctId
-	}
-	return json.Marshal(out)
-}
-
-// RecoveryMethod2020FromJSON decodes an EcdsaSecp256k1RecoveryMethod2020 verification method
-// from JSON. All variants require secp256k1 to be allowed by ks: verification always performs
+// NewRecoveryMethod2020FromJSON decodes an EcdsaSecp256k1RecoveryMethod2020 verification method
+// from JSON. All variants require secp256k1 to be allowed by kp: verification always performs
 // secp256k1 signature recovery, even for the address-only variants that carry no key
-// material. If ks is nil, crypto.DefaultKeySet is used.
-func RecoveryMethod2020FromJSON(data []byte, ks *crypto.KeySet) (*RecoveryMethod2020, error) {
-	if ks == nil {
-		ks = crypto.DefaultKeySet
+// material. If kp is nil, crypto.DefaultKeyPolicy is used.
+func NewRecoveryMethod2020FromJSON(data []byte, kp *crypto.KeyPolicy) (*RecoveryMethod2020, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
 	}
 	aux := struct {
 		ID                  string          `json:"id"`
@@ -157,7 +130,7 @@ func RecoveryMethod2020FromJSON(data []byte, ks *crypto.KeySet) (*RecoveryMethod
 	vm := &RecoveryMethod2020{id: aux.ID, controller: aux.Controller}
 	switch {
 	case hasJwk:
-		pj, err := jwk.PublicFromJSON(aux.PublicKeyJwk, ks)
+		pj, err := jwk.PublicFromJSON(aux.PublicKeyJwk, kp)
 		if err != nil {
 			return nil, fmt.Errorf("invalid publicKeyJwk: %w", err)
 		}
@@ -170,7 +143,7 @@ func RecoveryMethod2020FromJSON(data []byte, ks *crypto.KeySet) (*RecoveryMethod
 		if err != nil {
 			return nil, fmt.Errorf("invalid publicKeyHex: %w", err)
 		}
-		pub, err := ks.PublicKeyFromBytes(secp256k1.MultibaseCode, b)
+		pub, err := kp.PublicKeyFromBytes(secp256k1.MultibaseCode, b)
 		if err != nil {
 			return nil, fmt.Errorf("invalid publicKeyHex: %w", err)
 		}
@@ -179,17 +152,53 @@ func RecoveryMethod2020FromJSON(data []byte, ks *crypto.KeySet) (*RecoveryMethod
 			return nil, errors.New("publicKeyHex is not a secp256k1 key")
 		}
 		vm.pubKeyHex = pubkey
-	default:
+	case aux.EthereumAddress != "":
 		// The address-only variants carry no key material, but verification still performs
-		// secp256k1 signature recovery, so the algorithm must be allowed by the key set.
-		if !slices.ContainsFunc(ks.KeyTypes(), func(kt crypto.KeyType) bool { return kt.Code == secp256k1.MultibaseCode }) {
+		// secp256k1 signature recovery, so the algorithm must be allowed by the key policy.
+		if !slices.ContainsFunc(kp.KeyTypes(), func(kt crypto.KeyType) bool { return kt.Code == secp256k1.MultibaseCode }) {
 			return nil, fmt.Errorf("%w: secp256k1", crypto.ErrKeyNotAccepted)
 		}
 		vm.ethAddress = aux.EthereumAddress
+	case aux.BlockchainAccountId != "":
+		if !slices.ContainsFunc(kp.KeyTypes(), func(kt crypto.KeyType) bool { return kt.Code == secp256k1.MultibaseCode }) {
+			return nil, fmt.Errorf("%w: secp256k1", crypto.ErrKeyNotAccepted)
+		}
 		vm.blockchainAcctId = aux.BlockchainAccountId
 	}
 
 	return vm, nil
+}
+
+func (vm RecoveryMethod2020) MarshalJSON() ([]byte, error) {
+	out := struct {
+		ID                  string         `json:"id"`
+		Type                string         `json:"type"`
+		Controller          string         `json:"controller"`
+		PublicKeyJwk        *jwk.PublicJwk `json:"publicKeyJwk,omitempty"`
+		PublicKeyHex        string         `json:"publicKeyHex,omitempty"`
+		EthereumAddress     string         `json:"ethereumAddress,omitempty"`
+		BlockchainAccountId string         `json:"blockchainAccountId,omitempty"`
+	}{
+		ID:         vm.ID(),
+		Type:       vm.Type(),
+		Controller: vm.Controller(),
+	}
+	switch {
+	case vm.pubKeyJwk != nil:
+		out.PublicKeyJwk = vm.pubKeyJwk
+	case vm.pubKeyHex != nil:
+		out.PublicKeyHex = hex.EncodeToString(vm.pubKeyHex.ToBytes())
+	case vm.ethAddress != "":
+		out.EthereumAddress = vm.ethAddress
+	case vm.blockchainAcctId != "":
+		out.BlockchainAccountId = vm.blockchainAcctId
+	}
+	return json.Marshal(out)
+}
+
+// UnmarshalJSON always fails: decoding needs a crypto.KeyPolicy. See methods.ErrDirectUnmarshal.
+func (vm RecoveryMethod2020) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("%w: use secp256k1vm.NewRecoveryMethod2020FromJSON", methods.ErrDirectUnmarshal)
 }
 
 func (vm RecoveryMethod2020) ID() string {
@@ -202,18 +211,6 @@ func (vm RecoveryMethod2020) Type() string {
 
 func (vm RecoveryMethod2020) Controller() string {
 	return vm.controller
-}
-
-// PublicKey returns the decoded public key, or nil for the address-only variants
-// (ethereumAddress, blockchainAccountId) which carry no key material.
-func (vm RecoveryMethod2020) PublicKey() crypto.PublicKey {
-	switch {
-	case vm.pubKeyJwk != nil:
-		return vm.pubKeyJwk.Pubkey
-	case vm.pubKeyHex != nil:
-		return vm.pubKeyHex
-	}
-	return nil
 }
 
 func (vm RecoveryMethod2020) JsonLdContext() string {

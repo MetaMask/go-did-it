@@ -54,6 +54,7 @@ func TestParseInvalidDIDKey(t *testing.T) {
 		"did:key:not-multibase-at-all", // invalid multibase
 		"did:key:uAAE",                 // valid multibase, but not Base58BTC
 		"did:key:z",                    // no multicodec prefix
+		"did:key:zK36",                 // ed25519 multicodec prefix, but no key material after it
 	} {
 		_, err := did.Parse(str)
 		require.ErrorIs(t, err, did.ErrInvalidDid, str)
@@ -82,28 +83,42 @@ func TestFromPublicKey(t *testing.T) {
 	require.NotEmpty(t, doc)
 }
 
-func TestWithKeySet(t *testing.T) {
+func TestWithKeyPolicy(t *testing.T) {
 	pub, _, err := ed25519.GenerateKeyPair()
 	require.NoError(t, err)
 	dk := didkey.FromPublicKey(pub)
 
-	// A KeySet allowing Ed25519 and X25519: resolution succeeds, with a key agreement.
-	doc, err := dk.Document(did.WithKeySet(crypto.NewKeySet(ed25519.KeyType(), x25519.KeyType())))
+	// A KeyPolicy allowing Ed25519 and X25519: resolution succeeds, with a key agreement.
+	doc, err := dk.Document(did.WithKeyPolicy(crypto.NewKeyPolicy(ed25519.KeyType(), x25519.KeyType())))
 	require.NoError(t, err)
 	require.NotEmpty(t, doc.KeyAgreement())
 
-	// A KeySet allowing only Ed25519: resolution succeeds, but the X25519 key agreement
+	// A KeyPolicy allowing only Ed25519: resolution succeeds, but the X25519 key agreement
 	// derived from the Ed25519 key is excluded from the document.
-	doc, err = dk.Document(did.WithKeySet(crypto.NewKeySet(ed25519.KeyType())))
+	doc, err = dk.Document(did.WithKeyPolicy(crypto.NewKeyPolicy(ed25519.KeyType())))
 	require.NoError(t, err)
 	require.NotEmpty(t, doc)
 	require.Empty(t, doc.KeyAgreement())
 	_, err = json.Marshal(doc)
 	require.NoError(t, err)
 
-	// A KeySet allowing only P-256: the Ed25519 key is not in the set, so resolution fails.
-	_, err = dk.Document(did.WithKeySet(crypto.NewKeySet(p256.KeyType())))
-	require.Error(t, err)
+	// A KeyPolicy allowing only P-256: the Ed25519 key is not in the set, so resolution fails.
+	_, err = dk.Document(did.WithKeyPolicy(crypto.NewKeyPolicy(p256.KeyType())))
+	require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
+	// The identifier itself is well-formed: declining its algorithm is the caller's policy,
+	// not a syntax problem, so it must not be reported as an invalid DID.
+	require.NotErrorIs(t, err, did.ErrInvalidDid)
+}
+
+// Malformed key material, by contrast, does make the DID invalid.
+func TestMalformedKeyMaterialIsInvalidDid(t *testing.T) {
+	// valid multibase and a valid ed25519 multicodec prefix, but only 3 bytes of key material
+	d, err := did.Parse("did:key:zTjtT4Fu")
+	require.NoError(t, err)
+
+	_, err = d.Document(did.WithKeyPolicy(crypto.NewKeyPolicy(ed25519.KeyType())))
+	require.ErrorIs(t, err, did.ErrInvalidDid)
+	require.NotErrorIs(t, err, crypto.ErrKeyNotAccepted)
 }
 
 func TestEquivalence(t *testing.T) {

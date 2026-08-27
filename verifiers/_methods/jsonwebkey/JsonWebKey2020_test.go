@@ -6,8 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	// register all key algorithms in the DefaultKeySet for the whole test package
+	// register all key algorithms in the DefaultKeyPolicy for the whole test package
 	_ "github.com/MetaMask/go-did-it/crypto/all"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 func TestJsonRoundTrip(t *testing.T) {
@@ -93,13 +94,16 @@ func TestJsonRoundTrip(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var jwk JsonWebKey2020
-			err := json.Unmarshal([]byte(tc.str), &jwk)
+			jwk, err := NewJsonWebKey2020FromJSON([]byte(tc.str), nil)
 			require.NoError(t, err)
 
 			bytes, err := json.Marshal(jwk)
 			require.NoError(t, err)
 			require.JSONEq(t, tc.str, string(bytes))
+
+			// json.Unmarshal must fail rather than quietly produce an empty verification method.
+			var direct JsonWebKey2020
+			require.ErrorIs(t, json.Unmarshal([]byte(tc.str), &direct), methods.ErrDirectUnmarshal)
 		})
 	}
 }

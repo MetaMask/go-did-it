@@ -21,8 +21,8 @@ const (
 )
 
 func init() {
-	methods.Register(Type, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
-		return FromJSON(data, ks)
+	methods.Register(Type, func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+		return NewJsonWebKey2020FromJSON(data, kp)
 	})
 }
 
@@ -43,23 +43,9 @@ func NewJsonWebKey2020(id string, pubkey crypto.PublicKey, controller did.DID) *
 	}
 }
 
-func (j JsonWebKey2020) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		ID           string        `json:"id"`
-		Type         string        `json:"type"`
-		Controller   string        `json:"controller"`
-		PublicKeyJWK jwk.PublicJwk `json:"publicKeyJwk"`
-	}{
-		ID:           j.ID(),
-		Type:         j.Type(),
-		Controller:   j.Controller(),
-		PublicKeyJWK: jwk.PublicJwk{Pubkey: j.pubkey},
-	})
-}
-
-// FromJSON decodes a JsonWebKey2020 verification method from JSON, using ks to decode
-// and accept the publicKeyJwk field. If ks is nil, crypto.DefaultKeySet is used.
-func FromJSON(data []byte, ks *crypto.KeySet) (*JsonWebKey2020, error) {
+// NewJsonWebKey2020FromJSON decodes a JsonWebKey2020 verification method from JSON, using kp to decode
+// and accept the publicKeyJwk field. If kp is nil, crypto.DefaultKeyPolicy is used.
+func NewJsonWebKey2020FromJSON(data []byte, kp *crypto.KeyPolicy) (*JsonWebKey2020, error) {
 	aux := struct {
 		ID           string          `json:"id"`
 		Type         string          `json:"type"`
@@ -81,11 +67,30 @@ func FromJSON(data []byte, ks *crypto.KeySet) (*JsonWebKey2020, error) {
 	if len(aux.PublicKeyJWK) == 0 {
 		return nil, errors.New("missing publicKeyJwk")
 	}
-	pj, err := jwk.PublicFromJSON(aux.PublicKeyJWK, ks)
+	pj, err := jwk.PublicFromJSON(aux.PublicKeyJWK, kp)
 	if err != nil {
 		return nil, fmt.Errorf("invalid publicKeyJwk: %w", err)
 	}
 	return &JsonWebKey2020{id: aux.ID, pubkey: pj.Pubkey, controller: aux.Controller}, nil
+}
+
+func (j JsonWebKey2020) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		ID           string        `json:"id"`
+		Type         string        `json:"type"`
+		Controller   string        `json:"controller"`
+		PublicKeyJWK jwk.PublicJwk `json:"publicKeyJwk"`
+	}{
+		ID:           j.ID(),
+		Type:         j.Type(),
+		Controller:   j.Controller(),
+		PublicKeyJWK: jwk.PublicJwk{Pubkey: j.pubkey},
+	})
+}
+
+// UnmarshalJSON always fails: decoding needs a crypto.KeyPolicy. See methods.ErrDirectUnmarshal.
+func (j JsonWebKey2020) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("%w: use jsonwebkey.NewJsonWebKey2020FromJSON", methods.ErrDirectUnmarshal)
 }
 
 func (j JsonWebKey2020) ID() string {
@@ -98,11 +103,6 @@ func (j JsonWebKey2020) Type() string {
 
 func (j JsonWebKey2020) Controller() string {
 	return j.controller
-}
-
-// PublicKey returns the decoded public key.
-func (j JsonWebKey2020) PublicKey() crypto.PublicKey {
-	return j.pubkey
 }
 
 func (j JsonWebKey2020) JsonLdContext() string {

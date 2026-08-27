@@ -123,17 +123,17 @@ func main() {
 
 ### Choosing the accepted key algorithms
 
-Decoding keys is gated by a `crypto.KeySet`: the set of key algorithms (and, for RSA, key sizes) that you accept. This is a security policy under your control. The default set (`crypto.DefaultKeySet`) starts **empty** — register the algorithms you want, or import `crypto/all` to accept everything:
+Decoding keys is gated by a `crypto.KeyPolicy`: the set of key algorithms (and, for RSA, key sizes) that you accept. This is a security policy under your control. The default policy (`crypto.DefaultKeyPolicy`) starts **empty** — register the algorithms you want, or import `crypto/all` to accept everything:
 
 ```go
 // accept everything (tests, kitchen-sink tools)
 import _ "github.com/MetaMask/go-did-it/crypto/all"
 
-// or register only what you accept in the default set
+// or register only what you accept in the default policy
 crypto.Register(ed25519.KeyType(), p256.KeyType())
 
 // or pass an explicit set for a single resolution
-doc, err := d.Document(did.WithKeySet(crypto.NewKeySet(ed25519.KeyType())))
+doc, err := d.Document(did.WithKeyPolicy(crypto.NewKeyPolicy(ed25519.KeyType())))
 ```
 
 Similarly, parsing DID documents (e.g. resolved through `did:web`) only understands the verification method types that are registered: import the `verifiers/_methods/<type>` packages you expect, or `verifiers/_methods/all` for all of them.

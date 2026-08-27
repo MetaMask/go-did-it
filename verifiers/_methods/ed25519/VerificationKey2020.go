@@ -19,8 +19,8 @@ const (
 )
 
 func init() {
-	methods.Register(Type2020, func(data []byte, ks *crypto.KeySet) (did.VerificationMethod, error) {
-		return VerificationKey2020FromJSON(data, ks)
+	methods.Register(Type2020, func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+		return NewVerificationKey2020FromJSON(data, kp)
 	})
 }
 
@@ -40,26 +40,12 @@ func NewVerificationKey2020(id string, pubkey ed25519.PublicKey, controller did.
 	}
 }
 
-func (v VerificationKey2020) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		ID                 string `json:"id"`
-		Type               string `json:"type"`
-		Controller         string `json:"controller"`
-		PublicKeyMultibase string `json:"publicKeyMultibase"`
-	}{
-		ID:                 v.ID(),
-		Type:               v.Type(),
-		Controller:         v.Controller(),
-		PublicKeyMultibase: v.pubkey.ToPublicKeyMultibase(),
-	})
-}
-
-// VerificationKey2020FromJSON decodes an Ed25519VerificationKey2020 verification method from
-// JSON, using ks to decode and accept the publicKeyMultibase field. If ks is nil,
-// crypto.DefaultKeySet is used.
-func VerificationKey2020FromJSON(data []byte, ks *crypto.KeySet) (*VerificationKey2020, error) {
-	if ks == nil {
-		ks = crypto.DefaultKeySet
+// NewVerificationKey2020FromJSON decodes an Ed25519VerificationKey2020 verification method from
+// JSON, using kp to decode and accept the publicKeyMultibase field. If kp is nil,
+// crypto.DefaultKeyPolicy is used.
+func NewVerificationKey2020FromJSON(data []byte, kp *crypto.KeyPolicy) (*VerificationKey2020, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
 	}
 	aux := struct {
 		ID                 string `json:"id"`
@@ -79,7 +65,7 @@ func VerificationKey2020FromJSON(data []byte, ks *crypto.KeySet) (*VerificationK
 	if !did.HasValidDIDSyntax(aux.Controller) {
 		return nil, errors.New("invalid controller")
 	}
-	pub, err := ks.PublicKeyFromMultibase(aux.PublicKeyMultibase)
+	pub, err := kp.PublicKeyFromMultibase(aux.PublicKeyMultibase)
 	if err != nil {
 		return nil, fmt.Errorf("invalid publicKeyMultibase: %w", err)
 	}
@@ -88,6 +74,25 @@ func VerificationKey2020FromJSON(data []byte, ks *crypto.KeySet) (*VerificationK
 		return nil, errors.New("publicKeyMultibase is not an Ed25519 key")
 	}
 	return &VerificationKey2020{id: aux.ID, pubkey: pubkey, controller: aux.Controller}, nil
+}
+
+func (v VerificationKey2020) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		ID                 string `json:"id"`
+		Type               string `json:"type"`
+		Controller         string `json:"controller"`
+		PublicKeyMultibase string `json:"publicKeyMultibase"`
+	}{
+		ID:                 v.ID(),
+		Type:               v.Type(),
+		Controller:         v.Controller(),
+		PublicKeyMultibase: v.pubkey.ToPublicKeyMultibase(),
+	})
+}
+
+// UnmarshalJSON always fails: decoding needs a crypto.KeyPolicy. See methods.ErrDirectUnmarshal.
+func (v VerificationKey2020) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("%w: use ed25519vm.NewVerificationKey2020FromJSON", methods.ErrDirectUnmarshal)
 }
 
 func (v VerificationKey2020) ID() string {
@@ -100,11 +105,6 @@ func (v VerificationKey2020) Type() string {
 
 func (v VerificationKey2020) Controller() string {
 	return v.controller
-}
-
-// PublicKey returns the decoded public key.
-func (v VerificationKey2020) PublicKey() crypto.PublicKey {
-	return v.pubkey
 }
 
 func (v VerificationKey2020) JsonLdContext() string {
