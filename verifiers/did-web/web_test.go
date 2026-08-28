@@ -15,7 +15,7 @@ import (
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
 	"github.com/MetaMask/go-did-it/crypto/secp256k1"
 	"github.com/MetaMask/go-did-it/crypto/x25519"
-	_ "github.com/MetaMask/go-did-it/verifiers/_methods/all"
+	_ "github.com/MetaMask/go-did-it/verifiers/methods/all"
 )
 
 func TestDecode(t *testing.T) {

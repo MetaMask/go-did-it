@@ -10,7 +10,7 @@ import (
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/secp256k1"
-	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
+	methods "github.com/MetaMask/go-did-it/verifiers/methods"
 )
 
 // Specification: https://w3c-ccg.github.io/lds-ecdsa-secp256k1-2019/

@@ -8,8 +8,8 @@ import (
 
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
-	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
-	ed25519vm "github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
+	methods "github.com/MetaMask/go-did-it/verifiers/methods"
+	ed25519vm "github.com/MetaMask/go-did-it/verifiers/methods/ed25519"
 )
 
 const key2018Json = `{

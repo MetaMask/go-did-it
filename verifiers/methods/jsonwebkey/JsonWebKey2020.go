@@ -8,7 +8,7 @@ import (
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/jwk"
-	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
+	methods "github.com/MetaMask/go-did-it/verifiers/methods"
 )
 
 // Specification:

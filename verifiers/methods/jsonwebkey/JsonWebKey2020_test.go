@@ -8,7 +8,7 @@ import (
 
 	// register all key algorithms in the DefaultKeyPolicy for the whole test package
 	_ "github.com/MetaMask/go-did-it/crypto/all"
-	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
+	methods "github.com/MetaMask/go-did-it/verifiers/methods"
 )
 
 func TestJsonRoundTrip(t *testing.T) {

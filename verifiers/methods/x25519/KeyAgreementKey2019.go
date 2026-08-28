@@ -10,7 +10,7 @@ import (
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/x25519"
-	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
+	methods "github.com/MetaMask/go-did-it/verifiers/methods"
 )
 
 // Specification: https://github.com/digitalbazaar/x25519-key-agreement-key-2019

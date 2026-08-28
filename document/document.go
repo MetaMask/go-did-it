@@ -9,7 +9,7 @@ import (
 
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
-	verifications "github.com/MetaMask/go-did-it/verifiers/_methods"
+	verifications "github.com/MetaMask/go-did-it/verifiers/methods"
 )
 
 var _ did.Document = &Document{}
