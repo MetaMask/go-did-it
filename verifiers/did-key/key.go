@@ -66,11 +66,17 @@ func Decode(identifier string) (did.DID, error) {
 	return DidKey{msi: msi}, nil
 }
 
-func FromPublicKey(pub crypto.PublicKey) did.DID {
+// FromPublicKey builds the did:key DID that encodes pub.
+//
+// It returns the concrete type rather than [did.DID]: a caller who wants the interface
+// gets it by assignment, whereas one who wants the DidKey cannot recover it from the
+// interface without a type assertion.
+func FromPublicKey(pub crypto.PublicKey) DidKey {
 	return DidKey{msi: pub.ToPublicKeyMultibase()}
 }
 
-func FromPrivateKey(priv crypto.PrivateKey) did.DID {
+// FromPrivateKey builds the did:key DID that encodes priv's public key.
+func FromPrivateKey(priv crypto.PrivateKey) DidKey {
 	return FromPublicKey(priv.Public())
 }
 
