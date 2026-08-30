@@ -1,6 +1,10 @@
 package didplcctl
 
-import "time"
+import (
+	"crypto/sha256"
+	"encoding/base32"
+	"time"
+)
 
 // Constants pinned by the did:plc specification.
 // Specification: https://web.plc.directory/spec/v0.1/did-plc
@@ -41,3 +45,18 @@ const (
 	// history, counted from the operation it nullifies.
 	recoveryWindow = 72 * time.Hour
 )
+
+// base32Enc is the lowercase base32 alphabet used by multiformats (RFC 4648, no padding).
+var base32Enc = base32.NewEncoding("abcdefghijklmnopqrstuvwxyz234567").WithPadding(base32.NoPadding)
+
+// deriveDID derives a DID from the DAG-CBOR bytes of its signed genesis operation: the
+// method-specific identifier is the first msiLength characters of the lowercase base32
+// encoding of the operation's SHA-256 digest.
+//
+// This is the rule that makes did:plc self-authenticating, and the anchor every chain
+// check ultimately rests on. Note it hashes the operation directly, without the CID
+// wrapper an operation's identifier carries.
+func deriveDID(genesisBytes []byte) string {
+	h := sha256.Sum256(genesisBytes)
+	return "did:plc:" + base32Enc.EncodeToString(h[:])[:msiLength]
+}

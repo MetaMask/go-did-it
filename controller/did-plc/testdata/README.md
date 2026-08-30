@@ -16,15 +16,13 @@ append-only and readable by anyone.
 | file | endpoint | contents |
 |---|---|---|
 | `audit_atproto.json` | `GET /:did/log/audit` | 3 entries, all `plc_operation`, none nullified |
-| `log_atproto.json` | `GET /:did/log` | the same 3 operations, as the registry serves the canonical log |
 | `audit_legacy.json` | `GET /:did/log/audit` | 6 entries: a legacy `create` genesis followed by 5 `plc_operation` |
 
 Two DIDs, chosen for what they cover:
 
 - **`did:plc:ewvi7nxzyoun6zhxrhs64oiz`** (`atproto.com`) — the current operation format.
-  Both of its representations are kept, because `/log` is not merely `/log/audit` with the
-  wrapper fields dropped: it is a distinct response, and the tests that exercise the
-  `VerifyFullChain` path should see the real thing.
+  Only its `/log/audit` response is kept: that is the only history this package reads, and
+  the canonical `/log` view is derived from it by dropping the nullified entries.
 - **`did:plc:ragtjsm2j2vknwkz3zp4oxrd`** (`paul.bsky.social`) — registered in November 2022,
   when the genesis operation still used the legacy `create` format. It is the fixture that
   covers normalizing such an operation (its recovery key and signing key become two
@@ -38,7 +36,6 @@ Two DIDs, chosen for what they cover:
 cd controller/did-plc/testdata
 D=did:plc:ewvi7nxzyoun6zhxrhs64oiz
 curl -s "https://plc.directory/$D/log/audit" | python3 -m json.tool > audit_atproto.json
-curl -s "https://plc.directory/$D/log"       | python3 -m json.tool > log_atproto.json
 
 D=did:plc:ragtjsm2j2vknwkz3zp4oxrd
 curl -s "https://plc.directory/$D/log/audit" | python3 -m json.tool > audit_legacy.json

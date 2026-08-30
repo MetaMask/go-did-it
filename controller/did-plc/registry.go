@@ -22,56 +22,32 @@ import (
 // DefaultRegistry is the canonical PLC registry URL.
 const DefaultRegistry = didplc.DefaultRegistry
 
-// ChainVerification selects how much of the operation log is fetched and verified
-// before an operation is signed.
-type ChainVerification int
-
-const (
-	// VerifyFullChain fetches the canonical operation log (GET /:did/log) and verifies
-	// it from the genesis operation: the DID must be the hash of the genesis operation,
-	// each operation must point at its predecessor and be signed by one of that
-	// predecessor's rotation keys, and a tombstone may only appear last. This makes the
-	// state self-authenticating, so the registry is not trusted to report it honestly.
-	// It costs one response proportional to the length of the history.
-	//
-	// This is the default.
-	VerifyFullChain ChainVerification = iota
-
-	// VerifyHeadOnly fetches only the latest operation (GET /:did/log/last) and computes
-	// its CID locally. One small response whatever the length of the history, but the
-	// registry's answer is taken on trust: nothing ties the operation it returns to the
-	// DID, and a forged history is not detected.
-	//
-	// [Controller.Audit] always performs full validation regardless of this setting.
-	VerifyHeadOnly
-)
-
 // Registry is a client for the did:plc HTTP registry, and the one place this package is
 // configured: the endpoint to talk to, how much of a history to verify, and which key
-// algorithms to accept. Everything that builds, signs, parses or submits an operation
-// does so under a Registry, which is why those methods hang off it even where they touch
-// no network.
+// algorithms to accept.
 type Registry struct {
-	url          string
-	httpClient   did.HttpClient
-	verification ChainVerification
-	// rotationPolicy is the algorithms accepted for rotation keys, vmPolicy those accepted
-	// for verification methods.
-	rotationPolicy *crypto.KeyPolicy
-	vmPolicy       *crypto.KeyPolicy
+	url        string
+	httpClient did.HttpClient
+	// fullVerification replays the DID's whole history before signing, instead of
+	// trusting the registry's report of the current state.
+	fullVerification bool
+	// codec turns operations into bytes and back. It is where the key policies live, and
+	// the only part of the configuration that reaches past the wire form.
+	codec codec
 }
 
 // NewRegistry returns a Registry configured by opts.
 func NewRegistry(opts ...Option) *Registry {
 	r := &Registry{
-		url:          DefaultRegistry,
-		httpClient:   http.DefaultClient,
-		verification: VerifyFullChain,
-		// The specification allows only these two algorithms for rotation keys.
-		rotationPolicy: crypto.NewKeyPolicy(secp256k1.KeyType(), p256.KeyType()),
-		// It allows any did:key algorithm for verification methods; these three are the
-		// ones that occur in practice.
-		vmPolicy: crypto.NewKeyPolicy(secp256k1.KeyType(), p256.KeyType(), ed25519.KeyType()),
+		url:        DefaultRegistry,
+		httpClient: http.DefaultClient,
+		codec: codec{
+			// The specification allows only these two algorithms for rotation keys.
+			rotationPolicy: crypto.NewKeyPolicy(secp256k1.KeyType(), p256.KeyType()),
+			// It allows any did:key algorithm for verification methods; these three are
+			// the ones that occur in practice.
+			vmPolicy: crypto.NewKeyPolicy(secp256k1.KeyType(), p256.KeyType(), ed25519.KeyType()),
+		},
 	}
 	for _, opt := range opts {
 		opt(r)
@@ -96,12 +72,12 @@ func (r *Registry) Controller(didStr string) (*Controller, error) {
 // Create registers a new DID and returns a Controller for it. The DID is derived from
 // the hash of the genesis operation, so it is not known before signing.
 //
-// signer must hold one of op.RotationKeys: a genesis operation is self-signed.
+// signer must hold one of state.RotationKeys: a genesis operation is self-signed.
 //
 // Submitting a genesis operation that the registry already holds verbatim succeeds
 // without changing anything, so Create is safe to retry.
-func (r *Registry) Create(ctx context.Context, signer Signer, op Op) (*Controller, error) {
-	prepared, err := r.signGenesis(op, signer)
+func (r *Registry) Create(ctx context.Context, signer Signer, state State) (*Controller, error) {
+	prepared, err := r.codec.signGenesis(state, signer)
 	if err != nil {
 		return nil, err
 	}
@@ -173,44 +149,23 @@ func (r *Registry) fetch(ctx context.Context, segments ...string) ([]byte, error
 }
 
 // fetchLastOp retrieves the latest operation only (GET /:did/log/last). Nothing ties the
-// answer to the DID, so it is only as trustworthy as the registry; see [VerifyHeadOnly].
-func (r *Registry) fetchLastOp(ctx context.Context, didStr string) (*preparedOp, error) {
+// answer to the DID, so it is only as trustworthy as the registry; it is what
+// [Controller.Head] reads without [WithFullChainVerification].
+func (r *Registry) fetchLastOp(ctx context.Context, didStr string) (*operation, error) {
 	body, err := r.fetch(ctx, didStr, "log", "last")
 	if err != nil {
 		return nil, err
 	}
-	p, err := r.parseOp(body)
+	p, err := r.codec.parseOp(body)
 	if err != nil {
 		return nil, fmt.Errorf("decoding last operation: %w", err)
 	}
 	return p, nil
 }
 
-// fetchOperationLog retrieves the canonical operation log (GET /:did/log), which excludes
-// operations nullified by a recovery. It is everything
-// [validateOperationLog] needs to verify the DID's state from its genesis.
-func (r *Registry) fetchOperationLog(ctx context.Context, didStr string) ([]*preparedOp, error) {
-	body, err := r.fetch(ctx, didStr, "log")
-	if err != nil {
-		return nil, err
-	}
-	var raw []json.RawMessage
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, fmt.Errorf("decoding operation log: %w", err)
-	}
-	ops := make([]*preparedOp, len(raw))
-	for i, entry := range raw {
-		ops[i], err = r.parseOp(entry)
-		if err != nil {
-			return nil, fmt.Errorf("decoding operation %d: %w", i, err)
-		}
-	}
-	return ops, nil
-}
-
-// fetchAuditLog retrieves the full audit log (GET /:did/log/audit), including the
+// fetchAuditLog retrieves the full history (GET /:did/log/audit), including the
 // operations nullified by a recovery and the registry's timestamps.
-func (r *Registry) fetchAuditLog(ctx context.Context, didStr string) ([]AuditEntry, error) {
+func (r *Registry) fetchAuditLog(ctx context.Context, didStr string) (chain, error) {
 	body, err := r.fetch(ctx, didStr, "log", "audit")
 	if err != nil {
 		return nil, err
@@ -225,13 +180,13 @@ func (r *Registry) fetchAuditLog(ctx context.Context, didStr string) ([]AuditEnt
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, fmt.Errorf("decoding audit log: %w", err)
 	}
-	entries := make([]AuditEntry, len(raw))
+	entries := make(chain, len(raw))
 	for i, e := range raw {
 		t, err := time.Parse(time.RFC3339, e.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("entry %d: invalid timestamp %q: %w", i, e.CreatedAt, err)
 		}
-		p, err := r.parseOp(e.Operation)
+		p, err := r.codec.parseOp(e.Operation)
 		if err != nil {
 			return nil, fmt.Errorf("entry %d: %w", i, err)
 		}
@@ -240,7 +195,7 @@ func (r *Registry) fetchAuditLog(ctx context.Context, didStr string) ([]AuditEnt
 			CID:       e.CID,
 			CreatedAt: t,
 			Nullified: e.Nullified,
-			Op:        p.op,
+			State:     p.state,
 			prepared:  p,
 		}
 	}

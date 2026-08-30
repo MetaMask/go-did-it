@@ -2,7 +2,6 @@ package didplcctl
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/MetaMask/go-did-it"
@@ -23,26 +22,14 @@ func (c *Controller) Did() did.DID { return c.did }
 // DidStr returns the did:plc string this controller manages.
 func (c *Controller) DidStr() string { return c.did.String() }
 
-// Head is the state a new operation is built on: the DID's most recent operation and
-// the document state it established.
-type Head struct {
-	// CID identifies the most recent operation, and becomes the prev of the next one.
-	CID string
-	// Op is the document state that operation established.
-	Op Op
-
-	// rotKeys is Op.RotationKeys in the form the signing and verification code needs: the
-	// wire string to check a signer against, and the decoded key to check a signature with.
-	rotKeys []rotationKey
-}
-
-// Head returns the DID's current state. How far the registry's account of that state is
-// verified is set once per Registry by [WithChainVerification].
+// Head returns the DID's current state. By default that is the registry's report of it,
+// taken on trust; [WithFullChainVerification] makes it a state replayed from the genesis
+// operation instead.
 //
 // It returns [ErrDeactivated] if the DID has been tombstoned.
 func (c *Controller) Head(ctx context.Context) (Head, error) {
 	didStr := c.DidStr()
-	if c.registry.verification == VerifyHeadOnly {
+	if !c.registry.fullVerification {
 		p, err := c.registry.fetchLastOp(ctx, didStr)
 		if err != nil {
 			return Head{}, err
@@ -50,25 +37,21 @@ func (c *Controller) Head(ctx context.Context) (Head, error) {
 		if p.isTombstone() {
 			return Head{}, ErrDeactivated
 		}
-		cid, err := computeCID(p.signed)
+		cid, err := p.cid()
 		if err != nil {
 			return Head{}, err
 		}
-		return Head{CID: cid, Op: *p.op, rotKeys: p.rotKeys}, nil
+		return Head{CID: cid, State: *p.state, rotKeys: p.rotKeys}, nil
 	}
-	ops, err := c.registry.fetchOperationLog(ctx, didStr)
+	history, err := c.registry.fetchAuditLog(ctx, didStr)
 	if err != nil {
 		return Head{}, err
 	}
-	head, err := validateOperationLog(didStr, ops)
-	switch {
-	case errors.Is(err, ErrDeactivated):
-		// A status, not a validation failure: report it plainly.
-		return Head{}, err
-	case err != nil:
-		return Head{}, fmt.Errorf("validating operation log of %s: %w", didStr, err)
+	if err := history.validate(didStr); err != nil {
+		return Head{}, fmt.Errorf("validating history of %s: %w", didStr, err)
 	}
-	return head, nil
+	// head reports ErrDeactivated plainly: it is a status, not a validation failure.
+	return history.head()
 }
 
 // Update fetches the current state, passes it to fn, and submits the result as the next
@@ -77,16 +60,16 @@ func (c *Controller) Head(ctx context.Context) (Head, error) {
 // The fetch and the submission are two requests, so an operation submitted by someone
 // else in between makes the registry reject this one with a [RegistryError]; calling
 // Update again picks up the new state.
-func (c *Controller) Update(ctx context.Context, signer Signer, fn func(Op) (Op, error)) error {
+func (c *Controller) Update(ctx context.Context, signer Signer, fn func(State) (State, error)) error {
 	head, err := c.Head(ctx)
 	if err != nil {
 		return err
 	}
-	next, err := fn(head.Op)
+	next, err := fn(head.State)
 	if err != nil {
 		return err
 	}
-	prepared, err := c.registry.signUpdate(next, signer, head.CID, head.rotKeys)
+	prepared, err := c.registry.codec.signUpdate(next, signer, head.CID, head.rotKeys)
 	if err != nil {
 		return err
 	}
@@ -119,20 +102,20 @@ func (c *Controller) Tombstone(ctx context.Context, signer Signer) error {
 // before signing. Obtain forkCID from [Controller.Audit].
 //
 // Recovery needs the nullified forks and the registry's timestamps, so it always reads
-// the full audit log; [WithChainVerification] decides whether that log is validated
-// first.
-func (c *Controller) Recover(ctx context.Context, signer Signer, forkCID string, fn func(Op) (Op, error)) error {
+// the DID's full history; [WithFullChainVerification] decides whether that history is
+// replayed and checked first.
+func (c *Controller) Recover(ctx context.Context, signer Signer, forkCID string, fn func(State) (State, error)) error {
 	didStr := c.DidStr()
-	entries, err := c.registry.fetchAuditLog(ctx, didStr)
+	history, err := c.registry.fetchAuditLog(ctx, didStr)
 	if err != nil {
 		return err
 	}
-	if c.registry.verification != VerifyHeadOnly {
-		if err := validateAuditLog(didStr, entries); err != nil {
-			return fmt.Errorf("validating audit log of %s: %w", didStr, err)
+	if c.registry.fullVerification {
+		if err := history.validate(didStr); err != nil {
+			return fmt.Errorf("validating history of %s: %w", didStr, err)
 		}
 	}
-	base, authorized, err := recoveryAuthority(entries, forkCID)
+	base, authorized, err := history.recoveryAuthority(forkCID)
 	if err != nil {
 		return err
 	}
@@ -140,7 +123,7 @@ func (c *Controller) Recover(ctx context.Context, signer Signer, forkCID string,
 	if err != nil {
 		return err
 	}
-	prepared, err := c.registry.signUpdate(next, signer, forkCID, authorized)
+	prepared, err := c.registry.codec.signUpdate(next, signer, forkCID, authorized)
 	if err != nil {
 		return err
 	}
@@ -154,20 +137,20 @@ func (c *Controller) Recover(ctx context.Context, signer Signer, forkCID string,
 // it nullified and landed within the 72 hour recovery window, and the nullified flags the
 // registry reported match a replay of the log.
 //
-// Unlike the other methods it always validates in full, whatever [WithChainVerification]
-// says: reporting the history is the point of it.
+// Unlike the other methods it always validates in full, whatever
+// [WithFullChainVerification] says: reporting the history is the point of it.
 //
 // The registry's timestamps are not covered by any signature, so the recovery window and
 // ordering checks hold the registry to its own account of events rather than proving
 // anything on their own.
 func (c *Controller) Audit(ctx context.Context) ([]AuditEntry, error) {
 	didStr := c.DidStr()
-	entries, err := c.registry.fetchAuditLog(ctx, didStr)
+	history, err := c.registry.fetchAuditLog(ctx, didStr)
 	if err != nil {
 		return nil, err
 	}
-	if err := validateAuditLog(didStr, entries); err != nil {
-		return nil, fmt.Errorf("validating audit log of %s: %w", didStr, err)
+	if err := history.validate(didStr); err != nil {
+		return nil, fmt.Errorf("validating history of %s: %w", didStr, err)
 	}
-	return entries, nil
+	return history, nil
 }

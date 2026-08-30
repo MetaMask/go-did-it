@@ -8,8 +8,11 @@ import (
 	"github.com/MetaMask/go-did-it/crypto"
 )
 
-// The codec for the deprecated "create" genesis format, still present in the history of
-// DIDs registered before the current one. It can be read but never written.
+// The second half of the [codec], and the only format it reads without ever writing one:
+// the deprecated "create" genesis operation, still present in the history of DIDs
+// registered before the current format existed. It is separate from codec.go because it
+// is the one part of the codec a reader can skip.
+//
 // Specification: https://web.plc.directory/spec/v0.1/did-plc (Legacy operations)
 
 // legacyCreateJSON is a legacy genesis operation as it appears on the wire.
@@ -43,7 +46,7 @@ func (l legacyCreateJSON) cborMap() map[string]any {
 // format, exactly as the registry does: the recovery key and the signing key become the
 // rotation keys, in that order, and the signing key also becomes the "atproto"
 // verification method.
-func (r *Registry) parseLegacyCreate(data json.RawMessage) (*preparedOp, error) {
+func (c *codec) parseLegacyCreate(data json.RawMessage) (*operation, error) {
 	var raw legacyCreateJSON
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("legacy create: %w", err)
@@ -59,22 +62,22 @@ func (r *Registry) parseLegacyCreate(data json.RawMessage) (*preparedOp, error) 
 		return nil, err
 	}
 
-	rotKeys, err := r.rotationKeysFromWire([]string{raw.RecoveryKey, raw.SigningKey})
+	rotKeys, err := c.rotationKeysFromWire([]string{raw.RecoveryKey, raw.SigningKey})
 	if err != nil {
 		return nil, fmt.Errorf("legacy create: %w", err)
 	}
 	// The signing key is both a rotation key and the atproto verification method, so it
 	// has to pass both policies.
-	signingVMPub, err := didKeyToPublicKey(r.vmPolicy, raw.SigningKey)
+	signingVMPub, err := didKeyToPublicKey(c.vmPolicy, raw.SigningKey)
 	if err != nil {
 		return nil, fmt.Errorf("legacy create signingKey as verification method: %w", err)
 	}
 
-	return &preparedOp{
+	return &operation{
 		encodings: enc,
 		jsonBytes: data,
 		rotKeys:   rotKeys,
-		op: &Op{
+		state: &State{
 			RotationKeys:        publicKeys(rotKeys),
 			VerificationMethods: map[string]crypto.PublicKey{"atproto": signingVMPub},
 			AlsoKnownAs:         []string{ensureAtprotoPrefix(raw.Handle)},

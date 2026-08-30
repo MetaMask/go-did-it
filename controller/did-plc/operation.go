@@ -1,0 +1,157 @@
+package didplcctl
+
+import (
+	"encoding/base64"
+	"fmt"
+
+	"github.com/MetaMask/go-did-it/controller/did-plc/internal/dagcbor"
+	"github.com/MetaMask/go-did-it/crypto"
+)
+
+// A single did:plc operation: the byte encodings the protocol keeps apart, the parts of
+// it the rules reason about, and the checks that need nothing but the operation itself.
+// [codec] is what produces one, from a [State] or from the wire.
+
+// encodings holds the three byte-level forms of an operation, which the protocol requires
+// to be kept apart: the DAG-CBOR without "sig", which is what the signature covers; the
+// DAG-CBOR with it, which is what the CID is computed from; and the signature itself.
+type encodings struct {
+	unsigned []byte
+	signed   []byte
+	sig      string
+}
+
+// signEncodings signs the DAG-CBOR of m and returns the encodings of the result. m gains a
+// "sig" entry.
+func signEncodings(m map[string]any, signer Signer) (encodings, error) {
+	unsigned, err := dagcbor.Encode(m)
+	if err != nil {
+		return encodings{}, err
+	}
+	sig, err := signToBase64URL(signer, unsigned)
+	if err != nil {
+		return encodings{}, err
+	}
+	m["sig"] = sig
+	signed, err := dagcbor.Encode(m)
+	if err != nil {
+		return encodings{}, err
+	}
+	return encodings{unsigned: unsigned, signed: signed, sig: sig}, nil
+}
+
+// buildEncodings returns the encodings of an operation whose signature is already known,
+// as when one is read back from the registry. m gains a "sig" entry.
+func buildEncodings(m map[string]any, sig string) (encodings, error) {
+	unsigned, err := dagcbor.Encode(m)
+	if err != nil {
+		return encodings{}, err
+	}
+	m["sig"] = sig
+	signed, err := dagcbor.Encode(m)
+	if err != nil {
+		return encodings{}, err
+	}
+	return encodings{unsigned: unsigned, signed: signed, sig: sig}, nil
+}
+
+func signToBase64URL(signer Signer, message []byte) (string, error) {
+	rawSig, err := signer.SignToBytes(message, crypto.WithEcdsaLowSSig())
+	if err != nil {
+		return "", fmt.Errorf("signing: %w", err)
+	}
+	// Unpadded base64url: the specification rejects a signature carrying '=' padding.
+	return base64.RawURLEncoding.EncodeToString(rawSig), nil
+}
+
+// operation is an operation ready to be submitted or verified: its byte encodings, plus
+// the parts of it the protocol reasons about. It covers all three operation types.
+type operation struct {
+	encodings
+	// jsonBytes is the JSON wire form: submitted to the registry, or kept verbatim from it.
+	jsonBytes []byte
+	// prevCID is the operation this one builds on, nil only for a genesis operation.
+	prevCID *string
+	// rotKeys is this operation's rotation keys, normalized (a legacy create state yields its
+	// recovery key then its signing key). They are the authority for the next operation.
+	rotKeys []rotationKey
+	// state is the document state this operation establishes.
+	state *State
+	// cidCache memoizes cid().
+	cidCache string
+}
+
+// isTombstone reports whether this operation deactivates the DID. A tombstone carries no
+// keys of its own and establishes no state, which is why state and rotKeys are nil for one.
+func (o *operation) isTombstone() bool { return o.state == nil }
+
+// cid returns the operation's CID, which is what the next operation points at. It is
+// computed from the signed encoding on first use and kept, since every chain rule that
+// touches an operation asks for it.
+func (o *operation) cid() (string, error) {
+	if o.cidCache == "" {
+		c, err := dagcbor.CID(o.signed)
+		if err != nil {
+			return "", err
+		}
+		o.cidCache = c
+	}
+	return o.cidCache, nil
+}
+
+// verify checks the operation's signature against the rotation keys authorized to sign
+// it, and returns the index of the key that verified. That index is the key's authority:
+// a lower index outranks a higher one.
+func (o *operation) verify(authorized []rotationKey) (int, error) {
+	return verifySig(authorized, o.unsigned, o.sig)
+}
+
+// checkGenesis verifies the operation a history starts with: it must point at no
+// predecessor, must establish a state, must hash to the DID being asked about, and must
+// be signed by one of its own rotation keys.
+//
+// That hash is what ties a history to its DID. Without it the rest of the validation is
+// circular: a registry could serve a perfectly self-consistent history, signed throughout
+// by its own keys, for any DID it cared to name.
+func (o *operation) checkGenesis(didStr string) error {
+	if o.prevCID != nil {
+		return fmt.Errorf("%w: the first operation has prev=%s, expected null", ErrInvalidChain, *o.prevCID)
+	}
+	if o.isTombstone() {
+		return fmt.Errorf("%w: the first operation is a tombstone", ErrInvalidChain)
+	}
+	if derived := deriveDID(o.signed); derived != didStr {
+		return fmt.Errorf("%w: the genesis operation hashes to %s, not %s", ErrInvalidChain, derived, didStr)
+	}
+	if _, err := o.verify(o.rotKeys); err != nil {
+		return fmt.Errorf("genesis operation: %w", err)
+	}
+	return nil
+}
+
+// verifySig checks sig (unpadded base64url) against unsigned using the given rotation
+// keys, and returns the index of the key that verified. It is the primitive behind
+// [operation.verify], separate only so that a signature can be checked without an
+// operation to hang it on.
+func verifySig(keys []rotationKey, unsigned []byte, sig string) (int, error) {
+	// The specification requires unpadded base64url, so RawURLEncoding is what rejects a
+	// signature carrying '=' padding.
+	rawSig, err := base64.RawURLEncoding.DecodeString(sig)
+	if err != nil {
+		return -1, fmt.Errorf("%w: decoding signature: %w", ErrInvalidChain, err)
+	}
+	if len(rawSig) != signatureBytes {
+		return -1, fmt.Errorf("%w: signature must be %d bytes, got %d", ErrInvalidChain, signatureBytes, len(rawSig))
+	}
+	if len(keys) == 0 {
+		return -1, fmt.Errorf("%w: no rotation key is authorized to sign this operation", ErrInvalidChain)
+	}
+	for i, k := range keys {
+		// did:plc requires low-S signatures, so a high-S one is refused even though the
+		// ECDSA maths would accept it.
+		if k.pub.VerifyBytes(unsigned, rawSig, crypto.WithEcdsaLowSSig()) {
+			return i, nil
+		}
+	}
+	return -1, fmt.Errorf("%w: signature matches none of the %d authorized rotation keys", ErrInvalidChain, len(keys))
+}

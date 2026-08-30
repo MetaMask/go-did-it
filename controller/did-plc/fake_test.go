@@ -43,7 +43,7 @@ type fakeEntry struct {
 	createdAt time.Time
 	nullified bool
 	body      json.RawMessage
-	prepared  *preparedOp
+	prepared  *operation
 }
 
 func newFakeRegistry(t *testing.T, opts ...Option) (*fakeRegistry, *Registry) {
@@ -77,13 +77,6 @@ func (fr *fakeRegistry) handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-
-	case r.Method == http.MethodGet && sub == "log":
-		out := []json.RawMessage{}
-		for _, e := range fr.canonical(didStr) {
-			out = append(out, e.body)
-		}
-		writeJSON(w, out)
 
 	case r.Method == http.MethodGet && sub == "log/last":
 		canon := fr.canonical(didStr)
@@ -133,11 +126,11 @@ func (fr *fakeRegistry) accept(didStr string, body []byte) (int, string) {
 	if err := strictSchema(body); err != nil {
 		return http.StatusBadRequest, "schema: " + err.Error()
 	}
-	p, err := fr.reg.parseOp(body)
+	p, err := fr.reg.codec.parseOp(body)
 	if err != nil {
 		return http.StatusBadRequest, err.Error()
 	}
-	cid, err := computeCID(p.signed)
+	cid, err := p.cid()
 	if err != nil {
 		return http.StatusInternalServerError, err.Error()
 	}
@@ -160,7 +153,7 @@ func (fr *fakeRegistry) accept(didStr string, body []byte) (int, string) {
 		if got := deriveDID(p.signed); got != didStr {
 			return http.StatusBadRequest, fmt.Sprintf("genesis hash mismatch: the operation is for %s", got)
 		}
-		if _, err := verifySig(p.rotKeys, p.unsigned, p.sig); err != nil {
+		if _, err := p.verify(p.rotKeys); err != nil {
 			return http.StatusBadRequest, err.Error()
 		}
 	} else {
@@ -178,19 +171,19 @@ func (fr *fakeRegistry) accept(didStr string, body []byte) (int, string) {
 		}
 		forked := canon[idx+1:]
 		if len(forked) == 0 {
-			if _, err := verifySig(base.prepared.rotKeys, p.unsigned, p.sig); err != nil {
+			if _, err := p.verify(base.prepared.rotKeys); err != nil {
 				return http.StatusBadRequest, err.Error()
 			}
 		} else {
 			disputed := forked[0]
-			signerIdx, err := verifySig(base.prepared.rotKeys, disputed.prepared.unsigned, disputed.prepared.sig)
+			signerIdx, err := disputed.prepared.verify(base.prepared.rotKeys)
 			if err != nil {
 				return http.StatusBadRequest, err.Error()
 			}
 			if signerIdx == 0 {
 				return http.StatusBadRequest, "cannot nullify an operation signed by the highest-authority rotation key"
 			}
-			if _, err := verifySig(base.prepared.rotKeys[:signerIdx], p.unsigned, p.sig); err != nil {
+			if _, err := p.verify(base.prepared.rotKeys[:signerIdx]); err != nil {
 				return http.StatusBadRequest, "recovery requires a higher-authority rotation key: " + err.Error()
 			}
 			if lapsed := fr.now().Sub(disputed.createdAt); lapsed > recoveryWindow {
@@ -298,7 +291,7 @@ func genSecp256k1(t *testing.T) (crypto.PublicKey, *secp256k1.PrivateKey) {
 // createDID registers a DID whose sole rotation key is pub.
 func createDID(t *testing.T, reg *Registry, pub crypto.PublicKey, priv Signer) *Controller {
 	t.Helper()
-	ctrl, err := reg.Create(context.Background(), priv, Op{
+	ctrl, err := reg.Create(context.Background(), priv, State{
 		RotationKeys: []crypto.PublicKey{pub},
 		AlsoKnownAs:  []string{"at://alice.example.com"},
 		Services: map[string]Service{

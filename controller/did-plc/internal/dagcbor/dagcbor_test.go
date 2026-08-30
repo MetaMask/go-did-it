@@ -214,3 +214,11 @@ func skipValue(t *testing.T, b []byte, pos int) int {
 	}
 	return pos
 }
+
+func TestValidateCID(t *testing.T) {
+	require.NoError(t, dagcbor.ValidateCID("bafyreihevsrjgmed5yvvfucpqfvyygat6mozxllhomkt2x4lcbk75k6use"))
+	require.Error(t, dagcbor.ValidateCID("not-a-cid"))
+	// CIDv0, and a raw-codec CIDv1: neither is what did:plc uses.
+	require.Error(t, dagcbor.ValidateCID("QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG"))
+	require.Error(t, dagcbor.ValidateCID("bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy"))
+}

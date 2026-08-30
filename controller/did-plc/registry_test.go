@@ -23,7 +23,7 @@ func TestCreate(t *testing.T) {
 	fr, reg := newFakeRegistry(t)
 	pub, priv := genSecp256k1(t)
 
-	ctrl, err := reg.Create(context.Background(), priv, Op{RotationKeys: []crypto.PublicKey{pub}})
+	ctrl, err := reg.Create(context.Background(), priv, State{RotationKeys: []crypto.PublicKey{pub}})
 	require.NoError(t, err)
 
 	didStr := ctrl.DidStr()
@@ -75,9 +75,9 @@ func TestUpdate(t *testing.T) {
 	pub, priv := genSecp256k1(t)
 	ctrl := createDID(t, reg, pub, priv)
 
-	require.NoError(t, ctrl.Update(context.Background(), priv, func(op Op) (Op, error) {
-		op.AlsoKnownAs = append(op.AlsoKnownAs, "at://alice.new.example.com")
-		return op, nil
+	require.NoError(t, ctrl.Update(context.Background(), priv, func(state State) (State, error) {
+		state.AlsoKnownAs = append(state.AlsoKnownAs, "at://alice.new.example.com")
+		return state, nil
 	}))
 
 	fr.mu.Lock()
@@ -93,9 +93,9 @@ func TestUpdate(t *testing.T) {
 	head, err := ctrl.Head(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, entries[1].cid, head.CID)
-	assert.Equal(t, []string{"at://alice.example.com", "at://alice.new.example.com"}, head.Op.AlsoKnownAs)
+	assert.Equal(t, []string{"at://alice.example.com", "at://alice.new.example.com"}, head.State.AlsoKnownAs)
 	// Untouched fields survive the round trip through did:key encoding.
-	assert.Equal(t, "https://pds.example.com", head.Op.Services["atproto_pds"].Endpoint)
+	assert.Equal(t, "https://pds.example.com", head.State.Services["atproto_pds"].Endpoint)
 }
 
 func TestUpdateRotatesKeys(t *testing.T) {
@@ -107,17 +107,17 @@ func TestUpdateRotatesKeys(t *testing.T) {
 
 	// The operation that installs the new key is still signed by the old one: authority
 	// comes from the state being replaced.
-	require.NoError(t, ctrl.Update(ctx, oldPriv, func(op Op) (Op, error) {
-		op.RotationKeys = []crypto.PublicKey{newPub}
-		return op, nil
+	require.NoError(t, ctrl.Update(ctx, oldPriv, func(state State) (State, error) {
+		state.RotationKeys = []crypto.PublicKey{newPub}
+		return state, nil
 	}))
 
-	require.NoError(t, ctrl.Update(ctx, newPriv, func(op Op) (Op, error) {
-		op.AlsoKnownAs = []string{"at://alice.rotated.example.com"}
-		return op, nil
+	require.NoError(t, ctrl.Update(ctx, newPriv, func(state State) (State, error) {
+		state.AlsoKnownAs = []string{"at://alice.rotated.example.com"}
+		return state, nil
 	}))
 
-	err := ctrl.Update(ctx, oldPriv, func(op Op) (Op, error) { return op, nil })
+	err := ctrl.Update(ctx, oldPriv, func(state State) (State, error) { return state, nil })
 	require.ErrorContains(t, err, "is not one of the rotation keys", "the retired key must lose its authority")
 }
 
@@ -131,7 +131,7 @@ func TestSignerMustBeARotationKey(t *testing.T) {
 	before := len(fr.requests)
 	fr.mu.Unlock()
 
-	err := ctrl.Update(context.Background(), stranger, func(op Op) (Op, error) { return op, nil })
+	err := ctrl.Update(context.Background(), stranger, func(state State) (State, error) { return state, nil })
 	require.ErrorContains(t, err, "is not one of the rotation keys")
 
 	// It must fail before anything is signed and submitted: signing a state fetched from
@@ -148,7 +148,7 @@ func TestGenesisSignerMustBeARotationKey(t *testing.T) {
 	pub, _ := genSecp256k1(t)
 	_, stranger := genSecp256k1(t)
 
-	_, err := reg.Create(context.Background(), stranger, Op{RotationKeys: []crypto.PublicKey{pub}})
+	_, err := reg.Create(context.Background(), stranger, State{RotationKeys: []crypto.PublicKey{pub}})
 	require.ErrorContains(t, err, "is not one of the rotation keys")
 }
 
@@ -158,7 +158,7 @@ func TestSubmittedJSONUsesEmptyCollections(t *testing.T) {
 	fr, reg := newFakeRegistry(t)
 	pub, priv := genSecp256k1(t)
 
-	ctrl, err := reg.Create(context.Background(), priv, Op{RotationKeys: []crypto.PublicKey{pub}})
+	ctrl, err := reg.Create(context.Background(), priv, State{RotationKeys: []crypto.PublicKey{pub}})
 	require.NoError(t, err)
 
 	fr.mu.Lock()
@@ -188,25 +188,25 @@ func TestTombstone(t *testing.T) {
 	entries, err := ctrl.Audit(ctx)
 	require.NoError(t, err)
 	require.Len(t, entries, 2)
-	assert.NotNil(t, entries[0].Op)
-	assert.Nil(t, entries[1].Op, "a tombstone establishes no state")
+	assert.NotNil(t, entries[0].State)
+	assert.Nil(t, entries[1].State, "a tombstone establishes no state")
 
 	// Nothing can be built on a tombstone.
-	err = ctrl.Update(ctx, priv, func(op Op) (Op, error) { return op, nil })
+	err = ctrl.Update(ctx, priv, func(state State) (State, error) { return state, nil })
 	require.ErrorIs(t, err, ErrDeactivated)
 }
 
 func TestChainVerificationPicksEndpoint(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		mode ChainVerification
+		opts []Option
 		want string
 	}{
-		{"full chain reads the canonical log", VerifyFullChain, "/log"},
-		{"head only reads the last operation", VerifyHeadOnly, "/log/last"},
+		{"by default the head lookup reads the last operation", nil, "/log/last"},
+		{"full verification reads the whole history", []Option{WithFullChainVerification()}, "/log/audit"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			fr, reg := newFakeRegistry(t, WithChainVerification(tc.mode))
+			fr, reg := newFakeRegistry(t, tc.opts...)
 			pub, priv := genSecp256k1(t)
 			ctrl := createDID(t, reg, pub, priv)
 
@@ -231,14 +231,14 @@ func TestChainVerificationPicksEndpoint(t *testing.T) {
 	}
 }
 
-// A head fetched with VerifyHeadOnly is unverified, but the signer check still applies.
+// The default head lookup is unverified, but the signer check still applies.
 func TestHeadOnlyStillChecksTheSigner(t *testing.T) {
-	_, reg := newFakeRegistry(t, WithChainVerification(VerifyHeadOnly))
+	_, reg := newFakeRegistry(t)
 	pub, priv := genSecp256k1(t)
 	ctrl := createDID(t, reg, pub, priv)
 	_, stranger := genSecp256k1(t)
 
-	err := ctrl.Update(context.Background(), stranger, func(op Op) (Op, error) { return op, nil })
+	err := ctrl.Update(context.Background(), stranger, func(state State) (State, error) { return state, nil })
 	require.ErrorContains(t, err, "is not one of the rotation keys")
 }
 
@@ -249,7 +249,7 @@ func TestRecovery(t *testing.T) {
 	ctx := context.Background()
 
 	// Rotation keys are listed in descending authority, so strong outranks weak.
-	ctrl, err := reg.Create(ctx, strongPriv, Op{
+	ctrl, err := reg.Create(ctx, strongPriv, State{
 		RotationKeys: []crypto.PublicKey{strongPub, weakPub},
 		AlsoKnownAs:  []string{"at://alice.example.com"},
 	})
@@ -260,15 +260,15 @@ func TestRecovery(t *testing.T) {
 	fr.mu.Unlock()
 
 	// The weaker key takes the DID somewhere the owner does not want.
-	require.NoError(t, ctrl.Update(ctx, weakPriv, func(op Op) (Op, error) {
-		op.AlsoKnownAs = []string{"at://attacker.example.com"}
-		return op, nil
+	require.NoError(t, ctrl.Update(ctx, weakPriv, func(state State) (State, error) {
+		state.AlsoKnownAs = []string{"at://attacker.example.com"}
+		return state, nil
 	}))
 
 	// The stronger key forks the history back to the genesis operation.
-	require.NoError(t, ctrl.Recover(ctx, strongPriv, genesisCID, func(op Op) (Op, error) {
-		op.AlsoKnownAs = []string{"at://alice.recovered.example.com"}
-		return op, nil
+	require.NoError(t, ctrl.Recover(ctx, strongPriv, genesisCID, func(state State) (State, error) {
+		state.AlsoKnownAs = []string{"at://alice.recovered.example.com"}
+		return state, nil
 	}))
 
 	fr.mu.Lock()
@@ -281,7 +281,7 @@ func TestRecovery(t *testing.T) {
 
 	head, err := ctrl.Head(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"at://alice.recovered.example.com"}, head.Op.AlsoKnownAs)
+	assert.Equal(t, []string{"at://alice.recovered.example.com"}, head.State.AlsoKnownAs)
 
 	// The audit log, forks and all, still replays cleanly.
 	audit, err := ctrl.Audit(ctx)
@@ -296,7 +296,7 @@ func TestRecoveryRequiresHigherAuthority(t *testing.T) {
 	weakPub, weakPriv := genSecp256k1(t)
 	ctx := context.Background()
 
-	ctrl, err := reg.Create(ctx, strongPriv, Op{RotationKeys: []crypto.PublicKey{strongPub, weakPub}})
+	ctrl, err := reg.Create(ctx, strongPriv, State{RotationKeys: []crypto.PublicKey{strongPub, weakPub}})
 	require.NoError(t, err)
 
 	fr.mu.Lock()
@@ -304,15 +304,15 @@ func TestRecoveryRequiresHigherAuthority(t *testing.T) {
 	fr.mu.Unlock()
 
 	// An operation signed by the top key cannot be nullified by anyone.
-	require.NoError(t, ctrl.Update(ctx, strongPriv, func(op Op) (Op, error) {
-		op.AlsoKnownAs = []string{"at://alice.example.com"}
-		return op, nil
+	require.NoError(t, ctrl.Update(ctx, strongPriv, func(state State) (State, error) {
+		state.AlsoKnownAs = []string{"at://alice.example.com"}
+		return state, nil
 	}))
 
-	err = ctrl.Recover(ctx, strongPriv, genesisCID, func(op Op) (Op, error) { return op, nil })
+	err = ctrl.Recover(ctx, strongPriv, genesisCID, func(state State) (State, error) { return state, nil })
 	require.ErrorContains(t, err, "highest-authority rotation key")
 
-	err = ctrl.Recover(ctx, weakPriv, genesisCID, func(op Op) (Op, error) { return op, nil })
+	err = ctrl.Recover(ctx, weakPriv, genesisCID, func(state State) (State, error) { return state, nil })
 	require.ErrorContains(t, err, "highest-authority rotation key")
 }
 
@@ -326,7 +326,7 @@ func TestRecoveryCannotUseTheDisputedKeyOrLower(t *testing.T) {
 	lowPub, lowPriv := genSecp256k1(t)
 	ctx := context.Background()
 
-	ctrl, err := reg.Create(ctx, topPriv, Op{RotationKeys: []crypto.PublicKey{topPub, midPub, lowPub}})
+	ctrl, err := reg.Create(ctx, topPriv, State{RotationKeys: []crypto.PublicKey{topPub, midPub, lowPub}})
 	require.NoError(t, err)
 
 	fr.mu.Lock()
@@ -334,14 +334,14 @@ func TestRecoveryCannotUseTheDisputedKeyOrLower(t *testing.T) {
 	fr.mu.Unlock()
 
 	// The middle key makes a change.
-	require.NoError(t, ctrl.Update(ctx, midPriv, func(op Op) (Op, error) {
-		op.AlsoKnownAs = []string{"at://mid.example.com"}
-		return op, nil
+	require.NoError(t, ctrl.Update(ctx, midPriv, func(state State) (State, error) {
+		state.AlsoKnownAs = []string{"at://mid.example.com"}
+		return state, nil
 	}))
 
 	refusedLocally := func(t *testing.T, signer Signer) {
 		t.Helper()
-		err := ctrl.Recover(ctx, signer, genesisCID, func(op Op) (Op, error) { return op, nil })
+		err := ctrl.Recover(ctx, signer, genesisCID, func(state State) (State, error) { return state, nil })
 		require.ErrorContains(t, err, "is not one of the rotation keys")
 		var regErr *RegistryError
 		assert.False(t, errors.As(err, &regErr), "it must be refused before signing, not by the registry")
@@ -352,9 +352,9 @@ func TestRecoveryCannotUseTheDisputedKeyOrLower(t *testing.T) {
 	t.Run("a key below the disputed signer", func(t *testing.T) { refusedLocally(t, lowPriv) })
 
 	t.Run("a key above the disputed signer", func(t *testing.T) {
-		require.NoError(t, ctrl.Recover(ctx, topPriv, genesisCID, func(op Op) (Op, error) {
-			op.AlsoKnownAs = []string{"at://top.example.com"}
-			return op, nil
+		require.NoError(t, ctrl.Recover(ctx, topPriv, genesisCID, func(state State) (State, error) {
+			state.AlsoKnownAs = []string{"at://top.example.com"}
+			return state, nil
 		}))
 	})
 }
@@ -374,20 +374,20 @@ func TestRecoveryWindowExpires(t *testing.T) {
 	}
 	fr.mu.Unlock()
 
-	ctrl, err := reg.Create(ctx, strongPriv, Op{RotationKeys: []crypto.PublicKey{strongPub, weakPub}})
+	ctrl, err := reg.Create(ctx, strongPriv, State{RotationKeys: []crypto.PublicKey{strongPub, weakPub}})
 	require.NoError(t, err)
 
 	fr.mu.Lock()
 	genesisCID := fr.entries[ctrl.DidStr()][0].cid
 	fr.mu.Unlock()
 
-	require.NoError(t, ctrl.Update(ctx, weakPriv, func(op Op) (Op, error) {
-		op.AlsoKnownAs = []string{"at://attacker.example.com"}
-		return op, nil
+	require.NoError(t, ctrl.Update(ctx, weakPriv, func(state State) (State, error) {
+		state.AlsoKnownAs = []string{"at://attacker.example.com"}
+		return state, nil
 	}))
 
 	// Four days later the window has closed, and it is caught locally, before signing.
-	err = ctrl.Recover(ctx, strongPriv, genesisCID, func(op Op) (Op, error) { return op, nil })
+	err = ctrl.Recover(ctx, strongPriv, genesisCID, func(state State) (State, error) { return state, nil })
 	require.ErrorContains(t, err, "recovery window")
 }
 
@@ -396,13 +396,13 @@ func TestValidationErrors(t *testing.T) {
 	pub, priv := genSecp256k1(t)
 	ctx := context.Background()
 
-	create := func(op Op) error {
+	create := func(op State) error {
 		_, err := reg.Create(ctx, priv, op)
 		return err
 	}
 
 	t.Run("no rotation key", func(t *testing.T) {
-		require.ErrorContains(t, create(Op{}), "rotation keys")
+		require.ErrorContains(t, create(State{}), "rotation keys")
 	})
 
 	t.Run("too many rotation keys", func(t *testing.T) {
@@ -410,25 +410,25 @@ func TestValidationErrors(t *testing.T) {
 		for i := range keys {
 			keys[i], _ = genSecp256k1(t)
 		}
-		require.ErrorContains(t, create(Op{RotationKeys: keys}), "rotation keys")
+		require.ErrorContains(t, create(State{RotationKeys: keys}), "rotation keys")
 	})
 
 	t.Run("duplicate rotation keys", func(t *testing.T) {
-		err := create(Op{RotationKeys: []crypto.PublicKey{pub, pub}})
+		err := create(State{RotationKeys: []crypto.PublicKey{pub, pub}})
 		require.ErrorContains(t, err, "forbids duplicates")
 	})
 
 	t.Run("rotation key of a refused algorithm", func(t *testing.T) {
 		edPub, _, err := ed25519.GenerateKeyPair()
 		require.NoError(t, err)
-		err = create(Op{RotationKeys: []crypto.PublicKey{edPub}})
+		err = create(State{RotationKeys: []crypto.PublicKey{edPub}})
 		require.ErrorIs(t, err, crypto.ErrKeyNotAccepted, "the policy rejection must be reported as such")
 	})
 
 	t.Run("P-256 rotation key is allowed", func(t *testing.T) {
 		p256Pub, p256Priv, err := p256.GenerateKeyPair()
 		require.NoError(t, err)
-		_, err = reg.Create(ctx, p256Priv, Op{RotationKeys: []crypto.PublicKey{p256Pub}})
+		_, err = reg.Create(ctx, p256Priv, State{RotationKeys: []crypto.PublicKey{p256Pub}})
 		require.NoError(t, err)
 	})
 
@@ -437,12 +437,12 @@ func TestValidationErrors(t *testing.T) {
 		for i := range 11 {
 			vms[fmt.Sprintf("key%d", i)] = pub
 		}
-		err := create(Op{RotationKeys: []crypto.PublicKey{pub}, VerificationMethods: vms})
+		err := create(State{RotationKeys: []crypto.PublicKey{pub}, VerificationMethods: vms})
 		require.ErrorContains(t, err, "verificationMethods")
 	})
 
 	t.Run("verification method name carrying a fragment marker", func(t *testing.T) {
-		err := create(Op{
+		err := create(State{
 			RotationKeys:        []crypto.PublicKey{pub},
 			VerificationMethods: map[string]crypto.PublicKey{"#atproto": pub},
 		})
@@ -451,7 +451,7 @@ func TestValidationErrors(t *testing.T) {
 
 	t.Run("verification method of a refused algorithm", func(t *testing.T) {
 		p384Reg := NewRegistry(WithVerificationMethodKeyPolicy(crypto.NewKeyPolicy(p256.KeyType())))
-		_, err := p384Reg.signGenesis(Op{
+		_, err := p384Reg.codec.signGenesis(State{
 			RotationKeys:        []crypto.PublicKey{pub},
 			VerificationMethods: map[string]crypto.PublicKey{"atproto": pub},
 		}, priv)
@@ -459,12 +459,12 @@ func TestValidationErrors(t *testing.T) {
 	})
 
 	t.Run("alsoKnownAs without a scheme", func(t *testing.T) {
-		err := create(Op{RotationKeys: []crypto.PublicKey{pub}, AlsoKnownAs: []string{"alice.example.com"}})
+		err := create(State{RotationKeys: []crypto.PublicKey{pub}, AlsoKnownAs: []string{"alice.example.com"}})
 		require.ErrorContains(t, err, "no scheme")
 	})
 
 	t.Run("service without an endpoint scheme", func(t *testing.T) {
-		err := create(Op{
+		err := create(State{
 			RotationKeys: []crypto.PublicKey{pub},
 			Services:     map[string]Service{"pds": {Type: "T", Endpoint: "pds.example.com"}},
 		})
@@ -472,7 +472,7 @@ func TestValidationErrors(t *testing.T) {
 	})
 
 	t.Run("service without a type", func(t *testing.T) {
-		err := create(Op{
+		err := create(State{
 			RotationKeys: []crypto.PublicKey{pub},
 			Services:     map[string]Service{"pds": {Endpoint: "https://pds.example.com"}},
 		})
@@ -484,12 +484,12 @@ func TestValidationErrors(t *testing.T) {
 		for i := range akas {
 			akas[i] = "at://" + strings.Repeat("a", 200) + fmt.Sprint(i) + ".example.com"
 		}
-		err := create(Op{RotationKeys: []crypto.PublicKey{pub}, AlsoKnownAs: akas})
+		err := create(State{RotationKeys: []crypto.PublicKey{pub}, AlsoKnownAs: akas})
 		require.ErrorContains(t, err, "over the 7500 byte limit")
 	})
 
 	t.Run("no signer", func(t *testing.T) {
-		_, err := reg.Create(ctx, nil, Op{RotationKeys: []crypto.PublicKey{pub}})
+		_, err := reg.Create(ctx, nil, State{RotationKeys: []crypto.PublicKey{pub}})
 		require.ErrorContains(t, err, "no signer")
 	})
 }
@@ -503,7 +503,7 @@ func TestRegistryErrorCarriesRetryAfter(t *testing.T) {
 
 	reg := NewRegistry(WithURL(srv.URL))
 	pub, priv := genSecp256k1(t)
-	_, err := reg.Create(context.Background(), priv, Op{RotationKeys: []crypto.PublicKey{pub}})
+	_, err := reg.Create(context.Background(), priv, State{RotationKeys: []crypto.PublicKey{pub}})
 
 	var regErr *RegistryError
 	require.ErrorAs(t, err, &regErr)

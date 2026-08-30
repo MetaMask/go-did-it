@@ -27,8 +27,7 @@ import (
 // See testdata/README.md for what each file is, why these two DIDs, and how to refresh
 // them.
 const (
-	// atprotoDID uses the current operation format. testdata holds both its audit log and
-	// its canonical log.
+	// atprotoDID uses the current operation format.
 	atprotoDID = "did:plc:ewvi7nxzyoun6zhxrhs64oiz"
 	// legacyDID was registered when the genesis operation still used the legacy "create"
 	// format, and is followed by five operations verified against its normalized keys.
@@ -42,10 +41,9 @@ func loadFixture(t *testing.T, name string) string {
 	return string(body)
 }
 
-// auditFor serves a captured audit log for didStr, along with the canonical log and last
-// operation derived from it by dropping the nullified entries. Deriving them saves a
-// fixture per endpoint for every case; where the registry's own /log response is what
-// matters, testdata/log_atproto.json is used directly instead.
+// auditFor serves a captured audit log for didStr, along with the last operation derived
+// from it by dropping the nullified entries. Deriving that saves a fixture per endpoint
+// for every case.
 func auditFor(t *testing.T, name string, opts ...Option) (*Registry, string) {
 	t.Helper()
 	audit := loadFixture(t, name)
@@ -61,14 +59,11 @@ func auditFor(t *testing.T, name string, opts ...Option) (*Registry, string) {
 			ops = append(ops, e.Operation)
 		}
 	}
-	canonical, err := json.Marshal(ops)
-	require.NoError(t, err)
 	last, err := json.Marshal(ops[len(ops)-1])
 	require.NoError(t, err)
 
 	return serveFixture(t, map[string]string{
 		"log/audit": audit,
-		"log":       string(canonical),
 		"log/last":  string(last),
 	}, opts...), audit
 }
@@ -95,13 +90,14 @@ func TestGoldenAuditLogsFromTheLiveRegistry(t *testing.T) {
 			// Every CID in the fixture has to be reproduced from our own encoding, and the
 			// DID has to be the hash of the genesis operation.
 			for i, e := range entries {
-				computed, err := computeCID(e.prepared.signed)
+				computed, err := e.prepared.cid()
 				require.NoError(t, err)
 				assert.Equal(t, e.CID, computed, "entry %d", i)
 			}
 			assert.Equal(t, tc.didStr, deriveDID(entries[0].prepared.signed))
 
-			// The same history is accepted through the canonical-log path.
+			// Head runs the same replay when full verification is on, and must land on
+			// the last entry of it.
 			head, err := ctrl.Head(context.Background())
 			require.NoError(t, err)
 			assert.Equal(t, entries[len(entries)-1].CID, head.CID)
@@ -135,19 +131,19 @@ func TestLegacyCreateNormalizesBothRotationKeys(t *testing.T) {
 	require.Len(t, entries[0].prepared.rotKeys, 2)
 	assert.Equal(t, []string{genesis.RecoveryKey, genesis.SigningKey}, didKeys(entries[0].prepared.rotKeys))
 
-	require.NotNil(t, entries[0].Op)
-	require.Len(t, entries[0].Op.RotationKeys, 2, "both keys must reach the public state")
-	assert.Equal(t, genesis.RecoveryKey, didKeyString(entries[0].Op.RotationKeys[0]))
-	assert.Equal(t, genesis.SigningKey, didKeyString(entries[0].Op.RotationKeys[1]))
+	require.NotNil(t, entries[0].State)
+	require.Len(t, entries[0].State.RotationKeys, 2, "both keys must reach the public state")
+	assert.Equal(t, genesis.RecoveryKey, didKeyString(entries[0].State.RotationKeys[0]))
+	assert.Equal(t, genesis.SigningKey, didKeyString(entries[0].State.RotationKeys[1]))
 
 	// The rest of the normalization the registry applies.
-	assert.Equal(t, []string{"at://" + genesis.Handle}, entries[0].Op.AlsoKnownAs)
-	assert.Equal(t, genesis.SigningKey, didKeyString(entries[0].Op.VerificationMethods["atproto"]))
-	assert.Equal(t, genesis.Service, entries[0].Op.Services["atproto_pds"].Endpoint)
-	assert.Equal(t, "AtprotoPersonalDataServer", entries[0].Op.Services["atproto_pds"].Type)
+	assert.Equal(t, []string{"at://" + genesis.Handle}, entries[0].State.AlsoKnownAs)
+	assert.Equal(t, genesis.SigningKey, didKeyString(entries[0].State.VerificationMethods["atproto"]))
+	assert.Equal(t, genesis.Service, entries[0].State.Services["atproto_pds"].Endpoint)
+	assert.Equal(t, "AtprotoPersonalDataServer", entries[0].State.Services["atproto_pds"].Type)
 }
 
-// Every key handed out in an Op must be one the same package would accept back, so that
+// Every key handed out in an State must be one the same package would accept back, so that
 // a state read from the registry can be fed straight into an update.
 func TestOpKeysRoundTrip(t *testing.T) {
 	for _, fixture := range []struct{ name, didStr string }{
@@ -161,14 +157,14 @@ func TestOpKeysRoundTrip(t *testing.T) {
 		require.NoError(t, err)
 
 		for i, e := range entries {
-			if e.Op == nil {
+			if e.State == nil {
 				continue
 			}
-			rotKeys, err := reg.rotationKeysToWire(e.Op.RotationKeys)
+			rotKeys, err := reg.codec.rotationKeysToWire(e.State.RotationKeys)
 			require.NoError(t, err, "%s entry %d", fixture.name, i)
 			assert.Equal(t, didKeys(e.prepared.rotKeys), didKeys(rotKeys), "%s entry %d: rotation keys must re-encode identically", fixture.name, i)
 
-			vms, err := reg.verificationMethodsToWire(e.Op.VerificationMethods)
+			vms, err := reg.codec.verificationMethodsToWire(e.State.VerificationMethods)
 			require.NoError(t, err, "%s entry %d", fixture.name, i)
 			for name, dk := range vms {
 				assert.Contains(t, string(e.prepared.jsonBytes), dk, "%s entry %d: verification method %q must re-encode identically", fixture.name, i, name)
@@ -189,9 +185,8 @@ func TestGenesisHashAnchorsTheChainToTheDid(t *testing.T) {
 	// operation's rotation keys, and the "did" metadata agrees. The only thing left that
 	// can tell is that the genesis operation does not hash to the DID being asked about.
 	audit := strings.ReplaceAll(loadFixture(t, "audit_atproto.json"), atprotoDID, impostor)
-	canonical := strings.ReplaceAll(loadFixture(t, "log_atproto.json"), atprotoDID, impostor)
 
-	served := serveFixture(t, map[string]string{"log/audit": audit, "log": canonical})
+	served := serveFixture(t, map[string]string{"log/audit": audit}, WithFullChainVerification())
 	ctrl, err := served.Controller(impostor)
 	require.NoError(t, err)
 
@@ -200,14 +195,14 @@ func TestGenesisHashAnchorsTheChainToTheDid(t *testing.T) {
 	require.ErrorContains(t, err, "hashes to "+atprotoDID)
 
 	_, err = ctrl.Head(context.Background())
-	require.ErrorIs(t, err, ErrInvalidChain, "the canonical-log path must be anchored too")
+	require.ErrorIs(t, err, ErrInvalidChain, "the head lookup must be anchored too")
 	require.ErrorContains(t, err, "hashes to "+atprotoDID)
 }
 
 // craftLog signs a history by hand, bypassing the authority rules, and serves it. This is
 // how a hostile registry's output is modelled: the fake registry would never accept it.
 type craftedOp struct {
-	op     Op
+	state  State
 	signer Signer
 	prev   *string
 	authAs []crypto.PublicKey // rotation keys the signing code is told to accept, real rules aside
@@ -221,7 +216,7 @@ type craftedOp struct {
 	nullified bool
 }
 
-func craftHistory(t *testing.T, reg *Registry, ops []craftedOp) (didStr string, audit string, canonical string) {
+func craftHistory(t *testing.T, reg *Registry, ops []craftedOp) (didStr string, audit string) {
 	t.Helper()
 	type entry struct {
 		DID       string          `json:"did"`
@@ -231,7 +226,6 @@ func craftHistory(t *testing.T, reg *Registry, ops []craftedOp) (didStr string, 
 		Operation json.RawMessage `json:"operation"`
 	}
 	var entries []entry
-	var bodies []json.RawMessage
 	var cids []string
 
 	for i, c := range ops {
@@ -240,23 +234,23 @@ func craftHistory(t *testing.T, reg *Registry, ops []craftedOp) (didStr string, 
 			ops[i].prev = &cid
 			c.prev = &cid
 		}
-		var prepared *preparedOp
+		var prepared *operation
 		var err error
 		var authorized []rotationKey
 		if len(c.authAs) > 0 {
-			authorized, err = reg.rotationKeysToWire(c.authAs)
+			authorized, err = reg.codec.rotationKeysToWire(c.authAs)
 			require.NoError(t, err, "authorizing operation %d", i)
 		}
 		switch {
 		case c.isTombs:
 			prepared, err = signTombstone(c.signer, *c.prev, authorized)
 		case c.prev == nil:
-			prepared, err = reg.signGenesis(c.op, c.signer)
+			prepared, err = reg.codec.signGenesis(c.state, c.signer)
 		default:
-			prepared, err = reg.signUpdate(c.op, c.signer, *c.prev, authorized)
+			prepared, err = reg.codec.signUpdate(c.state, c.signer, *c.prev, authorized)
 		}
 		require.NoError(t, err, "crafting operation %d", i)
-		cid, err := computeCID(prepared.signed)
+		cid, err := prepared.cid()
 		require.NoError(t, err)
 		if i == 0 {
 			didStr = deriveDID(prepared.signed)
@@ -273,9 +267,6 @@ func craftHistory(t *testing.T, reg *Registry, ops []craftedOp) (didStr string, 
 			Nullified: c.nullified,
 			Operation: prepared.jsonBytes,
 		})
-		if !c.nullified {
-			bodies = append(bodies, prepared.jsonBytes)
-		}
 		// Chain the next operation onto this one unless it names its own prev.
 		if i+1 < len(ops) && ops[i+1].prev == nil && ops[i+1].forkTo == 0 {
 			c := cid
@@ -284,9 +275,7 @@ func craftHistory(t *testing.T, reg *Registry, ops []craftedOp) (didStr string, 
 	}
 	a, err := json.Marshal(entries)
 	require.NoError(t, err)
-	c, err := json.Marshal(bodies)
-	require.NoError(t, err)
-	return didStr, string(a), string(c)
+	return didStr, string(a)
 }
 
 // An operation must be signed by a rotation key of the operation it builds on. Verified
@@ -297,20 +286,20 @@ func TestOperationCannotAuthorizeItself(t *testing.T) {
 	ownerPub, ownerPriv := genSecp256k1(t)
 	attackerPub, attackerPriv := genSecp256k1(t)
 
-	didStr, audit, canonical := craftHistory(t, reg, []craftedOp{
+	didStr, audit := craftHistory(t, reg, []craftedOp{
 		{
-			op:     Op{RotationKeys: []crypto.PublicKey{ownerPub}, AlsoKnownAs: []string{"at://alice.example.com"}},
+			state:  State{RotationKeys: []crypto.PublicKey{ownerPub}, AlsoKnownAs: []string{"at://alice.example.com"}},
 			signer: ownerPriv,
 		},
 		{
 			// Replaces the rotation keys with the attacker's and signs with them.
-			op:     Op{RotationKeys: []crypto.PublicKey{attackerPub}, AlsoKnownAs: []string{"at://attacker.example.com"}},
+			state:  State{RotationKeys: []crypto.PublicKey{attackerPub}, AlsoKnownAs: []string{"at://attacker.example.com"}},
 			signer: attackerPriv,
 			authAs: []crypto.PublicKey{attackerPub},
 		},
 	})
 
-	served := serveFixture(t, map[string]string{"log/audit": audit, "log": canonical})
+	served := serveFixture(t, map[string]string{"log/audit": audit}, WithFullChainVerification())
 	ctrl, err := served.Controller(didStr)
 	require.NoError(t, err)
 
@@ -326,13 +315,13 @@ func TestTombstoneMustBeTheLastOperation(t *testing.T) {
 	reg := NewRegistry()
 	pub, priv := genSecp256k1(t)
 
-	didStr, audit, canonical := craftHistory(t, reg, []craftedOp{
-		{op: Op{RotationKeys: []crypto.PublicKey{pub}}, signer: priv},
+	didStr, audit := craftHistory(t, reg, []craftedOp{
+		{state: State{RotationKeys: []crypto.PublicKey{pub}}, signer: priv},
 		{isTombs: true, signer: priv, authAs: []crypto.PublicKey{pub}},
-		{op: Op{RotationKeys: []crypto.PublicKey{pub}}, signer: priv, authAs: []crypto.PublicKey{pub}},
+		{state: State{RotationKeys: []crypto.PublicKey{pub}}, signer: priv, authAs: []crypto.PublicKey{pub}},
 	})
 
-	served := serveFixture(t, map[string]string{"log/audit": audit, "log": canonical})
+	served := serveFixture(t, map[string]string{"log/audit": audit}, WithFullChainVerification())
 	ctrl, err := served.Controller(didStr)
 	require.NoError(t, err)
 
@@ -394,7 +383,7 @@ func TestAuditRejectsAForeignEntry(t *testing.T) {
 // Audit reports the history whatever the Registry's verification mode: reporting it is
 // the point of the call, so it is never the cheap path.
 func TestAuditAlwaysValidates(t *testing.T) {
-	reg, _ := auditFor(t, "audit_atproto.json", WithChainVerification(VerifyHeadOnly))
+	reg, _ := auditFor(t, "audit_atproto.json")
 	ctrl, err := reg.Controller("did:plc:aaaaaaaaaaaaaaaaaaaaaaaa")
 	require.NoError(t, err)
 
@@ -410,7 +399,7 @@ func TestVerifySigReportsKeyAuthority(t *testing.T) {
 	reg := NewRegistry()
 	firstPub, firstPriv := genSecp256k1(t)
 	secondPub, secondPriv := genSecp256k1(t)
-	keys, err := reg.rotationKeysToWire([]crypto.PublicKey{firstPub, secondPub})
+	keys, err := reg.codec.rotationKeysToWire([]crypto.PublicKey{firstPub, secondPub})
 	require.NoError(t, err)
 
 	for want, signer := range map[int]Signer{0: firstPriv, 1: secondPriv} {
@@ -441,7 +430,7 @@ func TestHighSSignatureIsRefused(t *testing.T) {
 	reg := NewRegistry()
 	pub, priv, err := p256.GenerateKeyPair()
 	require.NoError(t, err)
-	keys, err := reg.rotationKeysToWire([]crypto.PublicKey{pub})
+	keys, err := reg.codec.rotationKeysToWire([]crypto.PublicKey{pub})
 	require.NoError(t, err)
 
 	msg := []byte("payload")
@@ -470,17 +459,9 @@ func TestHighSSignatureIsRefused(t *testing.T) {
 // is what keeps it from reaching the signature check as a key that merely fails to match.
 func TestAnUndecodableRotationKeyMakesTheOperationUnreadable(t *testing.T) {
 	reg := NewRegistry()
-	_, err := reg.parseOp([]byte(`{"type":"plc_operation","rotationKeys":["did:key:zNotAKey"],` +
+	_, err := reg.codec.parseOp([]byte(`{"type":"plc_operation","rotationKeys":["did:key:zNotAKey"],` +
 		`"verificationMethods":{},"alsoKnownAs":[],"services":{},"prev":null,"sig":"AAAA"}`))
 	require.ErrorContains(t, err, "rotation key 0")
-}
-
-func TestValidateCID(t *testing.T) {
-	require.NoError(t, validateCID("bafyreihevsrjgmed5yvvfucpqfvyygat6mozxllhomkt2x4lcbk75k6use"))
-	require.Error(t, validateCID("not-a-cid"))
-	// CIDv0, and a raw-codec CIDv1: neither is what did:plc uses.
-	require.Error(t, validateCID("QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG"))
-	require.Error(t, validateCID("bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy"))
 }
 
 // The audit log is where an illegitimate recovery would show up: the registry has already
@@ -497,27 +478,35 @@ func TestAuditRejectsARecoveryFromAnUnauthorizedKey(t *testing.T) {
 	// genesis(top,mid,low) <- op signed by mid <- op signed by low, forking back to the
 	// genesis operation and so nullifying mid's. low does not outrank mid, so no registry
 	// should ever have accepted it.
-	didStr, audit, _ := craftHistory(t, reg, []craftedOp{
-		{op: Op{RotationKeys: keys}, signer: topPriv},
+	didStr, audit := craftHistory(t, reg, []craftedOp{
+		{state: State{RotationKeys: keys}, signer: topPriv},
 		{
-			op:        Op{RotationKeys: keys, AlsoKnownAs: []string{"at://mid.example.com"}},
+			state:     State{RotationKeys: keys, AlsoKnownAs: []string{"at://mid.example.com"}},
 			signer:    midPriv,
 			authAs:    keys,
 			nullified: true,
 		},
 		{
-			op:     Op{RotationKeys: keys, AlsoKnownAs: []string{"at://low.example.com"}},
+			state:  State{RotationKeys: keys, AlsoKnownAs: []string{"at://low.example.com"}},
 			signer: lowPriv,
 			authAs: keys,
 			forkTo: 1,
 		},
 	})
 
-	served := serveFixture(t, map[string]string{"log/audit": audit})
+	served := serveFixture(t, map[string]string{"log/audit": audit}, WithFullChainVerification())
 	ctrl, err := served.Controller(didStr)
 	require.NoError(t, err)
 
 	_, err = ctrl.Audit(context.Background())
+	require.ErrorIs(t, err, ErrInvalidChain)
+	require.ErrorContains(t, err, "outranking")
+
+	// And the head lookup rejects it too, which is the reason a verified head is read
+	// from the full history rather than from the canonical log: with the nullified
+	// operation dropped, what is left is a chain that links and verifies perfectly, and
+	// nothing in it says the fork was made by a key with no authority to make it.
+	_, err = ctrl.Head(context.Background())
 	require.ErrorIs(t, err, ErrInvalidChain)
 	require.ErrorContains(t, err, "outranking")
 }
@@ -531,10 +520,10 @@ func TestAuditRejectsALateRecovery(t *testing.T) {
 	midPub, midPriv := genSecp256k1(t)
 	keys := []crypto.PublicKey{topPub, midPub}
 
-	didStr, audit, _ := craftHistory(t, reg, []craftedOp{
-		{op: Op{RotationKeys: keys}, signer: topPriv, createdAt: "2024-01-01T00:00:00.000Z"},
+	didStr, audit := craftHistory(t, reg, []craftedOp{
+		{state: State{RotationKeys: keys}, signer: topPriv, createdAt: "2024-01-01T00:00:00.000Z"},
 		{
-			op:        Op{RotationKeys: keys, AlsoKnownAs: []string{"at://mid.example.com"}},
+			state:     State{RotationKeys: keys, AlsoKnownAs: []string{"at://mid.example.com"}},
 			signer:    midPriv,
 			authAs:    keys,
 			createdAt: "2024-01-02T00:00:00.000Z",
@@ -542,7 +531,7 @@ func TestAuditRejectsALateRecovery(t *testing.T) {
 		},
 		{
 			// Eight days later: the top key outranks mid, but far too late to use it.
-			op:        Op{RotationKeys: keys, AlsoKnownAs: []string{"at://top.example.com"}},
+			state:     State{RotationKeys: keys, AlsoKnownAs: []string{"at://top.example.com"}},
 			signer:    topPriv,
 			authAs:    keys,
 			forkTo:    1,
@@ -567,10 +556,10 @@ func TestAuditRejectsANonMonotonicRecovery(t *testing.T) {
 	midPub, midPriv := genSecp256k1(t)
 	keys := []crypto.PublicKey{topPub, midPub}
 
-	didStr, audit, _ := craftHistory(t, reg, []craftedOp{
-		{op: Op{RotationKeys: keys}, signer: topPriv, createdAt: "2024-01-01T00:00:00.000Z"},
+	didStr, audit := craftHistory(t, reg, []craftedOp{
+		{state: State{RotationKeys: keys}, signer: topPriv, createdAt: "2024-01-01T00:00:00.000Z"},
 		{
-			op:        Op{RotationKeys: keys, AlsoKnownAs: []string{"at://mid.example.com"}},
+			state:     State{RotationKeys: keys, AlsoKnownAs: []string{"at://mid.example.com"}},
 			signer:    midPriv,
 			authAs:    keys,
 			createdAt: "2024-01-05T00:00:00.000Z",
@@ -578,7 +567,7 @@ func TestAuditRejectsANonMonotonicRecovery(t *testing.T) {
 		},
 		{
 			// Dated before the operation it nullifies, though within 72 hours of it.
-			op:        Op{RotationKeys: keys, AlsoKnownAs: []string{"at://top.example.com"}},
+			state:     State{RotationKeys: keys, AlsoKnownAs: []string{"at://top.example.com"}},
 			signer:    topPriv,
 			authAs:    keys,
 			forkTo:    1,
