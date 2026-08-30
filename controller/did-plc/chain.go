@@ -51,6 +51,18 @@ type Head struct {
 // chain is a DID's history as the registry reports it (GET /:did/log/audit): every
 // operation the registry ever accepted, in acceptance order, nullified forks included.
 //
+// The prev links form a tree, not a line — a recovery branches off an earlier operation
+// and everything after that point dies — while the slice itself is flat, in the order the
+// registry accepted things:
+//
+//	slice:        op1     op2✗    op3✗    op4
+//	                       ┌── op2 ── op3          nullified, still served, still here
+//	prev links:   op1 ─────┤
+//	                       └── op4                 the live path, in slice order
+//
+// [chain.canonical] is the live path, which is linear; everything else in this file is
+// about proving that the registry's account of which branch died is the true one.
+//
 // It is the only history this package reads, because it is the only one that carries the
 // evidence needed to check a recovery. The registry also serves the canonical history
 // alone (GET /:did/log), but that endpoint drops exactly the operations a recovery
@@ -62,11 +74,12 @@ type Head struct {
 // rotation keys decoded.
 type chain []AuditEntry
 
-// canonical returns the entries still standing, in order: the history with everything a
-// recovery nullified removed.
+// canonical returns the entries still standing, in order: the live path through the tree,
+// with everything a recovery nullified removed.
 //
-// It reports the registry's own verdict. [chain.validate] is what checks that verdict
-// against a replay.
+// It reports the registry's own verdict, so the result is a path only once
+// [chain.validate] has passed. Nothing stops a registry from leaving two siblings both
+// unflagged, in which case what comes back here is a branch, not a line.
 func (c chain) canonical() []*AuditEntry {
 	out := make([]*AuditEntry, 0, len(c))
 	for i := range c {
@@ -163,14 +176,12 @@ func (c chain) validate(didStr string) error {
 		forked := slices.Clone(canon[idx+1:])
 
 		if len(forked) == 0 {
-			// Authority comes from the operation being built on, never from the operation
-			// itself: otherwise anyone could install their own rotation keys and self-sign.
+			// Authority comes from the operation being built on, never from this one.
 			if _, err := p.verify(base.prepared.rotKeys); err != nil {
 				return fmt.Errorf("entry %d: %w", i, err)
 			}
 		} else {
-			// A recovery: it drops everything after the fork point, which only a key
-			// outranking the signer of the first dropped operation may do.
+			// A recovery: it drops everything after the fork point.
 			disputed := forked[0]
 			authorized, err := nullificationAuthority(base, disputed)
 			if err != nil {

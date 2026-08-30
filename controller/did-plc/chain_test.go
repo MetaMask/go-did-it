@@ -6,7 +6,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -17,6 +20,13 @@ import (
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/p256"
 )
+
+// Replays of histories served as canned bytes rather than built through the fake
+// registry: the golden logs captured from the live registry, and histories crafted by hand
+// that no registry would ever have accepted. Between them they cover the chain rules —
+// what a hostile or broken registry can serve, and what has to be rejected.
+//
+// Anything that submits an operation and reads it back belongs in roundtrip_test.go.
 
 // The subjects of the fixtures in testdata, which hold responses captured verbatim from
 // the live registry at https://plc.directory. Every CID and signature in them was produced
@@ -33,6 +43,27 @@ const (
 	// format, and is followed by five operations verified against its normalized keys.
 	legacyDID = "did:plc:ragtjsm2j2vknwkz3zp4oxrd"
 )
+
+// serveFixture returns a Registry backed by fixed response bodies, keyed by the path after
+// the DID ("log/last", "log/audit"). It is the counterpart to the fake registry in
+// fake_test.go: where that one enforces the rules a real registry enforces, this one
+// serves whatever bytes a test hands it, including histories no registry would ever have
+// accepted. That is what the tests below need.
+func serveFixture(t *testing.T, bodies map[string]string, opts ...Option) *Registry {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, sub, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/")
+		body, ok := bodies[sub]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, body)
+	}))
+	t.Cleanup(srv.Close)
+	return NewRegistry(append([]Option{WithURL(srv.URL)}, opts...)...)
+}
 
 func loadFixture(t *testing.T, name string) string {
 	t.Helper()

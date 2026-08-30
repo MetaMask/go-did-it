@@ -8,6 +8,19 @@ import (
 	didplc "github.com/MetaMask/go-did-it/verifiers/did-plc"
 )
 
+// The public API. Each method is one move on the operation log described in the package
+// doc:
+//
+//	Head        read the live path's last operation, and the state it established
+//	Update      append an operation to the live path
+//	Recover     fork the log at an earlier operation, nullifying the tail
+//	Tombstone   append an operation that ends the DID
+//	Audit       report the whole tree, forks included, after replaying it
+//
+// Update, Recover and Tombstone each read the current state first, so each is two round
+// trips and neither is atomic; a competing operation in between makes the registry reject
+// the second one.
+
 // Controller is a handle on a specific DID within a [Registry], through which operations
 // on that DID are built, signed and submitted.
 type Controller struct {

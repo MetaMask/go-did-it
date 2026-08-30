@@ -9,16 +9,15 @@ import (
 	"github.com/MetaMask/go-did-it/crypto"
 )
 
-// codec converts between [State] and the wire form of an operation, in both directions,
-// and is where this package's configuration stops: a key policy is consulted where
-// did:key strings are encoded and decoded, and nowhere else. That is what leaves the
-// protocol rules in chain.go needing no configuration of their own — by the time an
-// operation reaches them, its keys are keys.
+// codec converts between [State] and the wire form of an operation, in both directions.
+// It runs the two-pass encoding described under "How an operation is encoded" in the
+// package doc, and it is where this package's configuration stops: a key policy is
+// consulted here and nowhere else.
 //
-// The codec spans two files, one per direction of travel. This one carries the formats
-// this package both reads and writes — plc_operation and plc_tombstone — along with the
-// type itself and the parse dispatch that reaches all three. legacy.go carries the third,
-// the deprecated "create" genesis format, which is only ever read.
+// The codec spans two files. This one carries the type itself, the parse dispatch that
+// reaches all three formats, and the two formats this package both reads and writes:
+// plc_operation and plc_tombstone. codec_legacy.go carries the third, the deprecated
+// "create" genesis format, which is only ever read.
 type codec struct {
 	// rotationPolicy is the algorithms accepted for rotation keys, vmPolicy those
 	// accepted for verification methods.

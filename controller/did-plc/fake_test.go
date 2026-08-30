@@ -260,25 +260,6 @@ func requireJSONPrefix(m map[string]json.RawMessage, key string, want byte) erro
 	return nil
 }
 
-// serveFixture returns a Registry backed by fixed response bodies, keyed by the path after
-// the DID ("log", "log/last", "log/audit"). It serves histories the fake registry would
-// never accept, which is exactly what the adversarial tests need.
-func serveFixture(t *testing.T, bodies map[string]string, opts ...Option) *Registry {
-	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, sub, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/")
-		body, ok := bodies[sub]
-		if !ok {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, body)
-	}))
-	t.Cleanup(srv.Close)
-	return NewRegistry(append([]Option{WithURL(srv.URL)}, opts...)...)
-}
-
 // key helpers
 
 func genSecp256k1(t *testing.T) (crypto.PublicKey, *secp256k1.PrivateKey) {

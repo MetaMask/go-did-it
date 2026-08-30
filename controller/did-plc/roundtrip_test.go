@@ -19,6 +19,14 @@ import (
 	"github.com/MetaMask/go-did-it/crypto/p256"
 )
 
+// Round trips through the fake registry in fake_test.go: an operation is built from a
+// State, signed, submitted, accepted or refused by the rules the real registry enforces,
+// and read back. Both entry points are here, Registry and Controller alike, because what
+// groups these tests is how they are driven rather than which method they start at.
+//
+// A test that needs a history the real registry would never have accepted cannot be
+// written against the fake, and belongs in chain_test.go instead.
+
 func TestCreate(t *testing.T) {
 	fr, reg := newFakeRegistry(t)
 	pub, priv := genSecp256k1(t)

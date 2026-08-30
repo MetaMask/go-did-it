@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
-// Constants pinned by the did:plc specification.
+// Constants pinned by the did:plc specification, and the one rule small enough to sit
+// beside them: deriving a DID from the hash of its genesis operation, which is what makes
+// the method self-authenticating.
+//
 // Specification: https://web.plc.directory/spec/v0.1/did-plc
 
 // Operation type discriminators, as they appear on the wire. "create" is the deprecated

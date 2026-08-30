@@ -21,14 +21,14 @@ import (
 // [crypto.WithEcdsaLowSSig] when signing.
 type Signer = crypto.PrivateKeySigningBytes
 
-// rotationKey is one entry of an operation's rotation key list, in both the forms the
+// rotationKey is one entry of an operation's rotation key list, kept in both the forms the
 // protocol needs at once. The index in the list is the key's authority: a lower index
-// outranks a higher one.
+// outranks a higher one, which is what makes recovery possible — see "Rotation keys and
+// authority" in the package doc.
 //
-// Every rotation key is decoded exactly once, here at the edge of the package, and an
-// operation whose rotation keys cannot all be decoded is rejected outright. That is what
-// leaves the rules in chain.go needing no key policy of their own: by the time they see
-// an operation, its keys are keys.
+// A key is decoded exactly once, when its operation is parsed, and an operation whose
+// rotation keys cannot all be decoded is rejected outright. That is what leaves the rules
+// in chain.go needing no key policy of their own.
 type rotationKey struct {
 	// didKey is the wire form, which is what goes into the signed bytes.
 	didKey string

@@ -8,13 +8,20 @@ import (
 	"github.com/MetaMask/go-did-it/crypto"
 )
 
-// A single did:plc operation: the byte encodings the protocol keeps apart, the parts of
-// it the rules reason about, and the checks that need nothing but the operation itself.
-// [codec] is what produces one, from a [State] or from the wire.
+// A single did:plc operation: the byte forms it exists in, the parts of it the protocol
+// rules reason about, and the few checks it can make about itself. A [codec] is what
+// produces one, from a [State] or from the wire.
 
 // encodings holds the three byte-level forms of an operation, which the protocol requires
-// to be kept apart: the DAG-CBOR without "sig", which is what the signature covers; the
-// DAG-CBOR with it, which is what the CID is computed from; and the signature itself.
+// to be kept apart:
+//
+//	unsigned   DAG-CBOR without "sig"   what the signature is computed over
+//	signed     DAG-CBOR with "sig"      what the CID, and the DID, are hashed from
+//	sig        unpadded base64url       the signature itself
+//
+// Two CBOR forms rather than one, because a signature cannot cover itself. See "How an
+// operation is encoded" in the package doc for why any of it is CBOR and not the JSON the
+// registry actually speaks.
 type encodings struct {
 	unsigned []byte
 	signed   []byte
@@ -110,9 +117,8 @@ func (o *operation) verify(authorized []rotationKey) (int, error) {
 // predecessor, must establish a state, must hash to the DID being asked about, and must
 // be signed by one of its own rotation keys.
 //
-// That hash is what ties a history to its DID. Without it the rest of the validation is
-// circular: a registry could serve a perfectly self-consistent history, signed throughout
-// by its own keys, for any DID it cared to name.
+// The hash is the anchor every other check hangs off; see "The operation log" in the
+// package doc.
 func (o *operation) checkGenesis(didStr string) error {
 	if o.prevCID != nil {
 		return fmt.Errorf("%w: the first operation has prev=%s, expected null", ErrInvalidChain, *o.prevCID)

@@ -25,6 +25,16 @@ const DefaultRegistry = didplc.DefaultRegistry
 // Registry is a client for the did:plc HTTP registry, and the one place this package is
 // configured: the endpoint to talk to, how much of a history to verify, and which key
 // algorithms to accept.
+//
+// The registry speaks four routes, of which this package uses three:
+//
+//	POST /:did             submit an operation
+//	GET  /:did/log/audit   the whole tree, with the registry's timestamps and its verdict
+//	                       on which operations a recovery nullified
+//	GET  /:did/log/last    the live path's last operation, and nothing to tie it to the DID
+//	GET  /:did/log         the live path only — unused here, because dropping the nullified
+//	                       operations also drops the evidence that they were nullified
+//	                       legitimately. See the chain type.
 type Registry struct {
 	url        string
 	httpClient did.HttpClient

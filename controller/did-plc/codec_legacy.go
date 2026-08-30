@@ -10,8 +10,8 @@ import (
 
 // The second half of the [codec], and the only format it reads without ever writing one:
 // the deprecated "create" genesis operation, still present in the history of DIDs
-// registered before the current format existed. It is separate from codec.go because it
-// is the one part of the codec a reader can skip.
+// registered before the current format existed. It has a file of its own because it is
+// the one part of the codec a reader can skip.
 //
 // Specification: https://web.plc.directory/spec/v0.1/did-plc (Legacy operations)
 

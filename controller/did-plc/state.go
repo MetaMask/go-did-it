@@ -11,6 +11,9 @@ import (
 // The document state a did:plc operation establishes, as callers hand it over, and the
 // limits the specification puts on it. Checking those here turns what would otherwise be
 // an opaque HTTP 400 from the registry into a local error.
+//
+// A State is not an operation and holds nothing about one: no prev, no signature, no
+// identity. It is the payload; operation.go is the envelope.
 
 // State is the document state of a did:plc DID: what an operation establishes.
 // [Controller.Update] hands out the current state and takes back the desired one; the

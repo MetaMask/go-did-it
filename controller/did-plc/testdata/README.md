@@ -13,10 +13,10 @@ append-only and readable by anyone.
 
 ## Files
 
-| file | endpoint | contents |
-|---|---|---|
-| `audit_atproto.json` | `GET /:did/log/audit` | 3 entries, all `plc_operation`, none nullified |
-| `audit_legacy.json` | `GET /:did/log/audit` | 6 entries: a legacy `create` genesis followed by 5 `plc_operation` |
+| file                 | endpoint              | contents                                                           |
+|----------------------|-----------------------|--------------------------------------------------------------------|
+| `audit_atproto.json` | `GET /:did/log/audit` | 3 entries, all `plc_operation`, none nullified                     |
+| `audit_legacy.json`  | `GET /:did/log/audit` | 6 entries: a legacy `create` genesis followed by 5 `plc_operation` |
 
 Two DIDs, chosen for what they cover:
 
