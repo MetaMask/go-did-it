@@ -17,12 +17,12 @@ import (
 	"github.com/MetaMask/go-did-it/crypto/rsa"
 	"github.com/MetaMask/go-did-it/crypto/secp256k1"
 	"github.com/MetaMask/go-did-it/crypto/x25519"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/jsonwebkey"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/multikey"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/p256"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/secp256k1"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/x25519"
+	"github.com/MetaMask/go-did-it/verifiers/methods/ed25519"
+	"github.com/MetaMask/go-did-it/verifiers/methods/jsonwebkey"
+	"github.com/MetaMask/go-did-it/verifiers/methods/multikey"
+	"github.com/MetaMask/go-did-it/verifiers/methods/p256"
+	"github.com/MetaMask/go-did-it/verifiers/methods/secp256k1"
+	"github.com/MetaMask/go-did-it/verifiers/methods/x25519"
 )
 
 // Specification: https://w3c-ccg.github.io/did-method-key/

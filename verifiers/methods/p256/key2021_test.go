@@ -8,8 +8,8 @@ import (
 
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/p256"
-	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
-	p256vm "github.com/MetaMask/go-did-it/verifiers/_methods/p256"
+	methods "github.com/MetaMask/go-did-it/verifiers/methods"
+	p256vm "github.com/MetaMask/go-did-it/verifiers/methods/p256"
 )
 
 const key2021Json = `{

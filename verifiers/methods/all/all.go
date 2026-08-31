@@ -4,7 +4,7 @@
 // Import it for its side effect when you want document parsing to understand every
 // verification method type, typically in tests or kitchen-sink tools:
 //
-//	import _ "github.com/MetaMask/go-did-it/verifiers/_methods/all"
+//	import _ "github.com/MetaMask/go-did-it/verifiers/methods/all"
 //
 // It pulls in every verification method package (and their key algorithm packages), so only
 // this package pays that binary-size cost. For finer control, import only the verification
@@ -13,10 +13,10 @@
 package all
 
 import (
-	_ "github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
-	_ "github.com/MetaMask/go-did-it/verifiers/_methods/jsonwebkey"
-	_ "github.com/MetaMask/go-did-it/verifiers/_methods/multikey"
-	_ "github.com/MetaMask/go-did-it/verifiers/_methods/p256"
-	_ "github.com/MetaMask/go-did-it/verifiers/_methods/secp256k1"
-	_ "github.com/MetaMask/go-did-it/verifiers/_methods/x25519"
+	_ "github.com/MetaMask/go-did-it/verifiers/methods/ed25519"
+	_ "github.com/MetaMask/go-did-it/verifiers/methods/jsonwebkey"
+	_ "github.com/MetaMask/go-did-it/verifiers/methods/multikey"
+	_ "github.com/MetaMask/go-did-it/verifiers/methods/p256"
+	_ "github.com/MetaMask/go-did-it/verifiers/methods/secp256k1"
+	_ "github.com/MetaMask/go-did-it/verifiers/methods/x25519"
 )

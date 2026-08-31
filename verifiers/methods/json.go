@@ -62,7 +62,7 @@ func UnmarshalJSON(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, e
 	mu.RUnlock()
 	if !ok {
 		if empty {
-			return nil, fmt.Errorf("unknown verification type: %s (no verification method type is registered: import the packages you support, or verifiers/_methods/all)", aux.Type)
+			return nil, fmt.Errorf("unknown verification type: %s (no verification method type is registered: import the packages you support, or verifiers/methods/all)", aux.Type)
 		}
 		return nil, fmt.Errorf("unknown verification type: %s", aux.Type)
 	}

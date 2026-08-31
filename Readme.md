@@ -136,7 +136,7 @@ crypto.Register(ed25519.KeyType(), p256.KeyType())
 doc, err := d.Document(did.WithKeyPolicy(crypto.NewKeyPolicy(ed25519.KeyType())))
 ```
 
-Similarly, parsing DID documents (e.g. resolved through `did:web`) only understands the verification method types that are registered: import the `verifiers/_methods/<type>` packages you expect, or `verifiers/_methods/all` for all of them.
+Similarly, parsing DID documents (e.g. resolved through `did:web`) only understands the verification method types that are registered: import the `verifiers/methods/<type>` packages you expect, or `verifiers/methods/all` for all of them.
 
 ## Features
 

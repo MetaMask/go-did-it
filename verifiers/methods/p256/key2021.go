@@ -10,7 +10,7 @@ import (
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/p256"
-	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
+	methods "github.com/MetaMask/go-did-it/verifiers/methods"
 )
 
 // Specification: missing

@@ -17,11 +17,11 @@ import (
 	"github.com/MetaMask/go-did-it/crypto/p521"
 	"github.com/MetaMask/go-did-it/crypto/rsa"
 	"github.com/MetaMask/go-did-it/crypto/secp256k1"
-	ed25519vm "github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/jsonwebkey"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/multikey"
-	p256vm "github.com/MetaMask/go-did-it/verifiers/_methods/p256"
-	secp256k1vm "github.com/MetaMask/go-did-it/verifiers/_methods/secp256k1"
+	ed25519vm "github.com/MetaMask/go-did-it/verifiers/methods/ed25519"
+	"github.com/MetaMask/go-did-it/verifiers/methods/jsonwebkey"
+	"github.com/MetaMask/go-did-it/verifiers/methods/multikey"
+	p256vm "github.com/MetaMask/go-did-it/verifiers/methods/p256"
+	secp256k1vm "github.com/MetaMask/go-did-it/verifiers/methods/secp256k1"
 )
 
 // Specification: https://web.plc.directory/spec/v0.1/did-plc

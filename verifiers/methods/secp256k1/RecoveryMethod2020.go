@@ -12,7 +12,7 @@ import (
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/jwk"
 	"github.com/MetaMask/go-did-it/crypto/secp256k1"
-	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
+	methods "github.com/MetaMask/go-did-it/verifiers/methods"
 )
 
 // Specification: https://identity.foundation/EcdsaSecp256k1RecoverySignature2020/

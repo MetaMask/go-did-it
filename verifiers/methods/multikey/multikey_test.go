@@ -8,8 +8,8 @@ import (
 
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
-	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/multikey"
+	methods "github.com/MetaMask/go-did-it/verifiers/methods"
+	"github.com/MetaMask/go-did-it/verifiers/methods/multikey"
 	_ "github.com/MetaMask/go-did-it/verifiers/did-key"
 )
 
