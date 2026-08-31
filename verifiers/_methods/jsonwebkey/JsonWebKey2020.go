@@ -3,10 +3,12 @@ package jsonwebkey
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/jwk"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 // Specification:
@@ -17,6 +19,12 @@ const (
 	JsonLdContext = "https://w3id.org/security/suites/jws-2020/v1"
 	Type          = "JsonWebKey2020"
 )
+
+func init() {
+	methods.Register(Type, func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+		return NewJsonWebKey2020FromJSON(data, kp)
+	})
+}
 
 var _ did.VerificationMethodSignature = &JsonWebKey2020{}
 var _ did.VerificationMethodKeyAgreement = &JsonWebKey2020{}
@@ -35,6 +43,37 @@ func NewJsonWebKey2020(id string, pubkey crypto.PublicKey, controller did.DID) *
 	}
 }
 
+// NewJsonWebKey2020FromJSON decodes a JsonWebKey2020 verification method from JSON, using kp to decode
+// and accept the publicKeyJwk field. If kp is nil, crypto.DefaultKeyPolicy is used.
+func NewJsonWebKey2020FromJSON(data []byte, kp *crypto.KeyPolicy) (*JsonWebKey2020, error) {
+	aux := struct {
+		ID           string          `json:"id"`
+		Type         string          `json:"type"`
+		Controller   string          `json:"controller"`
+		PublicKeyJWK json.RawMessage `json:"publicKeyJwk"`
+	}{}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return nil, err
+	}
+	if aux.Type != Type {
+		return nil, errors.New("invalid type")
+	}
+	if len(aux.ID) == 0 {
+		return nil, errors.New("invalid id")
+	}
+	if !did.HasValidDIDSyntax(aux.Controller) {
+		return nil, errors.New("invalid controller")
+	}
+	if len(aux.PublicKeyJWK) == 0 {
+		return nil, errors.New("missing publicKeyJwk")
+	}
+	pj, err := jwk.PublicFromJSON(aux.PublicKeyJWK, kp)
+	if err != nil {
+		return nil, fmt.Errorf("invalid publicKeyJwk: %w", err)
+	}
+	return &JsonWebKey2020{id: aux.ID, pubkey: pj.Pubkey, controller: aux.Controller}, nil
+}
+
 func (j JsonWebKey2020) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		ID           string        `json:"id"`
@@ -49,32 +88,9 @@ func (j JsonWebKey2020) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (j *JsonWebKey2020) UnmarshalJSON(bytes []byte) error {
-	aux := struct {
-		ID           string        `json:"id"`
-		Type         string        `json:"type"`
-		Controller   string        `json:"controller"`
-		PublicKeyJWK jwk.PublicJwk `json:"publicKeyJwk"`
-	}{}
-	err := json.Unmarshal(bytes, &aux)
-	if err != nil {
-		return err
-	}
-	if aux.Type != j.Type() {
-		return errors.New("invalid type")
-	}
-	j.id = aux.ID
-	if len(j.id) == 0 {
-		return errors.New("invalid id")
-	}
-	j.controller = aux.Controller
-	if !did.HasValidDIDSyntax(j.controller) {
-		return errors.New("invalid controller")
-	}
-
-	j.pubkey = aux.PublicKeyJWK.Pubkey
-
-	return nil
+// UnmarshalJSON always fails: decoding needs a crypto.KeyPolicy. See methods.ErrDirectUnmarshal.
+func (j JsonWebKey2020) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("%w: use jsonwebkey.NewJsonWebKey2020FromJSON", methods.ErrDirectUnmarshal)
 }
 
 func (j JsonWebKey2020) ID() string {

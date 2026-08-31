@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"slices"
 
 	"github.com/MetaMask/go-did-it/crypto"
 )
@@ -40,4 +41,92 @@ func defaultSigHash(keyLen int) crypto.Hash {
 	default:
 		return crypto.SHA512
 	}
+}
+
+// KeyType returns the crypto.KeyType describing RSA, to be added to a crypto.KeyPolicy.
+//
+// For RSA the accepted modulus sizes are part of the policy. Pass the exact sizes (in bits) to allow,
+// e.g. rsa.KeyType(2048, 4096); pass none to accept any size within [MinRsaKeyBits, MaxRsaKeyBits].
+func KeyType(sizes ...int) crypto.KeyType {
+	// Copy: the closures below outlive this call, and a caller passing a slice with KeyType(sizes...)
+	// would otherwise be able to change the policy (or race with it) by mutating that slice later.
+	sizes = slices.Clone(sizes)
+	checkSize := func(bits int) error {
+		if len(sizes) == 0 {
+			if bits < MinRsaKeyBits || bits > MaxRsaKeyBits {
+				return fmt.Errorf("%w: rsa key size %d not allowed", crypto.ErrKeyNotAccepted, bits)
+			}
+			return nil
+		}
+		for _, s := range sizes {
+			if s == bits {
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: rsa key size %d not allowed", crypto.ErrKeyNotAccepted, bits)
+	}
+	return crypto.KeyType{
+		Name: rsaName(sizes),
+		Code: MultibaseCode,
+		// The did:key spec encodes the RSA publicKeyMultibase body as PKCS#1 (RSAPublicKey) DER.
+		DecodePublic: func(body []byte) (crypto.PublicKey, error) {
+			k, err := PublicKeyFromPKCS1DER(body)
+			if err != nil {
+				return nil, err
+			}
+			if err := checkSize(k.k.N.BitLen()); err != nil {
+				return nil, err
+			}
+			return k, nil
+		},
+		Matches: func(key crypto.PublicKey) bool {
+			rk, ok := key.(*PublicKey)
+			return ok && checkSize(rk.k.N.BitLen()) == nil
+		},
+		Wrap: func(key any) (crypto.PublicKey, bool, error) {
+			pub, ok, err := WrapPublicKey(key)
+			if !ok || err != nil {
+				return nil, ok, err
+			}
+			if err := checkSize(pub.k.N.BitLen()); err != nil {
+				return nil, true, err
+			}
+			return pub, true, nil
+		},
+		JwkKty: "RSA",
+		DecodeJwkPublic: func(params map[string][]byte) (crypto.PublicKey, error) {
+			k, err := PublicKeyFromNE(params["n"], params["e"])
+			if err != nil {
+				return nil, err
+			}
+			if err := checkSize(k.k.N.BitLen()); err != nil {
+				return nil, err
+			}
+			return k, nil
+		},
+		DecodeJwkPrivate: func(params map[string][]byte) (crypto.PrivateKey, error) {
+			k, err := PrivateKeyFromNEDPQ(params["n"], params["e"], params["d"], params["p"], params["q"])
+			if err != nil {
+				return nil, err
+			}
+			if err := checkSize(k.k.N.BitLen()); err != nil {
+				return nil, err
+			}
+			return k, nil
+		},
+	}
+}
+
+func rsaName(sizes []int) string {
+	if len(sizes) == 0 {
+		return "RSA"
+	}
+	name := "RSA-"
+	for i, s := range sizes {
+		if i > 0 {
+			name += "/"
+		}
+		name += fmt.Sprintf("%d", s)
+	}
+	return name
 }

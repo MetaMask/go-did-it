@@ -99,7 +99,7 @@ func (d DidWeb) Document(opts ...did.ResolutionOption) (did.Document, error) {
 	// limit at 1MB to avoid abuse
 	limiter := io.LimitReader(res.Body, 1<<20)
 
-	doc, err := document.FromJsonReader(limiter)
+	doc, err := document.FromJsonReader(limiter, params.KeyPolicy())
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", did.ErrResolutionFailure, err)
 	}

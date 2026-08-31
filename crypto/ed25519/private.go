@@ -3,6 +3,7 @@ package ed25519
 import (
 	"crypto/ed25519"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 
@@ -138,4 +139,11 @@ func (p PrivateKey) Seed() []byte {
 // Unwrap returns the underlying crypto/ed25519 private key.
 func (p PrivateKey) Unwrap() ed25519.PrivateKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p PrivateKey) JwkParams() map[string]string {
+	params := p.Public().(PublicKey).JwkParams()
+	params["d"] = base64.RawURLEncoding.EncodeToString(p.Seed())
+	return params
 }

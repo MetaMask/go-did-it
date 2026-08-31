@@ -3,6 +3,7 @@ package x25519
 import (
 	"crypto/ecdh"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -28,6 +29,17 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 		return nil, err
 	}
 	return &PublicKey{k: pub}, nil
+}
+
+// WrapPublicKey converts an already-parsed public key object — for X25519, a standard library
+// *ecdh.PublicKey on the X25519 curve — into a PublicKey. It is the inverse of Unwrap. The boolean
+// reports whether the given key belongs to this algorithm at all.
+func WrapPublicKey(key any) (*PublicKey, bool, error) {
+	k, ok := key.(*ecdh.PublicKey)
+	if !ok || k.Curve() != ecdh.X25519() {
+		return nil, false, nil
+	}
+	return &PublicKey{k: k}, true, nil
 }
 
 // PublicKeyFromEd25519 converts an ed25519 public key to a x25519 public key.
@@ -166,4 +178,13 @@ func reverseBytes(b []byte) []byte {
 // Unwrap returns the underlying crypto/ecdh public key.
 func (p *PublicKey) Unwrap() *ecdh.PublicKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p *PublicKey) JwkParams() map[string]string {
+	return map[string]string{
+		"kty": "OKP",
+		"crv": "X25519",
+		"x":   base64.RawURLEncoding.EncodeToString(p.ToBytes()),
+	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/secp256k1"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 // Specification: https://w3c-ccg.github.io/lds-ecdsa-secp256k1-2019/
@@ -18,6 +19,12 @@ const (
 	JsonLdContext        = "https://w3id.org/security/suites/secp256k1-2019/v1"
 	TypeVerification2019 = "EcdsaSecp256k1VerificationKey2019"
 )
+
+func init() {
+	methods.Register(TypeVerification2019, func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+		return NewVerificationKey2019FromJSON(data, kp)
+	})
+}
 
 var _ did.VerificationMethodSignature = &VerificationKey2019{}
 var _ did.VerificationMethodKeyAgreement = &VerificationKey2019{}
@@ -36,6 +43,46 @@ func NewVerificationKey2019(id string, pubkey *secp256k1.PublicKey, controller d
 	}
 }
 
+// NewVerificationKey2019FromJSON decodes an EcdsaSecp256k1VerificationKey2019 verification
+// method from JSON, using kp to decode and accept the publicKeyBase58 field. If kp is nil,
+// crypto.DefaultKeyPolicy is used.
+func NewVerificationKey2019FromJSON(data []byte, kp *crypto.KeyPolicy) (*VerificationKey2019, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
+	}
+	aux := struct {
+		ID              string `json:"id"`
+		Type            string `json:"type"`
+		Controller      string `json:"controller"`
+		PublicKeyBase58 string `json:"publicKeyBase58"`
+	}{}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return nil, err
+	}
+	if aux.Type != TypeVerification2019 {
+		return nil, errors.New("invalid type")
+	}
+	if len(aux.ID) == 0 {
+		return nil, errors.New("invalid id")
+	}
+	if !did.HasValidDIDSyntax(aux.Controller) {
+		return nil, errors.New("invalid controller")
+	}
+	pubBytes, err := base58.Decode(aux.PublicKeyBase58)
+	if err != nil {
+		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
+	}
+	pub, err := kp.PublicKeyFromBytes(secp256k1.MultibaseCode, pubBytes)
+	if err != nil {
+		return nil, fmt.Errorf("invalid publicKeyBase58: %w", err)
+	}
+	pubkey, ok := pub.(*secp256k1.PublicKey)
+	if !ok {
+		return nil, errors.New("publicKeyBase58 is not a secp256k1 key")
+	}
+	return &VerificationKey2019{id: aux.ID, pubkey: pubkey, controller: aux.Controller}, nil
+}
+
 func (vm VerificationKey2019) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		ID              string `json:"id"`
@@ -50,39 +97,9 @@ func (vm VerificationKey2019) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (vm *VerificationKey2019) UnmarshalJSON(bytes []byte) error {
-	aux := struct {
-		ID              string `json:"id"`
-		Type            string `json:"type"`
-		Controller      string `json:"controller"`
-		PublicKeyBase58 string `json:"publicKeyBase58"`
-	}{}
-	err := json.Unmarshal(bytes, &aux)
-	if err != nil {
-		return err
-	}
-	if aux.Type != vm.Type() {
-		return errors.New("invalid type")
-	}
-	vm.id = aux.ID
-	if len(vm.id) == 0 {
-		return errors.New("invalid id")
-	}
-	vm.controller = aux.Controller
-	if !did.HasValidDIDSyntax(vm.controller) {
-		return errors.New("invalid controller")
-	}
-
-	pubBytes, err := base58.Decode(aux.PublicKeyBase58)
-	if err != nil {
-		return fmt.Errorf("invalid publicKeyBase58: %w", err)
-	}
-	vm.pubkey, err = secp256k1.PublicKeyFromBytes(pubBytes)
-	if err != nil {
-		return fmt.Errorf("invalid publicKeyBase58: %w", err)
-	}
-
-	return nil
+// UnmarshalJSON always fails: decoding needs a crypto.KeyPolicy. See methods.ErrDirectUnmarshal.
+func (vm VerificationKey2019) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("%w: use secp256k1vm.NewVerificationKey2019FromJSON", methods.ErrDirectUnmarshal)
 }
 
 func (vm VerificationKey2019) ID() string {

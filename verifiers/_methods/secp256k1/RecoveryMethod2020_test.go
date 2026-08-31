@@ -8,13 +8,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it/crypto"
+	"github.com/MetaMask/go-did-it/crypto/ed25519"
 	secp256k1crypto "github.com/MetaMask/go-did-it/crypto/secp256k1"
 	"github.com/MetaMask/go-did-it/didtest"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 	secp256k1vm "github.com/MetaMask/go-did-it/verifiers/_methods/secp256k1"
 )
 
 // Test key material from:
 // https://github.com/decentralized-identity/EcdsaSecp256k1RecoverySignature2020/blob/master/docs/unlockedDID.json
+
+// recoveryPolicy accepts the only algorithm this method can ever use.
+var recoveryPolicy = crypto.NewKeyPolicy(secp256k1crypto.KeyType())
 
 func privKeyFromHex(t *testing.T, h string) *secp256k1crypto.PrivateKey {
 	t.Helper()
@@ -75,8 +80,8 @@ func TestRecoveryMethod2020_JsonRoundTrip_JWK(t *testing.T) {
 		}
 	}`
 
-	var vm secp256k1vm.RecoveryMethod2020
-	require.NoError(t, json.Unmarshal([]byte(data), &vm))
+	vm, err := secp256k1vm.NewRecoveryMethod2020FromJSON([]byte(data), recoveryPolicy)
+	require.NoError(t, err)
 
 	out, err := json.Marshal(vm)
 	require.NoError(t, err)
@@ -91,8 +96,8 @@ func TestRecoveryMethod2020_JsonRoundTrip_Hex(t *testing.T) {
 		"publicKeyHex": "027560af3387d375e3342a6968179ef3c6d04f5d33b2b611cf326d4708badd7770"
 	}`
 
-	var vm secp256k1vm.RecoveryMethod2020
-	require.NoError(t, json.Unmarshal([]byte(data), &vm))
+	vm, err := secp256k1vm.NewRecoveryMethod2020FromJSON([]byte(data), recoveryPolicy)
+	require.NoError(t, err)
 
 	out, err := json.Marshal(vm)
 	require.NoError(t, err)
@@ -107,8 +112,8 @@ func TestRecoveryMethod2020_JsonRoundTrip_EthereumAddress(t *testing.T) {
 		"ethereumAddress": "0xF3beAC30C498D9E26865F34fCAa57dBB935b0D74"
 	}`
 
-	var vm secp256k1vm.RecoveryMethod2020
-	require.NoError(t, json.Unmarshal([]byte(data), &vm))
+	vm, err := secp256k1vm.NewRecoveryMethod2020FromJSON([]byte(data), recoveryPolicy)
+	require.NoError(t, err)
 
 	out, err := json.Marshal(vm)
 	require.NoError(t, err)
@@ -123,12 +128,94 @@ func TestRecoveryMethod2020_JsonRoundTrip_BlockchainAccountId(t *testing.T) {
 		"blockchainAccountId": "eip155:1:0xa136D6b820E41858b57b0136514e75f4174ceA5f"
 	}`
 
-	var vm secp256k1vm.RecoveryMethod2020
-	require.NoError(t, json.Unmarshal([]byte(data), &vm))
+	vm, err := secp256k1vm.NewRecoveryMethod2020FromJSON([]byte(data), recoveryPolicy)
+	require.NoError(t, err)
 
 	out, err := json.Marshal(vm)
 	require.NoError(t, err)
 	require.JSONEq(t, data, string(out))
+}
+
+// The key policy applies to every variant: the whole method is secp256k1, including
+// the address-only variants that verify through key recovery.
+func TestRecoveryMethod2020_KeyPolicyEnforcement(t *testing.T) {
+	withSecp := crypto.NewKeyPolicy(secp256k1crypto.KeyType())
+	withoutSecp := crypto.NewKeyPolicy(ed25519.KeyType())
+
+	for name, data := range map[string]string{
+		"jwk": `{
+			"id": "did:example:123#vm-1",
+			"type": "EcdsaSecp256k1RecoveryMethod2020",
+			"controller": "did:example:123",
+			"publicKeyJwk": {
+				"crv": "secp256k1",
+				"kty": "EC",
+				"x": "dWCvM4fTdeM0KmloF57zxtBPXTOythHPMm1HCLrdd3A",
+				"y": "36uMVGM7hnw-N6GnjFcihWE3SkrhMLzzLCdPMXPEXlA"
+			}
+		}`,
+		"hex": `{
+			"id": "did:example:123#vm-2",
+			"type": "EcdsaSecp256k1RecoveryMethod2020",
+			"controller": "did:example:123",
+			"publicKeyHex": "027560af3387d375e3342a6968179ef3c6d04f5d33b2b611cf326d4708badd7770"
+		}`,
+		"ethereumAddress": `{
+			"id": "did:example:123#vm-3",
+			"type": "EcdsaSecp256k1RecoveryMethod2020",
+			"controller": "did:example:123",
+			"ethereumAddress": "0xF3beAC30C498D9E26865F34fCAa57dBB935b0D74"
+		}`,
+		"blockchainAccountId": `{
+			"id": "did:example:123#vm-4",
+			"type": "EcdsaSecp256k1RecoveryMethod2020",
+			"controller": "did:example:123",
+			"blockchainAccountId": "eip155:1:0xa136D6b820E41858b57b0136514e75f4174ceA5f"
+		}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := secp256k1vm.NewRecoveryMethod2020FromJSON([]byte(data), withSecp)
+			require.NoError(t, err)
+
+			_, err = secp256k1vm.NewRecoveryMethod2020FromJSON([]byte(data), withoutSecp)
+			require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
+		})
+	}
+}
+
+// An explicit JSON null does not count as present key material.
+func TestRecoveryMethod2020_NullJwk(t *testing.T) {
+	data := `{
+		"id": "did:example:123#vm-3",
+		"type": "EcdsaSecp256k1RecoveryMethod2020",
+		"controller": "did:example:123",
+		"publicKeyJwk": null,
+		"ethereumAddress": "0xF3beAC30C498D9E26865F34fCAa57dBB935b0D74"
+	}`
+	_, err := secp256k1vm.NewRecoveryMethod2020FromJSON([]byte(data), recoveryPolicy)
+	require.NoError(t, err)
+
+	// a lone null means no key material at all
+	data = `{
+		"id": "did:example:123#vm-1",
+		"type": "EcdsaSecp256k1RecoveryMethod2020",
+		"controller": "did:example:123",
+		"publicKeyJwk": null
+	}`
+	_, err = secp256k1vm.NewRecoveryMethod2020FromJSON([]byte(data), recoveryPolicy)
+	require.ErrorContains(t, err, "exactly one key material field must be present")
+}
+
+// json.Unmarshal must fail rather than quietly produce an empty verification method.
+func TestRecoveryMethod2020_UnmarshalJSONRefused(t *testing.T) {
+	data := `{
+		"id": "did:example:123#vm-3",
+		"type": "EcdsaSecp256k1RecoveryMethod2020",
+		"controller": "did:example:123",
+		"ethereumAddress": "0xF3beAC30C498D9E26865F34fCAa57dBB935b0D74"
+	}`
+	var vm secp256k1vm.RecoveryMethod2020
+	require.ErrorIs(t, json.Unmarshal([]byte(data), &vm), methods.ErrDirectUnmarshal)
 }
 
 // publicKeyJwk and publicKeyHex default to SHA-256 (ES256K-R spec).

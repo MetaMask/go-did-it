@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	_ "github.com/MetaMask/go-did-it/crypto/all"
 	"github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
 	"github.com/MetaMask/go-did-it/verifiers/_methods/jsonwebkey"
 	"github.com/MetaMask/go-did-it/verifiers/_methods/x25519"
@@ -55,7 +56,7 @@ func TestRoundTrip(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			doc, err := FromJsonBytes([]byte(tc.strDoc))
+			doc, err := FromJsonBytes([]byte(tc.strDoc), nil)
 			require.NoError(t, err)
 
 			tc.assertion(t, doc)

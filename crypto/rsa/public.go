@@ -4,6 +4,7 @@ import (
 	stdcrypto "crypto"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -45,6 +46,28 @@ func PublicKeyFromNE(n, e []byte) (*PublicKey, error) {
 	return &PublicKey{k: pub}, nil
 }
 
+// WrapPublicKey converts an already-parsed public key object — for RSA, a standard library
+// *rsa.PublicKey — into a PublicKey. It is the inverse of Unwrap. The boolean reports whether
+// the given key belongs to this algorithm at all. Note that a KeyPolicy applies its own size policy
+// on top of the library-wide [MinRsaKeyBits, MaxRsaKeyBits] bounds enforced here.
+func WrapPublicKey(key any) (*PublicKey, bool, error) {
+	k, ok := key.(*rsa.PublicKey)
+	if !ok {
+		return nil, false, nil
+	}
+	if k == nil || k.N == nil {
+		return nil, true, fmt.Errorf("invalid public key")
+	}
+	// Copy before validating, so that what we check is what we keep: rsa.PublicKey.N is a
+	// mutable *big.Int, and holding on to the caller's key would let it change size (or become
+	// malformed) after the KeyPolicy has accepted it. The ECDSA wrappers copy for the same reason.
+	cloned := &rsa.PublicKey{N: new(big.Int).Set(k.N), E: k.E}
+	if err := validatePublicKey(cloned); err != nil {
+		return nil, true, err
+	}
+	return &PublicKey{k: cloned}, true, nil
+}
+
 // PublicKeyFromPublicKeyMultibase decodes the public key from its Multibase form
 func PublicKeyFromPublicKeyMultibase(multibase string) (*PublicKey, error) {
 	code, bytes, err := helpers.PublicKeyMultibaseDecode(multibase)
@@ -54,7 +77,8 @@ func PublicKeyFromPublicKeyMultibase(multibase string) (*PublicKey, error) {
 	if code != MultibaseCode {
 		return nil, fmt.Errorf("invalid code")
 	}
-	return PublicKeyFromX509DER(bytes)
+	// The did:key spec encodes the RSA public key as PKCS#1 (RSAPublicKey) DER.
+	return PublicKeyFromPKCS1DER(bytes)
 }
 
 // PublicKeyFromX509DER decodes an X.509 DER (binary) encoded public key.
@@ -93,10 +117,10 @@ func validatePublicKey(pub *rsa.PublicKey) error {
 		return fmt.Errorf("invalid modulus")
 	}
 	if pub.N.BitLen() < MinRsaKeyBits {
-		return fmt.Errorf("key length too small")
+		return fmt.Errorf("%w: key length too small", crypto.ErrKeyNotAccepted)
 	}
 	if pub.N.BitLen() > MaxRsaKeyBits {
-		return fmt.Errorf("key length too large")
+		return fmt.Errorf("%w: key length too large", crypto.ErrKeyNotAccepted)
 	}
 	if pub.N.Bit(0) == 0 {
 		return fmt.Errorf("modulus must be odd")
@@ -133,7 +157,8 @@ func (p *PublicKey) Equal(other crypto.PublicKey) bool {
 }
 
 func (p *PublicKey) ToPublicKeyMultibase() string {
-	bytes := p.ToX509DER()
+	// The did:key spec encodes the RSA public key as PKCS#1 (RSAPublicKey) DER.
+	bytes := x509.MarshalPKCS1PublicKey(p.k)
 	return helpers.PublicKeyMultibaseEncode(MultibaseCode, bytes)
 }
 
@@ -177,4 +202,13 @@ func (p *PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.Signing
 // Unwrap returns the underlying crypto/rsa public key.
 func (p *PublicKey) Unwrap() *rsa.PublicKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p *PublicKey) JwkParams() map[string]string {
+	return map[string]string{
+		"kty": "RSA",
+		"n":   base64.RawURLEncoding.EncodeToString(p.NBytes()),
+		"e":   base64.RawURLEncoding.EncodeToString(p.EBytes()),
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it"
+	_ "github.com/MetaMask/go-did-it/crypto/all"
 )
 
 func TestParseDIDPlc(t *testing.T) {

@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/MetaMask/go-did-it"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/jwk"
 	"github.com/MetaMask/go-did-it/crypto/secp256k1"
+	methods "github.com/MetaMask/go-did-it/verifiers/_methods"
 )
 
 // Specification: https://identity.foundation/EcdsaSecp256k1RecoverySignature2020/
@@ -19,6 +21,12 @@ const (
 	JsonLdContext2020 = "https://w3id.org/security/suites/secp256k1recovery-2020/v2"
 	TypeRecovery2020  = "EcdsaSecp256k1RecoveryMethod2020"
 )
+
+func init() {
+	methods.Register(TypeRecovery2020, func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+		return NewRecoveryMethod2020FromJSON(data, kp)
+	})
+}
 
 var _ did.VerificationMethodSignature = &RecoveryMethod2020{}
 
@@ -69,6 +77,98 @@ func NewRecoveryMethod2020FromBlockchainAccountId(id string, blockchainAccountId
 	}
 }
 
+// NewRecoveryMethod2020FromJSON decodes an EcdsaSecp256k1RecoveryMethod2020 verification method
+// from JSON. All variants require secp256k1 to be allowed by kp: verification always performs
+// secp256k1 signature recovery, even for the address-only variants that carry no key
+// material. If kp is nil, crypto.DefaultKeyPolicy is used.
+func NewRecoveryMethod2020FromJSON(data []byte, kp *crypto.KeyPolicy) (*RecoveryMethod2020, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
+	}
+	aux := struct {
+		ID                  string          `json:"id"`
+		Type                string          `json:"type"`
+		Controller          string          `json:"controller"`
+		PublicKeyJwk        json.RawMessage `json:"publicKeyJwk,omitempty"`
+		PublicKeyHex        string          `json:"publicKeyHex,omitempty"`
+		EthereumAddress     string          `json:"ethereumAddress,omitempty"`
+		BlockchainAccountId string          `json:"blockchainAccountId,omitempty"`
+	}{}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return nil, err
+	}
+	if aux.Type != TypeRecovery2020 {
+		return nil, errors.New("invalid type")
+	}
+	if len(aux.ID) == 0 {
+		return nil, errors.New("invalid id")
+	}
+	if !did.HasValidDIDSyntax(aux.Controller) {
+		return nil, errors.New("invalid controller")
+	}
+
+	// an explicit JSON null must not count as present key material
+	hasJwk := len(aux.PublicKeyJwk) > 0 && string(aux.PublicKeyJwk) != "null"
+
+	count := 0
+	if hasJwk {
+		count++
+	}
+	if aux.PublicKeyHex != "" {
+		count++
+	}
+	if aux.EthereumAddress != "" {
+		count++
+	}
+	if aux.BlockchainAccountId != "" {
+		count++
+	}
+	if count != 1 {
+		return nil, fmt.Errorf("exactly one key material field must be present, got %d", count)
+	}
+
+	vm := &RecoveryMethod2020{id: aux.ID, controller: aux.Controller}
+	switch {
+	case hasJwk:
+		pj, err := jwk.PublicFromJSON(aux.PublicKeyJwk, kp)
+		if err != nil {
+			return nil, fmt.Errorf("invalid publicKeyJwk: %w", err)
+		}
+		if _, ok := pj.Pubkey.(*secp256k1.PublicKey); !ok {
+			return nil, errors.New("publicKeyJwk must contain a secp256k1 key")
+		}
+		vm.pubKeyJwk = pj
+	case aux.PublicKeyHex != "":
+		b, err := hex.DecodeString(aux.PublicKeyHex)
+		if err != nil {
+			return nil, fmt.Errorf("invalid publicKeyHex: %w", err)
+		}
+		pub, err := kp.PublicKeyFromBytes(secp256k1.MultibaseCode, b)
+		if err != nil {
+			return nil, fmt.Errorf("invalid publicKeyHex: %w", err)
+		}
+		pubkey, ok := pub.(*secp256k1.PublicKey)
+		if !ok {
+			return nil, errors.New("publicKeyHex is not a secp256k1 key")
+		}
+		vm.pubKeyHex = pubkey
+	case aux.EthereumAddress != "":
+		// The address-only variants carry no key material, but verification still performs
+		// secp256k1 signature recovery, so the algorithm must be allowed by the key policy.
+		if !slices.ContainsFunc(kp.KeyTypes(), func(kt crypto.KeyType) bool { return kt.Code == secp256k1.MultibaseCode }) {
+			return nil, fmt.Errorf("%w: secp256k1", crypto.ErrKeyNotAccepted)
+		}
+		vm.ethAddress = aux.EthereumAddress
+	case aux.BlockchainAccountId != "":
+		if !slices.ContainsFunc(kp.KeyTypes(), func(kt crypto.KeyType) bool { return kt.Code == secp256k1.MultibaseCode }) {
+			return nil, fmt.Errorf("%w: secp256k1", crypto.ErrKeyNotAccepted)
+		}
+		vm.blockchainAcctId = aux.BlockchainAccountId
+	}
+
+	return vm, nil
+}
+
 func (vm RecoveryMethod2020) MarshalJSON() ([]byte, error) {
 	out := struct {
 		ID                  string         `json:"id"`
@@ -96,76 +196,9 @@ func (vm RecoveryMethod2020) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-func (vm *RecoveryMethod2020) UnmarshalJSON(data []byte) error {
-	aux := struct {
-		ID                  string         `json:"id"`
-		Type                string         `json:"type"`
-		Controller          string         `json:"controller"`
-		PublicKeyJwk        *jwk.PublicJwk `json:"publicKeyJwk,omitempty"`
-		PublicKeyHex        string         `json:"publicKeyHex,omitempty"`
-		EthereumAddress     string         `json:"ethereumAddress,omitempty"`
-		BlockchainAccountId string         `json:"blockchainAccountId,omitempty"`
-	}{}
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-	if aux.Type != vm.Type() {
-		return errors.New("invalid type")
-	}
-	vm.id = aux.ID
-	if len(vm.id) == 0 {
-		return errors.New("invalid id")
-	}
-	vm.controller = aux.Controller
-	if !did.HasValidDIDSyntax(vm.controller) {
-		return errors.New("invalid controller")
-	}
-
-	count := 0
-	if aux.PublicKeyJwk != nil {
-		count++
-	}
-	if aux.PublicKeyHex != "" {
-		count++
-	}
-	if aux.EthereumAddress != "" {
-		count++
-	}
-	if aux.BlockchainAccountId != "" {
-		count++
-	}
-	if count != 1 {
-		return fmt.Errorf("exactly one key material field must be present, got %d", count)
-	}
-
-	// reset in case of unmarshalling into an existing struct
-	vm.pubKeyJwk = nil
-	vm.pubKeyHex = nil
-	vm.ethAddress = ""
-	vm.blockchainAcctId = ""
-	switch {
-	case aux.PublicKeyJwk != nil:
-		if _, ok := aux.PublicKeyJwk.Pubkey.(*secp256k1.PublicKey); !ok {
-			return errors.New("publicKeyJwk must contain a secp256k1 key")
-		}
-		vm.pubKeyJwk = aux.PublicKeyJwk
-	case aux.PublicKeyHex != "":
-		b, err := hex.DecodeString(aux.PublicKeyHex)
-		if err != nil {
-			return fmt.Errorf("invalid publicKeyHex: %w", err)
-		}
-		pubkey, err := secp256k1.PublicKeyFromBytes(b)
-		if err != nil {
-			return fmt.Errorf("invalid publicKeyHex: %w", err)
-		}
-		vm.pubKeyHex = pubkey
-	case aux.EthereumAddress != "":
-		vm.ethAddress = aux.EthereumAddress
-	case aux.BlockchainAccountId != "":
-		vm.blockchainAcctId = aux.BlockchainAccountId
-	}
-
-	return nil
+// UnmarshalJSON always fails: decoding needs a crypto.KeyPolicy. See methods.ErrDirectUnmarshal.
+func (vm RecoveryMethod2020) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("%w: use secp256k1vm.NewRecoveryMethod2020FromJSON", methods.ErrDirectUnmarshal)
 }
 
 func (vm RecoveryMethod2020) ID() string {

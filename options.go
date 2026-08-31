@@ -3,10 +3,13 @@ package did
 import (
 	"context"
 	"net/http"
+
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
 type ResolutionOpts struct {
 	ctx                    context.Context
+	keyPolicy              *crypto.KeyPolicy
 	hintVerificationMethod []string
 	client                 HttpClient
 }
@@ -16,6 +19,13 @@ func (opts *ResolutionOpts) Context() context.Context {
 		return opts.ctx
 	}
 	return context.Background()
+}
+
+func (opts *ResolutionOpts) KeyPolicy() *crypto.KeyPolicy {
+	if opts.keyPolicy == nil {
+		return crypto.DefaultKeyPolicy
+	}
+	return opts.keyPolicy
 }
 
 func (opts *ResolutionOpts) HasVerificationMethodHint(hint string) bool {
@@ -49,6 +59,16 @@ type ResolutionOption func(opts *ResolutionOpts)
 func WithResolutionContext(ctx context.Context) ResolutionOption {
 	return func(opts *ResolutionOpts) {
 		opts.ctx = ctx
+	}
+}
+
+// WithKeyPolicy provides a KeyPolicy, the set of cryptographic key algorithms
+// allowed during resolution. If the DID to resolve has an algorithm not accepted
+// by this policy, resolution will fail.
+// This is a way for the caller to control what algorithms are deemed safe or expected.
+func WithKeyPolicy(policy *crypto.KeyPolicy) ResolutionOption {
+	return func(opts *ResolutionOpts) {
+		opts.keyPolicy = policy
 	}
 }
 

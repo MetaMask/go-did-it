@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -49,6 +50,18 @@ func PublicKeyFromXY(x, y []byte) (*PublicKey, error) {
 		return nil, fmt.Errorf("invalid P-521 public key")
 	}
 	return pub, nil
+}
+
+// WrapPublicKey converts an already-parsed public key object — for P-521, a standard library
+// *ecdsa.PublicKey on the P-521 curve — into a PublicKey. It is the inverse of Unwrap. The boolean
+// reports whether the given key belongs to this algorithm at all.
+func WrapPublicKey(key any) (*PublicKey, bool, error) {
+	k, ok := key.(*ecdsa.PublicKey)
+	if !ok || k.Curve != elliptic.P521() {
+		return nil, false, nil
+	}
+	pub, err := PublicKeyFromXY(k.X.Bytes(), k.Y.Bytes())
+	return pub, true, err
 }
 
 // PublicKeyFromPublicKeyMultibase decodes the public key from its Multibase form
@@ -196,4 +209,14 @@ func (p *PublicKey) verify(params crypto.SigningOpts, message, sigAsn1 []byte) b
 // Unwrap returns the underlying crypto/ecdsa public key.
 func (p *PublicKey) Unwrap() *ecdsa.PublicKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p *PublicKey) JwkParams() map[string]string {
+	return map[string]string{
+		"kty": "EC",
+		"crv": "P-521",
+		"x":   base64.RawURLEncoding.EncodeToString(p.XBytes()),
+		"y":   base64.RawURLEncoding.EncodeToString(p.YBytes()),
+	}
 }

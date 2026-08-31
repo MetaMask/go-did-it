@@ -10,7 +10,37 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MetaMask/go-did-it"
+	"github.com/MetaMask/go-did-it/crypto"
+	"github.com/MetaMask/go-did-it/crypto/ed25519"
+	"github.com/MetaMask/go-did-it/crypto/secp256k1"
 )
+
+func TestWithKeyPolicy(t *testing.T) {
+	// current resolved /data for did:plc:ewvi7nxzyoun6zhxrhs64oiz,
+	// whose "atproto" verification method holds a secp256k1 key.
+	resolvedData := `{"did":"did:plc:ewvi7nxzyoun6zhxrhs64oiz","verificationMethods":{"atproto":"did:key:zQ3shunBKsXixLxKtC5qeSG9E4J5RkGN57im31pcTzbNQnm5w"},"rotationKeys":["did:key:zQ3shhCGUqDKjStzuDxPkTxN6ujddP4RkEKJJouJGRRkaLGbg","did:key:zQ3shpKnbdPx3g3CmPf5cRVTPe1HtSwVn5ish3wSnDPQCbLJK"],"alsoKnownAs":["at://atproto.com"],"services":{"atproto_pds":{"type":"AtprotoPersonalDataServer","endpoint":"https://enoki.us-east.host.bsky.network"}}}`
+
+	d, err := did.Parse("did:plc:ewvi7nxzyoun6zhxrhs64oiz")
+	require.NoError(t, err)
+
+	// A KeyPolicy allowing secp256k1: resolution succeeds.
+	doc, err := d.Document(
+		did.WithHttpClient(&MockHTTPClient{resp: resolvedData}),
+		did.WithKeyPolicy(crypto.NewKeyPolicy(secp256k1.KeyType())),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+
+	// A KeyPolicy allowing only Ed25519: the secp256k1 key is not in the set, so resolution fails.
+	_, err = d.Document(
+		did.WithHttpClient(&MockHTTPClient{resp: resolvedData}),
+		did.WithKeyPolicy(crypto.NewKeyPolicy(ed25519.KeyType())),
+	)
+	require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
+	// The DID and the document it resolved to are well-formed: declining the key algorithm is
+	// the caller's policy, not a syntax problem, so it must not be reported as an invalid DID.
+	require.NotErrorIs(t, err, did.ErrInvalidDid)
+}
 
 func TestDocument(t *testing.T) {
 	// current resolved /data for did:plc:ewvi7nxzyoun6zhxrhs64oiz
@@ -53,7 +83,10 @@ func TestDocument(t *testing.T) {
 	d, err := did.Parse("did:plc:ewvi7nxzyoun6zhxrhs64oiz")
 	require.NoError(t, err)
 
-	doc, err := d.Document(did.WithHttpClient(mockClient))
+	doc, err := d.Document(
+		did.WithHttpClient(mockClient),
+		did.WithKeyPolicy(crypto.NewKeyPolicy(secp256k1.KeyType())),
+	)
 	require.NoError(t, err)
 
 	docBytes, err := json.Marshal(doc)

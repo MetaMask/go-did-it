@@ -4,6 +4,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
 const (
@@ -33,3 +35,22 @@ const (
 	pemPubBlockType  = "PUBLIC KEY"
 	pemPrivBlockType = "PRIVATE KEY"
 )
+
+// KeyType returns the crypto.KeyType describing P-384, to be added to a crypto.KeyPolicy.
+func KeyType() crypto.KeyType {
+	return crypto.KeyType{
+		Name:         "P-384",
+		Code:         MultibaseCode,
+		DecodePublic: func(b []byte) (crypto.PublicKey, error) { return crypto.ToPub(PublicKeyFromBytes(b)) },
+		Matches:      func(key crypto.PublicKey) bool { _, ok := key.(*PublicKey); return ok },
+		Wrap:         func(key any) (crypto.PublicKey, bool, error) { return crypto.ToWrap(WrapPublicKey(key)) },
+		JwkKty:       "EC",
+		JwkCrv:       "P-384",
+		DecodeJwkPublic: func(params map[string][]byte) (crypto.PublicKey, error) {
+			return crypto.ToPub(PublicKeyFromXY(params["x"], params["y"]))
+		},
+		DecodeJwkPrivate: func(params map[string][]byte) (crypto.PrivateKey, error) {
+			return crypto.ToPriv(PrivateKeyFromBytes(params["d"]))
+		},
+	}
+}

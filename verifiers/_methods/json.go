@@ -2,18 +2,53 @@ package methods
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/MetaMask/go-did-it"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/ed25519"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/jsonwebkey"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/multikey"
-	p256vm "github.com/MetaMask/go-did-it/verifiers/_methods/p256"
-	secp256k1vm "github.com/MetaMask/go-did-it/verifiers/_methods/secp256k1"
-	"github.com/MetaMask/go-did-it/verifiers/_methods/x25519"
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
-func UnmarshalJSON(data []byte) (did.VerificationMethod, error) {
+// ErrDirectUnmarshal is returned by the UnmarshalJSON method of every verification method type.
+// Those methods exist only to fail closed: encoding/json cannot supply the crypto.KeyPolicy that
+// decoding key material requires, and without them json.Unmarshal would silently succeed and leave
+// a zero-value verification method (the struct fields are unexported, so there is nothing to fill).
+// Decode through the per-type FromJSON functions or through UnmarshalJSON in this package instead.
+var ErrDirectUnmarshal = errors.New("a verification method cannot be decoded with encoding/json: it needs a crypto.KeyPolicy to control which key algorithms are accepted")
+
+// FromJsonFunc decodes a verification method of a single type from JSON. kp is never nil.
+// Implementations must decode any key material through kp (never by calling an algorithm
+// package directly), so that disallowed algorithms are rejected before their key data is
+// even parsed. The registry itself carries no policy: which method types are decodable is
+// a format capability controlled by imports, while which key algorithms are accepted is
+// controlled solely by kp.
+type FromJsonFunc func(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error)
+
+// registry maps verification method types (e.g. "Multikey") to their decoding function.
+// It is typically populated by the verification method packages' init(): importing a
+// verification method package registers its types.
+var (
+	mu       sync.RWMutex
+	registry = map[string]FromJsonFunc{}
+)
+
+// Register records the decoding function for a verification method type. It is safe to
+// call concurrently.
+func Register(vmType string, fn FromJsonFunc) {
+	mu.Lock()
+	defer mu.Unlock()
+	registry[vmType] = fn
+}
+
+// UnmarshalJSON decodes a verification method from JSON. Only verification method types
+// registered with Register (done by importing their package) can be decoded. The key is
+// decoded and accepted according to kp; if kp is nil, crypto.DefaultKeyPolicy is used.
+func UnmarshalJSON(data []byte, kp *crypto.KeyPolicy) (did.VerificationMethod, error) {
+	if kp == nil {
+		kp = crypto.DefaultKeyPolicy
+	}
+
 	var aux struct {
 		Type string
 	}
@@ -21,32 +56,16 @@ func UnmarshalJSON(data []byte) (did.VerificationMethod, error) {
 		return nil, err
 	}
 
-	var res did.VerificationMethod
-	switch aux.Type {
-	case ed25519vm.Type2018:
-		res = &ed25519vm.VerificationKey2018{}
-	case ed25519vm.Type2020:
-		res = &ed25519vm.VerificationKey2020{}
-	case multikey.Type:
-		res = &multikey.MultiKey{}
-	case p256vm.Type2021:
-		res = &p256vm.Key2021{}
-	case secp256k1vm.TypeVerification2019:
-		res = &secp256k1vm.VerificationKey2019{}
-	case secp256k1vm.TypeRecovery2020:
-		res = &secp256k1vm.RecoveryMethod2020{}
-	case x25519vm.Type2019:
-		res = &x25519vm.KeyAgreementKey2019{}
-	case x25519vm.Type2020:
-		res = &x25519vm.KeyAgreementKey2020{}
-	case jsonwebkey.Type:
-		res = &jsonwebkey.JsonWebKey2020{}
-	default:
+	mu.RLock()
+	fn, ok := registry[aux.Type]
+	empty := len(registry) == 0
+	mu.RUnlock()
+	if !ok {
+		if empty {
+			return nil, fmt.Errorf("unknown verification type: %s (no verification method type is registered: import the packages you support, or verifiers/_methods/all)", aux.Type)
+		}
 		return nil, fmt.Errorf("unknown verification type: %s", aux.Type)
 	}
 
-	if err := json.Unmarshal(data, &res); err != nil {
-		return nil, err
-	}
-	return res, nil
+	return fn(data, kp)
 }

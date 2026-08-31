@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 
@@ -32,6 +33,18 @@ func PublicKeyFromBytes(b []byte) (PublicKey, error) {
 	}
 	// make a copy
 	return PublicKey{k: append([]byte{}, b...)}, nil
+}
+
+// WrapPublicKey converts an already-parsed public key object — for Ed25519, a standard library
+// ed25519.PublicKey — into a PublicKey. It is the inverse of Unwrap. The boolean reports whether
+// the given key belongs to this algorithm at all.
+func WrapPublicKey(key any) (PublicKey, bool, error) {
+	k, ok := key.(ed25519.PublicKey)
+	if !ok {
+		return PublicKey{}, false, nil
+	}
+	pub, err := PublicKeyFromBytes(k)
+	return pub, true, err
 }
 
 // PublicKeyFromPublicKeyMultibase decodes the public key from its PublicKeyMultibase form
@@ -153,4 +166,13 @@ func (p PublicKey) VerifyASN1(message, signature []byte, opts ...crypto.SigningO
 // Unwrap returns the underlying crypto/ed25519 public key.
 func (p PublicKey) Unwrap() ed25519.PublicKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p PublicKey) JwkParams() map[string]string {
+	return map[string]string{
+		"kty": "OKP",
+		"crv": "Ed25519",
+		"x":   base64.RawURLEncoding.EncodeToString(p.ToBytes()),
+	}
 }

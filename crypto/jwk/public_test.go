@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	// register all key algorithms in the DefaultKeyPolicy for the whole test package
+	_ "github.com/MetaMask/go-did-it/crypto/all"
 )
 
 // Origin: https://github.com/w3c-ccg/did-key-spec/tree/main/test-vectors

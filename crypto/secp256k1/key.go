@@ -4,6 +4,8 @@ import (
 	"encoding/asn1"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
+
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
 const (
@@ -46,3 +48,22 @@ var (
 	// Curve is secp256k1 (OID: 1.3.132.0.10)
 	oidSecp256k1 = asn1.ObjectIdentifier{1, 3, 132, 0, 10}
 )
+
+// KeyType returns the crypto.KeyType describing secp256k1, to be added to a crypto.KeyPolicy.
+func KeyType() crypto.KeyType {
+	return crypto.KeyType{
+		Name:         "secp256k1",
+		Code:         MultibaseCode,
+		DecodePublic: func(b []byte) (crypto.PublicKey, error) { return crypto.ToPub(PublicKeyFromBytes(b)) },
+		Matches:      func(key crypto.PublicKey) bool { _, ok := key.(*PublicKey); return ok },
+		Wrap:         func(key any) (crypto.PublicKey, bool, error) { return crypto.ToWrap(WrapPublicKey(key)) },
+		JwkKty:       "EC",
+		JwkCrv:       "secp256k1",
+		DecodeJwkPublic: func(params map[string][]byte) (crypto.PublicKey, error) {
+			return crypto.ToPub(PublicKeyFromXY(params["x"], params["y"]))
+		},
+		DecodeJwkPrivate: func(params map[string][]byte) (crypto.PrivateKey, error) {
+			return crypto.ToPriv(PrivateKeyFromBytes(params["d"]))
+		},
+	}
+}

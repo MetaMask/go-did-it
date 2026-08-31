@@ -3,6 +3,7 @@ package secp256k1
 import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 
@@ -255,4 +256,11 @@ func (p *PrivateKey) KeyExchange(remote crypto.PublicKey) ([]byte, error) {
 // Unwrap returns the underlying dcrd/dcrec/secp256k1/v4 private key.
 func (p *PrivateKey) Unwrap() *secp256k1.PrivateKey {
 	return p.k
+}
+
+// JwkParams returns the JWK parameters (RFC 7517/7518) describing the key.
+func (p *PrivateKey) JwkParams() map[string]string {
+	params := p.Public().(*PublicKey).JwkParams()
+	params["d"] = base64.RawURLEncoding.EncodeToString(p.ToBytes())
+	return params
 }

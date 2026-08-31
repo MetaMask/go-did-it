@@ -4,6 +4,8 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"math/big"
+
+	"github.com/MetaMask/go-did-it/crypto"
 )
 
 const (
@@ -47,3 +49,22 @@ var curve25519P = new(big.Int).SetBytes([]byte{
 var curve25519PMinusOne = new(big.Int).Sub(curve25519P, big.NewInt(1))
 
 var one = big.NewInt(1)
+
+// KeyType returns the crypto.KeyType describing X25519, to be added to a crypto.KeyPolicy.
+func KeyType() crypto.KeyType {
+	return crypto.KeyType{
+		Name:         "X25519",
+		Code:         MultibaseCode,
+		DecodePublic: func(b []byte) (crypto.PublicKey, error) { return crypto.ToPub(PublicKeyFromBytes(b)) },
+		Matches:      func(key crypto.PublicKey) bool { _, ok := key.(*PublicKey); return ok },
+		Wrap:         func(key any) (crypto.PublicKey, bool, error) { return crypto.ToWrap(WrapPublicKey(key)) },
+		JwkKty:       "OKP",
+		JwkCrv:       "X25519",
+		DecodeJwkPublic: func(params map[string][]byte) (crypto.PublicKey, error) {
+			return crypto.ToPub(PublicKeyFromBytes(params["x"]))
+		},
+		DecodeJwkPrivate: func(params map[string][]byte) (crypto.PrivateKey, error) {
+			return crypto.ToPriv(PrivateKeyFromBytes(params["d"]))
+		},
+	}
+}
