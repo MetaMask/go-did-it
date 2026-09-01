@@ -1,6 +1,7 @@
 package didplcctl
 
 import (
+	"bytes"
 	"context"
 	"crypto/elliptic"
 	"encoding/base64"
@@ -445,6 +446,53 @@ func TestVerifySigReportsKeyAuthority(t *testing.T) {
 	t.Run("a padded signature is refused", func(t *testing.T) {
 		_, err := verifySig(keys, []byte("payload"), "AAAA=")
 		require.ErrorContains(t, err, "decoding signature")
+	})
+
+	// The other half of the same rule, and the one a lax base64 decoder lets through: 64
+	// signature bytes leave 4 spare bits in the last base64 character, so 16 strings
+	// decode to the same signature. Only the one with those bits zeroed is the signature;
+	// the rest would give the operation a second CID that verifies just as well.
+	t.Run("a non-canonical signature encoding is refused", func(t *testing.T) {
+		msg := []byte("payload")
+		sig, err := signToBase64URL(firstPriv, msg)
+		require.NoError(t, err)
+		raw, err := sigEncoding.DecodeString(sig)
+		require.NoError(t, err)
+
+		var found int
+		for _, c := range "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" {
+			variant := sig[:len(sig)-1] + string(c)
+			if variant == sig {
+				continue
+			}
+			// Only the variants that carry the same signature bytes are the point: a lax
+			// decoder accepts them, and the ECDSA maths then verifies them.
+			decoded, err := base64.RawURLEncoding.DecodeString(variant)
+			if err != nil || !bytes.Equal(decoded, raw) {
+				continue
+			}
+			found++
+			_, err = verifySig(keys, msg, variant)
+			require.ErrorIs(t, err, ErrInvalidChain, "variant %q must be refused", variant[len(variant)-4:])
+			require.ErrorContains(t, err, "decoding signature")
+		}
+		require.Equal(t, 15, found, "a 64-byte signature has 15 other spellings")
+	})
+
+	// Go's base64 decoder skips '\r' and '\n' wherever they appear, so strict decoding
+	// alone lets a signature carry whitespace, decode to the right bytes, and still change
+	// the operation's CID.
+	t.Run("a signature carrying whitespace is refused", func(t *testing.T) {
+		msg := []byte("payload")
+		sig, err := signToBase64URL(firstPriv, msg)
+		require.NoError(t, err)
+		require.NoError(t, func() error { _, err := verifySig(keys, msg, sig); return err }())
+
+		for _, variant := range []string{sig + "\n", "\n" + sig, sig + "\r\n", sig[:40] + "\n" + sig[40:]} {
+			_, err := verifySig(keys, msg, variant)
+			require.ErrorIs(t, err, ErrInvalidChain, "variant %q must be refused", variant)
+			require.ErrorContains(t, err, "not canonically encoded")
+		}
 	})
 
 	t.Run("no authorized key at all", func(t *testing.T) {

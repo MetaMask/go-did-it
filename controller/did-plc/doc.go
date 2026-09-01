@@ -165,6 +165,22 @@
 //
 // [Controller.Audit] always replays in full, whatever the setting.
 //
+// What no mode checks is the structural limits in spec.go: operation size, key and entry
+// counts, the lengths of names and strings, the syntax of services. Those bound what this
+// package writes, and a history read back is held to none of them. That is not laxity but
+// the protocol: the registry applies those limits only to an operation being submitted,
+// never when serving a stored log, so the verificationMethods cap introduced in mid-2025
+// leaves every operation accepted before it valid forever. A reader enforcing them would
+// refuse real DIDs — the interop suite includes a valid log whose last operation carries no
+// rotation keys at all, which only replays because nothing here applies minRotationKeys to
+// what it reads.
+//
+// So a [State] read from an old DID may be one this package declines to write back
+// unchanged, and there is no way around that: the registry would refuse it too. The
+// exceptions are the two shapes a real history is known to contain, which stay writable —
+// duplicate rotation keys are accepted on both paths, and only an empty rotation key list is
+// refused, by this package alone and to avoid freezing the DID for good.
+//
 // # Key types
 //
 // Rotation keys must be secp256k1 or P-256, as required by the specification; see

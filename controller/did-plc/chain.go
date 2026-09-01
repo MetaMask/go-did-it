@@ -112,15 +112,28 @@ func (c chain) head() (Head, error) {
 	return Head{CID: cid, State: *last.State, rotKeys: last.prepared.rotKeys}, nil
 }
 
-// validate replays the chain and checks every rule the registry is supposed to have
-// enforced when it accepted each operation: the DID is the hash of the genesis operation,
-// every operation points at an operation standing at the time, and every operation is
-// signed by a rotation key of the one it points at. For an operation that nullified
-// others it also checks that the signing key outranked the one that signed the first
-// operation nullified, and that it landed inside the recovery window.
+// validate replays the chain and checks the rules that decide who controls the DID: the
+// DID is the hash of the genesis operation, every operation points at an operation
+// standing at the time, and every operation is signed by a rotation key of the one it
+// points at. For an operation that nullified others it also checks that the signing key
+// outranked the one that signed the first operation nullified, and that it landed inside
+// the recovery window.
 //
 // Finally the nullified flags the registry reported are compared against the replay, so a
 // registry cannot quietly disown an operation it did accept.
+//
+// What it deliberately does not check is the structural limits in spec.go — operation size,
+// key and entry counts, string lengths, the syntax of services. Those bound what this
+// package *writes*; a history is held to none of them, because the registry itself applies
+// them only to an incoming operation and never when serving a stored log, so an operation
+// predating a limit stays valid forever.
+//
+// minRotationKeys is not one of the registry's limits at all, only this package's guard
+// against writing an operation that would freeze a DID, and the interop suite has a valid
+// log whose last operation carries no rotation keys — so applying it here would make a real
+// DID unreadable. See TestInteropPinsTheReadPathLenient, which also pins the converse: a
+// duplicate rotation key is accepted on both paths, since the registry has never rejected
+// one and real DIDs carry them.
 //
 // The timestamps this relies on are the registry's own and are not signed, so the window
 // and ordering checks hold the registry to its account of events rather than proving

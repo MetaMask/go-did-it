@@ -35,7 +35,6 @@ func (c *codec) rotationKeysToWire(keys []crypto.PublicKey) ([]rotationKey, erro
 		return nil, fmt.Errorf("rotation keys: need %d to %d keys, got %d", minRotationKeys, maxRotationKeys, len(keys))
 	}
 	out := make([]rotationKey, len(keys))
-	seen := make(map[string]int, len(keys))
 	for i, key := range keys {
 		if key == nil {
 			return nil, fmt.Errorf("rotation key %d is nil", i)
@@ -47,12 +46,7 @@ func (c *codec) rotationKeysToWire(keys []crypto.PublicKey) ([]rotationKey, erro
 		if !ok {
 			return nil, fmt.Errorf("rotation key %d: %T cannot verify raw signatures", i, key)
 		}
-		dk := didKeyString(key)
-		if j, dup := seen[dk]; dup {
-			return nil, fmt.Errorf("rotation keys %d and %d are the same key: the specification forbids duplicates", j, i)
-		}
-		seen[dk] = i
-		out[i] = rotationKey{didKey: dk, pub: verifier}
+		out[i] = rotationKey{didKey: didKeyString(key), pub: verifier}
 	}
 	return out, nil
 }
@@ -75,7 +69,12 @@ func (c *codec) verificationMethodsToWire(vms map[string]crypto.PublicKey) (map[
 		if err := c.vmPolicy.CheckKey(key); err != nil {
 			return nil, fmt.Errorf("verification method %q: %w", name, err)
 		}
-		out[name] = didKeyString(key)
+		dk := didKeyString(key)
+		if len(dk) > maxDidKeyLength {
+			return nil, fmt.Errorf("verification method %q: did:key is %d characters, over the %d limit",
+				name, len(dk), maxDidKeyLength)
+		}
+		out[name] = dk
 	}
 	return out, nil
 }

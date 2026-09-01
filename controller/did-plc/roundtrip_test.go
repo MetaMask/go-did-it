@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/MetaMask/go-did-it/controller/did-plc/internal/dagcbor"
 	"github.com/MetaMask/go-did-it/crypto"
 	"github.com/MetaMask/go-did-it/crypto/ed25519"
 	"github.com/MetaMask/go-did-it/crypto/p256"
@@ -421,9 +422,18 @@ func TestValidationErrors(t *testing.T) {
 		require.ErrorContains(t, create(State{RotationKeys: keys}), "rotation keys")
 	})
 
-	t.Run("duplicate rotation keys", func(t *testing.T) {
-		err := create(State{RotationKeys: []crypto.PublicKey{pub, pub}})
-		require.ErrorContains(t, err, "forbids duplicates")
+	// The registry has never rejected duplicate rotation keys, and real DIDs carry them, so
+	// refusing to write one would leave those DIDs unable to round-trip through Update.
+	// A repeated key simply confers no extra authority. See [maxRotationKeys].
+	t.Run("duplicate rotation keys are allowed", func(t *testing.T) {
+		require.NoError(t, create(State{RotationKeys: []crypto.PublicKey{pub, pub}}))
+	})
+
+	// The one place this package is stricter than the registry, and deliberately: an
+	// operation with no rotation keys permanently freezes the DID.
+	t.Run("an empty rotation key list is refused", func(t *testing.T) {
+		err := create(State{RotationKeys: []crypto.PublicKey{}})
+		require.ErrorContains(t, err, "need 1 to 10 keys")
 	})
 
 	t.Run("rotation key of a refused algorithm", func(t *testing.T) {
@@ -466,9 +476,15 @@ func TestValidationErrors(t *testing.T) {
 		require.ErrorIs(t, err, crypto.ErrKeyNotAccepted)
 	})
 
-	t.Run("alsoKnownAs without a scheme", func(t *testing.T) {
-		err := create(State{RotationKeys: []crypto.PublicKey{pub}, AlsoKnownAs: []string{"alice.example.com"}})
-		require.ErrorContains(t, err, "no scheme")
+	// An alsoKnownAs entry that is not a URI is accepted, because the registry accepts one
+	// and real DIDs are full of them: roughly a third of the operations in live traffic
+	// carry a bare base32 identifier next to the at:// handle. Requiring a scheme would
+	// leave all of those DIDs readable but impossible to update. See [validateAlsoKnownAs].
+	t.Run("alsoKnownAs entries need not be URIs", func(t *testing.T) {
+		require.NoError(t, create(State{RotationKeys: []crypto.PublicKey{pub}, AlsoKnownAs: []string{
+			"at://alice.example.com",
+			"v4vipvtsjex32zhrfkek4ecetuv74t6ymrpdyacr7s5hzpbrjz7ox7n5ptf7gr532n7gwadmevlpodthjajsuko5rd",
+		}}))
 	})
 
 	t.Run("service without an endpoint scheme", func(t *testing.T) {
@@ -487,13 +503,79 @@ func TestValidationErrors(t *testing.T) {
 		require.ErrorContains(t, err, "empty type")
 	})
 
+	// The size limit is the one constraint that is not a property of any single field, so
+	// respecting every other limit is not enough. This state does: 5 of the 10 permitted
+	// services, each with a legal name, type and endpoint.
+	//
+	// It also pins which number is enforced. The encoding lands at ~4.2kB, between the
+	// registry's 4000 and the 7500 the specification claimed until v0.3.1, so it is refused
+	// only if the limit really is 4000.
 	t.Run("operation over the size limit", func(t *testing.T) {
-		akas := make([]string, 40)
+		svcs := map[string]Service{}
+		for i := 0; i < 5; i++ {
+			name := fmt.Sprintf("svc%d", i)
+			svcs[name+strings.Repeat("x", maxNameLength-len(name))] = Service{
+				Type:     strings.Repeat("T", maxServiceTypeLength),
+				Endpoint: "https://" + strings.Repeat("e", maxServiceEndpointLength-20) + ".example.com",
+			}
+		}
+		state := State{RotationKeys: []crypto.PublicKey{pub}, Services: svcs}
+
+		// Every field is individually within its limit.
+		w, _, err := reg.codec.toWire(state, nil)
+		require.NoError(t, err)
+		encoded, err := dagcbor.Encode(w.cborMap())
+		require.NoError(t, err)
+		require.Greater(t, len(encoded), maxOperationBytes, "the fixture must exceed the registry limit")
+		require.Less(t, len(encoded), 7500, "but stay under the number the spec used to claim")
+
+		require.ErrorContains(t, create(state), fmt.Sprintf("over the %d byte limit", maxOperationBytes))
+	})
+
+	t.Run("too many alsoKnownAs entries", func(t *testing.T) {
+		akas := make([]string, maxAlsoKnownAs+1)
 		for i := range akas {
-			akas[i] = "at://" + strings.Repeat("a", 200) + fmt.Sprint(i) + ".example.com"
+			akas[i] = fmt.Sprintf("at://alice%d.example.com", i)
 		}
 		err := create(State{RotationKeys: []crypto.PublicKey{pub}, AlsoKnownAs: akas})
-		require.ErrorContains(t, err, "over the 7500 byte limit")
+		require.ErrorContains(t, err, "at most 10 entries")
+	})
+
+	t.Run("alsoKnownAs entry too long", func(t *testing.T) {
+		long := "at://" + strings.Repeat("a", maxAlsoKnownAsLength) + ".example.com"
+		err := create(State{RotationKeys: []crypto.PublicKey{pub}, AlsoKnownAs: []string{long}})
+		require.ErrorContains(t, err, "over the 258 limit")
+	})
+
+	t.Run("duplicate alsoKnownAs entries", func(t *testing.T) {
+		err := create(State{RotationKeys: []crypto.PublicKey{pub},
+			AlsoKnownAs: []string{"at://alice.example.com", "at://alice.example.com"}})
+		require.ErrorContains(t, err, "the registry rejects duplicates")
+	})
+
+	t.Run("too many services", func(t *testing.T) {
+		svcs := map[string]Service{}
+		for i := 0; i <= maxServices; i++ {
+			svcs[fmt.Sprintf("svc%d", i)] = Service{Type: "T", Endpoint: "https://pds.example.com"}
+		}
+		err := create(State{RotationKeys: []crypto.PublicKey{pub}, Services: svcs})
+		require.ErrorContains(t, err, "at most 10 entries")
+	})
+
+	t.Run("service endpoint too long", func(t *testing.T) {
+		err := create(State{RotationKeys: []crypto.PublicKey{pub}, Services: map[string]Service{
+			"atproto_pds": {Type: "T", Endpoint: "https://" + strings.Repeat("e", maxServiceEndpointLength) + ".example.com"},
+		}})
+		require.ErrorContains(t, err, "endpoint is")
+		require.ErrorContains(t, err, "over the 512 limit")
+	})
+
+	t.Run("name too long", func(t *testing.T) {
+		long := strings.Repeat("n", maxNameLength+1)
+		err := create(State{RotationKeys: []crypto.PublicKey{pub}, Services: map[string]Service{
+			long: {Type: "T", Endpoint: "https://pds.example.com"},
+		}})
+		require.ErrorContains(t, err, "over the 32 limit")
 	})
 
 	t.Run("no signer", func(t *testing.T) {
